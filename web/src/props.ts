@@ -1,11 +1,27 @@
 import * as THREE from "three";
-import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
-import { Biome, CELL, GRID, GROUND_Y, SEED } from "./constants";
-import { cellCenterDist, cellIndex, inBounds, isLand } from "./island";
-import { MODEL_URLS } from "./models";
+import {
+  BEACH_WIDTH,
+  Biome,
+  CELL,
+  CENTER,
+  GRID,
+  GROUND_Y,
+  ISLAND_RADIUS,
+  POND_X,
+  POND_Z,
+  SEED,
+  WATER_Y,
+} from "./constants";
+import {
+  cellCenterDist,
+  cellIndex,
+  inBounds,
+  isLand,
+  nearestCell,
+} from "./island";
+import { loadGlb, loadObj } from "./loaders";
+import { LILY_URL, MODEL_URLS, type ModelKind } from "./models";
 import { mulberry32 } from "./rng";
-
-const loader = new GLTFLoader();
 
 const PLUS: [number, number][] = [
   [0, 0],
@@ -15,39 +31,63 @@ const PLUS: [number, number][] = [
   [0, -1],
 ];
 
-export type PropKind = "palm" | "oak" | "pine" | "bush" | "rockSmall" | "rockLarge";
+const NEAR: [number, number][] = [
+  [1, 0],
+  [-1, 0],
+  [0, 1],
+  [0, -1],
+  [1, 1],
+  [1, -1],
+  [-1, 1],
+  [-1, -1],
+];
 
-const HEIGHT: Record<PropKind, number> = {
+const HEIGHT: Partial<Record<ModelKind | "lilypad", number>> = {
   palm: 3.6,
+  palmBend: 3.3,
+  palmShort: 2.6,
+  piratePalm: 3.4,
   oak: 3.1,
   pine: 3.3,
   bush: 0.85,
   rockSmall: 0.55,
   rockLarge: 1.15,
+  stump: 0.7,
+  sandRock: 0.9,
+  wreck: 4.2,
+  crate: 0.7,
+  barrel: 0.85,
+  chest: 0.7,
+  rowBoat: 1.4,
+  mastRopes: 1.6,
+  hammer: 0.7,
+  axe: 0.85,
+  shovel: 0.9,
+  structure: 3.2,
+  tentHalf: 1.6,
+  floorOld: 0.12,
+  campfire: 0.55,
+  fishStand: 1.4,
+  log: 0.45,
+  fishingBoat: 2.2,
+  coconut: 0.22,
+  coconutHalf: 0.16,
+  knife: 0.35,
+  pineapple: 0.32,
+  orange: 0.16,
+  fish: 0.22,
+  bow: 0.9,
+  arrow: 0.55,
+  bridge: 2.8,
+  lilypad: 0.08,
 };
 
-function prepareTemplate(root: THREE.Object3D): THREE.Object3D {
-  root.traverse((obj) => {
-    const mesh = obj as THREE.Mesh;
-    if (!mesh.isMesh) return;
-    mesh.castShadow = true;
-    mesh.receiveShadow = true;
-    const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
-    for (const mat of materials) {
-      const std = mat as THREE.MeshStandardMaterial;
-      if (std.metalness !== undefined) {
-        std.metalness = 0;
-        std.roughness = 0.82;
-      }
-    }
-  });
-  return root;
-}
+export type AudioAnchor = { id: string; position: THREE.Vector3 };
 
-async function loadTemplate(url: string): Promise<THREE.Object3D> {
-  const gltf = await loader.loadAsync(url);
-  return prepareTemplate(gltf.scene);
-}
+export type ScatterResult = {
+  group: THREE.Group;
+  audioAnchors: AudioAnchor[];
+};
 
 function scaleToHeight(obj: THREE.Object3D, height: number): void {
   const box = new THREE.Box3().setFromObject(obj);
@@ -61,11 +101,19 @@ function sitOnGround(obj: THREE.Object3D): void {
   obj.position.y += GROUND_Y - box.min.y;
 }
 
-function placeAtCell(obj: THREE.Object3D, x: number, z: number, yaw: number): void {
-  obj.position.x = x * CELL + CELL / 2;
-  obj.position.z = z * CELL + CELL / 2;
+function placeAtCell(
+  obj: THREE.Object3D,
+  x: number,
+  z: number,
+  yaw: number,
+  height: number,
+  y: number = GROUND_Y,
+): void {
+  obj.position.set(x * CELL + CELL / 2, 0, z * CELL + CELL / 2);
   obj.rotation.y = yaw;
-  sitOnGround(obj);
+  scaleToHeight(obj, height);
+  const box = new THREE.Box3().setFromObject(obj);
+  obj.position.y += y - box.min.y;
 }
 
 function canBlock(biomes: Uint8Array, blocked: Uint8Array, x: number, z: number): boolean {
@@ -83,48 +131,179 @@ function markPlus(blocked: Uint8Array, x: number, z: number): void {
   }
 }
 
+function markRect(blocked: Uint8Array, x: number, z: number, rx: number, rz: number): void {
+  for (let dz = -rz; dz <= rz; dz++) {
+    for (let dx = -rx; dx <= rx; dx++) {
+      const nx = x + dx;
+      const nz = z + dz;
+      if (inBounds(nx, nz)) blocked[cellIndex(nx, nz)] = 1;
+    }
+  }
+}
+
 function plusFits(biomes: Uint8Array, blocked: Uint8Array, x: number, z: number): boolean {
   return PLUS.every(([dx, dz]) => canBlock(biomes, blocked, x + dx, z + dz));
+}
+
+function worldPos(x: number, z: number): THREE.Vector3 {
+  return new THREE.Vector3(x * CELL + CELL / 2, 1.2, z * CELL + CELL / 2);
 }
 
 export async function scatterProps(
   scene: THREE.Scene,
   biomes: Uint8Array,
   blocked: Uint8Array,
-): Promise<void> {
+): Promise<ScatterResult> {
   const rng = mulberry32(`${SEED}-props`);
-  const templates: Record<PropKind, THREE.Object3D> = {
-    palm: await loadTemplate(MODEL_URLS.palm),
-    oak: await loadTemplate(MODEL_URLS.oak),
-    pine: await loadTemplate(MODEL_URLS.pine),
-    bush: await loadTemplate(MODEL_URLS.bush),
-    rockSmall: await loadTemplate(MODEL_URLS.rockSmall),
-    rockLarge: await loadTemplate(MODEL_URLS.rockLarge),
-  };
+  const templates: Partial<Record<ModelKind | "lilypad", THREE.Object3D>> = {};
+
+  await Promise.all(
+    (Object.keys(MODEL_URLS) as ModelKind[]).map(async (kind) => {
+      templates[kind] = await loadGlb(MODEL_URLS[kind]);
+    }),
+  );
+  templates.lilypad = await loadObj(LILY_URL);
 
   const grass: [number, number][] = [];
   const land: [number, number][] = [];
+  const sand: [number, number][] = [];
+  const waterInland: [number, number][] = [];
   for (let z = 0; z < GRID; z++) {
     for (let x = 0; x < GRID; x++) {
       const b = biomes[cellIndex(x, z)] as Biome;
       if (b === Biome.Grass) grass.push([x, z]);
+      if (b === Biome.Sand) sand.push([x, z]);
       if (isLand(b)) land.push([x, z]);
+      if (b === Biome.Water && cellCenterDist(x, z) < ISLAND_RADIUS) waterInland.push([x, z]);
     }
   }
 
   const group = new THREE.Group();
   group.name = "props";
+  const audioAnchors: AudioAnchor[] = [];
+
+  const add = (
+    kind: ModelKind | "lilypad",
+    x: number,
+    z: number,
+    yaw: number,
+    extra?: { tiltX?: number; tiltZ?: number; y?: number },
+  ): THREE.Object3D | null => {
+    if (!inBounds(x, z)) return null;
+    const src = templates[kind];
+    if (!src) return null;
+    const clone = src.clone(true);
+    const h = (HEIGHT[kind] ?? 1) * (0.92 + rng() * 0.16);
+    placeAtCell(clone, x, z, yaw, h, extra?.y ?? GROUND_Y);
+    if (extra?.tiltX) clone.rotation.x += extra.tiltX;
+    if (extra?.tiltZ) clone.rotation.z += extra.tiltZ;
+    if (extra?.tiltX || extra?.tiltZ) sitOnGround(clone);
+    group.add(clone);
+    return clone;
+  };
+
+  const wreck = nearestCell(
+    biomes,
+    CENTER,
+    CENTER - ISLAND_RADIUS + BEACH_WIDTH * 0.45,
+    (b) => b === Biome.Sand,
+  );
+  if (wreck) {
+    markRect(blocked, wreck.x, wreck.z, 3, 2);
+    add("wreck", wreck.x, wreck.z, 0.4, { tiltZ: 0.28 });
+    add("crate", wreck.x + 2, wreck.z + 1, rng() * 6);
+    add("barrel", wreck.x - 2, wreck.z, rng() * 6);
+    add("chest", wreck.x + 1, wreck.z - 1, 1.1);
+    add("hammer", wreck.x + 2, wreck.z - 1, rng() * 6);
+    add("axe", wreck.x - 1, wreck.z + 2, rng() * 6);
+    add("knife", wreck.x + 3, wreck.z, 0.3);
+    audioAnchors.push({ id: "wreck", position: worldPos(wreck.x, wreck.z) });
+  }
+
+  const boat = nearestCell(
+    biomes,
+    CENTER + ISLAND_RADIUS - BEACH_WIDTH * 0.5,
+    CENTER,
+    (b) => b === Biome.Sand,
+  );
+  if (boat) {
+    markRect(blocked, boat.x, boat.z, 2, 2);
+    add("fishingBoat", boat.x, boat.z, -0.6, { tiltX: 0.35, tiltZ: -0.2 });
+    add("rowBoat", boat.x - 3, boat.z + 1, 0.8, { tiltZ: 0.22 });
+    add("mastRopes", boat.x + 1, boat.z + 2, rng() * 3);
+    add("fishStand", boat.x - 2, boat.z - 2, 0.4);
+    add("fish", boat.x, boat.z + 2, rng() * 6);
+    audioAnchors.push({ id: "boat", position: worldPos(boat.x, boat.z) });
+  }
+
+  const hut = nearestCell(
+    biomes,
+    CENTER + 10,
+    CENTER + 18,
+    (b, x, z) => b === Biome.Grass && plusFits(biomes, blocked, x, z),
+  );
+  if (hut) {
+    markRect(blocked, hut.x, hut.z, 2, 2);
+    add("floorOld", hut.x, hut.z, 0.1);
+    add("structure", hut.x, hut.z, 0.35, { tiltZ: 0.08 });
+    add("tentHalf", hut.x + 2, hut.z - 1, -0.4);
+    add("campfire", hut.x - 2, hut.z + 1, rng() * 2);
+    add("log", hut.x - 1, hut.z + 2, rng() * 3);
+    add("bow", hut.x + 1, hut.z + 2, 0.7);
+    add("arrow", hut.x + 2, hut.z + 2, 1.2);
+    add("shovel", hut.x - 2, hut.z - 1, rng() * 4);
+    audioAnchors.push({ id: "hut", position: worldPos(hut.x, hut.z) });
+  }
+
+  const bridge = nearestCell(
+    biomes,
+    POND_X - 8,
+    POND_Z,
+    (b, x, z) => b === Biome.Water && cellCenterDist(x, z) < ISLAND_RADIUS,
+  );
+  if (bridge) {
+    add("bridge", bridge.x, bridge.z, Math.PI / 2, { y: WATER_Y + 0.35 });
+  }
+
+  audioAnchors.push({ id: "pond", position: worldPos(POND_X, POND_Z) });
+
+  for (const [sx, sz] of [
+    [CENTER, CENTER - ISLAND_RADIUS - 2],
+    [CENTER, CENTER + ISLAND_RADIUS + 2],
+    [CENTER - ISLAND_RADIUS - 2, CENTER],
+    [CENTER + ISLAND_RADIUS + 2, CENTER],
+  ] as const) {
+    audioAnchors.push({
+      id: "surf",
+      position: new THREE.Vector3(sx, 1, sz),
+    });
+  }
+
+  const placeCoconuts = (px: number, pz: number) => {
+    const n = rng() < 0.25 ? 0 : rng() < 0.55 ? 1 : 2;
+    let put = 0;
+    for (const [dx, dz] of NEAR) {
+      if (put >= n) break;
+      const x = px + dx;
+      const z = pz + dz;
+      if (!inBounds(x, z) || !isLand(biomes[cellIndex(x, z)] as Biome)) continue;
+      if (blocked[cellIndex(x, z)]) continue;
+      add(rng() < 0.35 ? "coconutHalf" : "coconut", x, z, rng() * 6);
+      put += 1;
+    }
+  };
 
   const tryPlace = (
-    kind: PropKind,
+    kind: ModelKind,
     cells: [number, number][],
     count: number,
     filter: (x: number, z: number) => boolean,
     occupy: "cell" | "plus" | "none",
+    after?: (x: number, z: number) => void,
   ) => {
     let placed = 0;
     let guard = 0;
-    while (placed < count && guard < count * 40) {
+    while (placed < count && guard < count * 50) {
       guard += 1;
       const [x, z] = cells[Math.floor(rng() * cells.length)]!;
       if (!filter(x, z)) continue;
@@ -138,11 +317,8 @@ export async function scatterProps(
       } else {
         if (!inBounds(x, z) || !isLand(biomes[i] as Biome) || blocked[i]) continue;
       }
-
-      const clone = templates[kind].clone(true);
-      scaleToHeight(clone, HEIGHT[kind] * (0.9 + rng() * 0.2));
-      placeAtCell(clone, x, z, rng() * Math.PI * 2);
-      group.add(clone);
+      add(kind, x, z, rng() * Math.PI * 2);
+      after?.(x, z);
       placed += 1;
     }
   };
@@ -150,24 +326,52 @@ export async function scatterProps(
   tryPlace(
     "palm",
     grass,
-    16,
+    22,
     (x, z) => {
       const d = cellCenterDist(x, z);
-      return d >= 20 && d <= 38;
+      return d >= 32 && d <= 62;
     },
     "cell",
+    placeCoconuts,
   );
-  tryPlace("oak", grass, 14, () => true, "cell");
+  tryPlace(
+    "palmBend",
+    grass,
+    10,
+    (x, z) => cellCenterDist(x, z) >= 36 && cellCenterDist(x, z) <= 64,
+    "cell",
+    placeCoconuts,
+  );
+  tryPlace("palmShort", sand, 8, () => true, "cell", placeCoconuts);
+  tryPlace("piratePalm", sand, 6, () => true, "cell", placeCoconuts);
+  tryPlace("oak", grass, 18, () => true, "cell");
   tryPlace(
     "pine",
     grass,
-    10,
-    (x, z) => cellCenterDist(x, z) <= 28,
+    12,
+    (x, z) => cellCenterDist(x, z) <= 40,
     "cell",
   );
-  tryPlace("rockLarge", land, 8, () => true, "plus");
-  tryPlace("rockSmall", land, 20, () => true, "cell");
-  tryPlace("bush", grass, 32, () => true, "none");
+  tryPlace("stump", grass, 8, () => true, "cell");
+  tryPlace("rockLarge", land, 12, () => true, "plus");
+  tryPlace("rockSmall", land, 28, () => true, "cell");
+  tryPlace("sandRock", sand, 10, () => true, "cell");
+  tryPlace("bush", grass, 48, () => true, "none");
+  tryPlace("log", grass, 8, () => true, "none");
+  tryPlace("pineapple", grass, 6, () => true, "none");
+  tryPlace("orange", grass, 8, () => true, "none");
+  tryPlace("hammer", land, 3, () => true, "none");
+  tryPlace("shovel", land, 3, () => true, "none");
+
+  let pads = 0;
+  let padGuard = 0;
+  while (pads < 14 && padGuard < 80 && waterInland.length) {
+    padGuard += 1;
+    const [x, z] = waterInland[Math.floor(rng() * waterInland.length)]!;
+    add("lilypad", x, z, rng() * 6, { y: WATER_Y + 0.04 });
+    pads += 1;
+  }
 
   scene.add(group);
+  return { group, audioAnchors };
 }

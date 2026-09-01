@@ -8,6 +8,9 @@ import {
   GRID,
   GROUND_Y,
   ISLAND_RADIUS,
+  POND_RADIUS,
+  POND_X,
+  POND_Z,
   SAND_A,
   WATER,
   WATER_Y,
@@ -36,6 +39,10 @@ export function isLand(biome: Biome): boolean {
   return biome !== Biome.Water;
 }
 
+function pondDist(x: number, z: number): number {
+  return Math.hypot(x + 0.5 - POND_X, z + 0.5 - POND_Z);
+}
+
 export function buildBiomes(): Uint8Array {
   const biomes = new Uint8Array(GRID * GRID);
   for (let z = 0; z < GRID; z++) {
@@ -43,7 +50,50 @@ export function buildBiomes(): Uint8Array {
       biomes[cellIndex(x, z)] = biomeAt(x, z);
     }
   }
+
+  for (let z = 0; z < GRID; z++) {
+    for (let x = 0; x < GRID; x++) {
+      const d = pondDist(x, z);
+      const i = cellIndex(x, z);
+      if (d <= POND_RADIUS) biomes[i] = Biome.Water;
+      else if (d <= POND_RADIUS + 1.6 && biomes[i] === Biome.Grass) biomes[i] = Biome.Sand;
+    }
+  }
+
+  for (let x = POND_X; x >= 0; x--) {
+    for (const dz of [0, 1]) {
+      const z = POND_Z + dz;
+      if (!inBounds(x, z)) continue;
+      if (cellCenterDist(x, z) > ISLAND_RADIUS + 1.5) continue;
+      biomes[cellIndex(x, z)] = Biome.Water;
+    }
+    if (cellCenterDist(x, POND_Z) > ISLAND_RADIUS) break;
+  }
+
   return biomes;
+}
+
+export function nearestCell(
+  biomes: Uint8Array,
+  tx: number,
+  tz: number,
+  pred: (biome: Biome, x: number, z: number) => boolean,
+  maxR = 28,
+): { x: number; z: number } | null {
+  const x0 = Math.round(tx);
+  const z0 = Math.round(tz);
+  for (let r = 0; r <= maxR; r++) {
+    for (let dz = -r; dz <= r; dz++) {
+      for (let dx = -r; dx <= r; dx++) {
+        if (Math.max(Math.abs(dx), Math.abs(dz)) !== r) continue;
+        const x = x0 + dx;
+        const z = z0 + dz;
+        if (!inBounds(x, z)) continue;
+        if (pred(biomes[cellIndex(x, z)] as Biome, x, z)) return { x, z };
+      }
+    }
+  }
+  return null;
 }
 
 export function buildIslandMesh(biomes: Uint8Array): THREE.Group {
@@ -92,7 +142,7 @@ function buildBiomeMesh(biomes: Uint8Array, want: Biome, color: number): THREE.M
 }
 
 export function buildOcean(): THREE.Mesh {
-  const geo = new THREE.PlaneGeometry(250, 250);
+  const geo = new THREE.PlaneGeometry(420, 420);
   const mat = new THREE.MeshLambertMaterial({
     color: WATER,
   });
@@ -105,7 +155,6 @@ export function buildOcean(): THREE.Mesh {
 }
 
 export function findSpawn(biomes: Uint8Array): { x: number; z: number } {
-  // South beach / inner grass — first grass cell near the southern shore.
   for (let z = 0; z < GRID; z++) {
     for (let x = 0; x < GRID; x++) {
       if (biomes[cellIndex(x, z)] !== Biome.Grass) continue;
@@ -120,5 +169,5 @@ export function findSpawn(biomes: Uint8Array): { x: number; z: number } {
       if (biomes[cellIndex(x, z)] === Biome.Grass) return { x, z };
     }
   }
-  return { x: 50, z: 50 };
+  return { x: Math.floor(CENTER), z: Math.floor(CENTER) };
 }
