@@ -23,6 +23,62 @@ export const SEED = "marooned-mvp-1";
 /** Distance falloff always. Stereo L/R from facing / side only if true. */
 export const SOUND_3D = false;
 
+/** Real seconds for a full 24h island day. */
+export const DAY_SECONDS = 8 * 60;
+/** Start a bit after dawn so the first load is daytime. */
+export const DAY_START = 8 / 24;
+
+/** Energy 0→empty in this many seconds of sprint (before heat extra). */
+export const ENERGY_DRAIN_RUN = 1 / 7;
+/** Energy empty→full while standing still. */
+export const ENERGY_RECOVER_IDLE = 1 / 3;
+/** Energy empty→full while walking. */
+export const ENERGY_RECOVER_WALK = 1 / 12;
+/** Must refill past this before sprint is allowed again. */
+export const ENERGY_SPRINT_RESUME = 0.08;
+/** Energy ceiling = min(1, this × geometric mean of thirst and hunger). */
+export const ENERGY_FROM_FOOD = 1.5;
+
+/** Thirst empty in this many idle seconds. */
+export const THIRST_DRAIN_IDLE = 1 / (18 * 60);
+export const THIRST_DRAIN_WALK = 1 / (10 * 60);
+export const THIRST_DRAIN_RUN = 1 / (5 * 60);
+/** Hunger is a bit slower than thirst. */
+export const HUNGER_DRAIN_IDLE = 1 / (24 * 60);
+export const HUNGER_DRAIN_WALK = 1 / (14 * 60);
+export const HUNGER_DRAIN_RUN = 1 / (7 * 60);
+
+/** Sprint in daylight: empty→hot in this many seconds. */
+export const TEMP_HEAT_RUN_DAY = 1 / 28;
+/** Idle at night: comfortable→cold in this many seconds. */
+export const TEMP_COOL_IDLE_NIGHT = 1 / 50;
+/** Idle in daylight: return to 50% in about this many seconds from full heat. */
+export const TEMP_IDLE_DAY_RECOVER = 1 / 55;
+/** Walking: slower drift back to 50%. */
+export const TEMP_DRIFT = 1 / 40;
+export const TEMP_HOT = 0.78;
+export const TEMP_COLD = 0.22;
+/** Extra stamina drain when overheated (sprint). */
+export const TEMP_HOT_ENERGY_MULT = 1.7;
+/** Extra thirst drain when overheated. */
+export const TEMP_HOT_THIRST_MULT = 1.7;
+/** Extra thirst drain while the temperature meter is pulsing hot. */
+export const TEMP_HOT_BLINK_THIRST_MULT = 2.8;
+/** Extra hunger drain when too cold (all gaits). */
+export const TEMP_COLD_HUNGER_MULT = 1.7;
+
+/** HUD fill bands (also used for food/water/energy warning colors). */
+export const HUD_BAND_HIGH = 0.7;
+export const HUD_BAND_MID = 0.5;
+export const HUD_BAND_LOW = 0.3;
+export const HUD_BLINK = 0.2;
+/** Temperature overheat pulse (fill already turns red at HUD_BAND_HIGH). */
+export const HUD_TEMP_HOT_BLINK = 0.9;
+/** Pulse the energy cell when its food/water cap is below this. */
+export const HUD_ENERGY_MAX_BLINK = 0.1;
+/** Health empty→dead if one of food/water stays at 0. */
+export const HEALTH_DRAIN_PER_EMPTY = 2 / (3 * 60);
+
 export const POND_X = 58;
 export const POND_Z = 82;
 export const POND_RADIUS = 4.6;

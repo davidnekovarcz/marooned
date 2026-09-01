@@ -20,6 +20,9 @@ export class GridPlayer {
   readonly mesh: THREE.Object3D;
   cellX: number;
   cellZ: number;
+  canSprint = true;
+  alive = true;
+  gait: PlayerGait = "idle";
   private moving = false;
   private sprinting = false;
   private stepSeconds = STEP_SECONDS_WALK;
@@ -56,16 +59,26 @@ export class GridPlayer {
     this.mesh.position.set(this.cellX * CELL + CELL / 2, 0, this.cellZ * CELL + CELL / 2);
   }
 
-  private gait(): PlayerGait {
-    if (!this.moving) return "idle";
-    return this.sprinting ? "run" : "walk";
+  private refreshGait(): PlayerGait {
+    if (!this.moving) {
+      this.gait = "idle";
+      return this.gait;
+    }
+    this.gait = this.sprinting && this.canSprint ? "run" : "walk";
+    return this.gait;
   }
 
   update(dt: number): void {
     this.visual.mixer.update(dt);
+    if (!this.alive) {
+      this.moving = false;
+      this.gait = "idle";
+      this.visual.setGait("idle");
+      return;
+    }
 
     if (this.moving) {
-      this.visual.setGait(this.gait());
+      this.visual.setGait(this.refreshGait());
       this.t += dt / this.stepSeconds;
       const u = Math.min(1, this.t);
       const s = u * u * (3 - 2 * u);
@@ -78,23 +91,24 @@ export class GridPlayer {
       this.snap();
     }
 
+    const sprint = this.sprinting && this.canSprint;
     for (const code of this.pressed) {
       const dir = DIRS[code];
       if (!dir) continue;
       const nx = this.cellX + dir.x;
       const nz = this.cellZ + dir.z;
       if (!isWalkable(this.biomes, this.blocked, nx, nz)) continue;
-      this.stepSeconds = this.sprinting ? STEP_SECONDS_RUN : STEP_SECONDS_WALK;
+      this.stepSeconds = sprint ? STEP_SECONDS_RUN : STEP_SECONDS_WALK;
       this.from.copy(this.mesh.position);
       this.to.set(nx * CELL + CELL / 2, 0, nz * CELL + CELL / 2);
       this.t = 0;
       this.moving = true;
       this.mesh.lookAt(this.to.x, 0, this.to.z);
-      this.visual.setGait(this.gait());
+      this.visual.setGait(this.refreshGait());
       break;
     }
 
-    if (!this.moving) this.visual.setGait("idle");
+    if (!this.moving) this.visual.setGait(this.refreshGait());
   }
 
   followCamera(camera: THREE.PerspectiveCamera, offset: THREE.Vector3): void {
