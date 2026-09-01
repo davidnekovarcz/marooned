@@ -7,10 +7,10 @@ const DIRS: Record<string, { x: number; z: number }> = {
   ArrowUp: { x: 0, z: 1 },
   KeyS: { x: 0, z: -1 },
   ArrowDown: { x: 0, z: -1 },
-  KeyA: { x: -1, z: 0 },
-  ArrowLeft: { x: -1, z: 0 },
-  KeyD: { x: 1, z: 0 },
-  ArrowRight: { x: 1, z: 0 },
+  KeyA: { x: 1, z: 0 },
+  ArrowLeft: { x: 1, z: 0 },
+  KeyD: { x: -1, z: 0 },
+  ArrowRight: { x: -1, z: 0 },
 };
 
 export class GridPlayer {

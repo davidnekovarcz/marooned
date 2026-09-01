@@ -5,7 +5,7 @@ export const ISLAND_RADIUS = 42;
 export const BEACH_WIDTH = 5;
 export const WATER_Y = -0.15;
 export const STEP_SECONDS = 0.15;
-export const CAMERA_OFFSET = { x: 16, y: 22, z: 16 } as const;
+export const CAMERA_OFFSET = { x: -16, y: 22, z: -16 } as const;
 export const SEED = "marooned-mvp-1";
 
 export const GRASS_A = 0x7fe046;
