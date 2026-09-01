@@ -1,19 +1,20 @@
 import * as THREE from "three";
 import type { Appearance } from "./appearance";
-import { GROUND_Y } from "./constants";
+import { GROUND_Y, RUN_ANIM_SCALE, WALK_ANIM_SCALE } from "./constants";
 import { loadFbx } from "./loaders";
 import { PLAYER_URLS } from "./models";
 
 const TARGET_HEIGHT = 1.6;
-const RUN_TIME_SCALE = 0.55;
 const FADE = 0.14;
 const HELPER_BONE = /Ctrl|IK|Roll|_end$/;
 const FOOT_BONES = ["LeftFoot", "RightFoot", "LeftToes", "RightToes"] as const;
 
+export type PlayerGait = "idle" | "walk" | "run";
+
 export type PlayerVisual = {
   root: THREE.Object3D;
   mixer: THREE.AnimationMixer;
-  setMoving: (on: boolean) => void;
+  setGait: (gait: PlayerGait) => void;
 };
 
 const _foot = new THREE.Vector3();
@@ -155,22 +156,28 @@ export async function loadPlayerModel(appearance: Appearance): Promise<PlayerVis
   mixer.update(0);
   plantFeet(model);
 
-  run.timeScale = RUN_TIME_SCALE;
+  run.timeScale = WALK_ANIM_SCALE;
   run.enabled = false;
 
-  let moving = false;
-  const setMoving = (on: boolean) => {
-    if (on === moving) return;
-    moving = on;
-    if (on) {
+  let gait: PlayerGait = "idle";
+  const setGait = (next: PlayerGait) => {
+    if (next === gait) return;
+    const prev = gait;
+    gait = next;
+
+    if (next === "idle") {
+      idle.reset().setEffectiveWeight(1).fadeIn(FADE).play();
+      run.fadeOut(FADE);
+      return;
+    }
+
+    run.timeScale = next === "run" ? RUN_ANIM_SCALE : WALK_ANIM_SCALE;
+    if (prev === "idle") {
       run.enabled = true;
       run.reset().setEffectiveWeight(1).fadeIn(FADE).play();
       idle.fadeOut(FADE);
-    } else {
-      idle.reset().setEffectiveWeight(1).fadeIn(FADE).play();
-      run.fadeOut(FADE);
     }
   };
 
-  return { root, mixer, setMoving };
+  return { root, mixer, setGait };
 }

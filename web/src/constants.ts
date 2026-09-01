@@ -5,7 +5,14 @@ export const ISLAND_RADIUS = 68;
 export const BEACH_WIDTH = 7;
 export const WATER_Y = -0.15;
 export const GROUND_Y = 0.02;
-export const STEP_SECONDS = 0.15;
+/** Seconds per grid step when walking (default). */
+export const STEP_SECONDS_WALK = 0.24;
+/** Seconds per grid step when holding Shift. */
+export const STEP_SECONDS_RUN = 0.09;
+/** Run-clip playback while walking — unchanged from the first character pass. */
+export const WALK_ANIM_SCALE = 0.55;
+/** Run-clip playback while sprinting. */
+export const RUN_ANIM_SCALE = 1.05;
 export const CAMERA_OFFSET = { x: -18, y: 24, z: -18 } as const;
 export const ZOOM_CELLS_IN = 10;
 /** Horizontal span ≈ half the island (radius cells). */
