@@ -10,7 +10,7 @@ const OCEAN_HEAR = 42 * CELL;
 const REF_DISTANCE = 3 * CELL;
 
 function makeWaveBuffer(ctx: AudioContext): AudioBuffer {
-  const seconds = 1.1;
+  const seconds = 4;
   const rate = ctx.sampleRate;
   const buffer = ctx.createBuffer(1, Math.floor(rate * seconds), rate);
   const data = buffer.getChannelData(0);
@@ -18,23 +18,57 @@ function makeWaveBuffer(ctx: AudioContext): AudioBuffer {
   for (let i = 0; i < data.length; i++) {
     const t = i / data.length;
     const white = Math.random() * 2 - 1;
-    prev = prev * 0.92 + white * 0.08;
-    const swell = Math.sin(t * Math.PI);
-    data[i] = prev * swell * 0.55;
+    prev = prev * 0.88 + white * 0.12;
+    const swell = 0.55 + 0.28 * Math.sin(t * Math.PI * 2) + 0.17 * Math.sin(t * Math.PI * 2 * 1.6 + 0.9);
+    const fade = Math.min(t * 18, (1 - t) * 18, 1);
+    data[i] = prev * swell * fade * 0.5;
   }
   return buffer;
 }
 
-function makePondBuffer(ctx: AudioContext): AudioBuffer {
-  const seconds = 0.45;
+function makePondBed(ctx: AudioContext): AudioBuffer {
+  const seconds = 2.8;
   const rate = ctx.sampleRate;
   const buffer = ctx.createBuffer(1, Math.floor(rate * seconds), rate);
   const data = buffer.getChannelData(0);
+  let prev = 0;
   for (let i = 0; i < data.length; i++) {
     const t = i / data.length;
-    const drip = Math.sin(t * Math.PI * 18) * Math.exp(-t * 4.2);
-    const fizz = (Math.random() * 2 - 1) * 0.04 * (1 - t);
-    data[i] = drip * 0.12 + fizz;
+    const white = Math.random() * 2 - 1;
+    prev = prev * 0.94 + white * 0.06;
+    const fade = Math.min(t * 16, (1 - t) * 16, 1);
+    data[i] = prev * fade * 0.12;
+  }
+  return buffer;
+}
+
+function makeFrogBuffer(ctx: AudioContext, variant: number): AudioBuffer {
+  const seconds = 0.72;
+  const rate = ctx.sampleRate;
+  const n = Math.floor(rate * seconds);
+  const buffer = ctx.createBuffer(1, n, rate);
+  const data = buffer.getChannelData(0);
+  const pitch = 0.82 + variant * 0.09;
+  const croaks = [
+    { start: 0.04, dur: 0.15, f0: 690 * pitch, f1: 300 * pitch },
+    { start: 0.24, dur: 0.18, f0: 610 * pitch, f1: 250 * pitch },
+  ];
+  const phases = [0, 0];
+  for (let i = 0; i < n; i++) {
+    const t = i / rate;
+    let s = 0;
+    for (let c = 0; c < croaks.length; c++) {
+      const croak = croaks[c]!;
+      const u = (t - croak.start) / croak.dur;
+      if (u < 0 || u > 1) continue;
+      const freq = croak.f0 + (croak.f1 - croak.f0) * u * u;
+      phases[c] += freq / rate;
+      const env = Math.sin(u * Math.PI) ** 1.35 * Math.exp(-u * 0.8);
+      const trem = 0.5 + 0.5 * Math.sin(t * Math.PI * 2 * (32 + variant * 3));
+      s += Math.sin(phases[c]! * Math.PI * 2) * env * trem;
+      s += Math.sin(phases[c]! * Math.PI * 4) * env * 0.16;
+    }
+    data[i] = s * 0.32;
   }
   return buffer;
 }
@@ -65,6 +99,20 @@ function randRange(min: number, max: number): number {
 
 function pick<T>(items: T[]): T {
   return items[Math.floor(Math.random() * items.length)]!;
+}
+
+function attachLoop(
+  listener: THREE.AudioListener,
+  buffer: AudioBuffer,
+  position: THREE.Vector3,
+  volume: number,
+  maxDistance: number,
+): THREE.PositionalAudio {
+  const sound = new THREE.PositionalAudio(listener);
+  sound.setBuffer(buffer);
+  sound.setLoop(true);
+  spatialize(sound, position, volume, maxDistance);
+  return sound;
 }
 
 function attachRandomOneShots(
@@ -115,14 +163,16 @@ export function setupIslandAudio(
       Promise.all(SOUND_URLS.cloths.map((u) => loadBuffer(ctx, u))),
       Promise.all(SOUND_URLS.chops.map((u) => loadBuffer(ctx, u))),
     ]);
-    const waves = [makeWaveBuffer(ctx), makeWaveBuffer(ctx), makeWaveBuffer(ctx)];
-    const still = [makePondBuffer(ctx), makePondBuffer(ctx), makePondBuffer(ctx)];
+    const waves = makeWaveBuffer(ctx);
+    const pondBed = makePondBed(ctx);
+    const frogs = [0, 1, 2, 3].map((v) => makeFrogBuffer(ctx, v));
 
     const group = new THREE.Group();
     group.name = "audio";
 
-    oceanSound = attachRandomOneShots(listener, waves, new THREE.Vector3(), 0.48, [0.7, 2.2], OCEAN_HEAR);
+    oceanSound = attachLoop(listener, waves, new THREE.Vector3(), 0.5, OCEAN_HEAR);
     group.add(oceanSound);
+    oceanSound.play();
 
     for (const a of anchors) {
       if (a.id === "wreck") {
@@ -132,7 +182,10 @@ export function setupIslandAudio(
       } else if (a.id === "boat") {
         group.add(attachRandomOneShots(listener, chops, a.position, 0.32, [4, 12], LANDMARK_HEAR));
       } else if (a.id === "pond") {
-        group.add(attachRandomOneShots(listener, still, a.position, 0.38, [1.1, 3.2], LANDMARK_HEAR));
+        const bed = attachLoop(listener, pondBed, a.position, 0.22, LANDMARK_HEAR);
+        group.add(bed);
+        bed.play();
+        group.add(attachRandomOneShots(listener, frogs, a.position, 0.48, [1.2, 3.6], LANDMARK_HEAR));
       }
     }
 
@@ -140,7 +193,7 @@ export function setupIslandAudio(
 
     if (hint) {
       hint.textContent =
-        "WASD walk. + / − zoom. Ocean follows the nearest beach; pond is still water.";
+        "WASD walk. + / − zoom. Ocean follows the nearest beach; frogs at the pond.";
     }
   };
 
