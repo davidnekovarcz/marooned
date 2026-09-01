@@ -6,6 +6,7 @@ import {
   CENTER,
   GRASS_A,
   GRID,
+  GROUND_Y,
   ISLAND_RADIUS,
   SAND_A,
   WATER,
@@ -64,7 +65,7 @@ function buildBiomeMesh(biomes: Uint8Array, want: Biome, color: number): THREE.M
       const z0 = z * CELL;
       const x1 = x0 + CELL;
       const z1 = z0 + CELL;
-      const y = 0.02;
+      const y = GROUND_Y;
       const quad: [number, number][] = [
         [x0, z0],
         [x0, z1],

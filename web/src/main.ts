@@ -26,17 +26,21 @@ document.body.appendChild(renderer.domElement);
 
 scene.add(new THREE.HemisphereLight(0xfff2d4, 0x3d6b3a, 0.85));
 const sun = new THREE.DirectionalLight(0xfff1d0, 1.35);
-sun.position.set(30, 48, 18);
+sun.position.set(CENTER + 30, 48, CENTER + 18);
+sun.target.position.set(CENTER, 0, CENTER);
 sun.castShadow = true;
 sun.shadow.mapSize.set(2048, 2048);
 sun.shadow.camera.near = 1;
-sun.shadow.camera.far = 140;
-sun.shadow.camera.left = -55;
-sun.shadow.camera.right = 55;
-sun.shadow.camera.top = 55;
-sun.shadow.camera.bottom = -55;
-sun.shadow.bias = -0.0008;
+sun.shadow.camera.far = 200;
+sun.shadow.camera.left = -70;
+sun.shadow.camera.right = 70;
+sun.shadow.camera.top = 70;
+sun.shadow.camera.bottom = -70;
+sun.shadow.camera.updateProjectionMatrix();
+sun.shadow.bias = -0.0001;
+sun.shadow.normalBias = 0.02;
 scene.add(sun);
+scene.add(sun.target);
 
 scene.add(buildOcean());
 scene.add(buildIslandMesh(biomes));

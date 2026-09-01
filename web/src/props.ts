@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
-import { Biome, CELL, GRID, SEED } from "./constants";
+import { Biome, CELL, GRID, GROUND_Y, SEED } from "./constants";
 import { cellCenterDist, cellIndex, inBounds, isLand } from "./island";
 import { MODEL_URLS } from "./models";
 import { mulberry32 } from "./rng";
@@ -58,7 +58,7 @@ function scaleToHeight(obj: THREE.Object3D, height: number): void {
 
 function sitOnGround(obj: THREE.Object3D): void {
   const box = new THREE.Box3().setFromObject(obj);
-  obj.position.y -= box.min.y;
+  obj.position.y += GROUND_Y - box.min.y;
 }
 
 function placeAtCell(obj: THREE.Object3D, x: number, z: number, yaw: number): void {

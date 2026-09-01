@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { CAMERA_OFFSET, CELL, STEP_SECONDS } from "./constants";
+import { CAMERA_OFFSET, CELL, GROUND_Y, STEP_SECONDS } from "./constants";
 import { isWalkable } from "./gridOverlay";
 
 const DIRS: Record<string, { x: number; z: number }> = {
@@ -36,7 +36,7 @@ export class GridPlayer {
     });
     const body = new THREE.Mesh(geo, mat);
     body.castShadow = true;
-    body.position.y = 0.73;
+    body.position.y = 0.73 + GROUND_Y;
     const wrap = new THREE.Group();
     wrap.add(body);
     this.mesh = wrap;
