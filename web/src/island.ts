@@ -5,15 +5,16 @@ import {
   CELL,
   CENTER,
   GRASS_A,
+  GRASS_B,
   GRID,
   GROUND_Y,
   ISLAND_RADIUS,
   POND_RADIUS,
   POND_X,
   POND_Z,
+  RIVER_HALF,
   SAND_A,
-  WATER,
-  WATER_Y,
+  SAND_B,
 } from "./constants";
 
 export function cellIndex(x: number, z: number): number {
@@ -29,18 +30,41 @@ export function cellCenterDist(x: number, z: number): number {
 }
 
 export function biomeAt(x: number, z: number): Biome {
-  const dist = cellCenterDist(x, z);
-  if (dist > ISLAND_RADIUS) return Biome.Water;
-  if (ISLAND_RADIUS - dist < BEACH_WIDTH) return Biome.Sand;
-  return Biome.Grass;
+  return biomeAtPoint(x + 0.5, z + 0.5);
 }
 
 export function isLand(biome: Biome): boolean {
   return biome !== Biome.Water;
 }
 
-function pondDist(x: number, z: number): number {
-  return Math.hypot(x + 0.5 - POND_X, z + 0.5 - POND_Z);
+function riverDistance(px: number, pz: number): number {
+  const zc = POND_Z + 0.5;
+  if (px > POND_X) return 1e6;
+  return Math.abs(pz - zc);
+}
+
+/** Positive on land, negative in ocean / pond / river. */
+function landSDF(px: number, pz: number): number {
+  const island = ISLAND_RADIUS - Math.hypot(px - CENTER, pz - CENTER);
+  const pond = Math.hypot(px - POND_X, pz - POND_Z) - POND_RADIUS;
+  const river = riverDistance(px, pz) - RIVER_HALF;
+  return Math.min(island, pond, river);
+}
+
+function biomeAtPoint(px: number, pz: number): Biome {
+  if (landSDF(px, pz) <= 0) return Biome.Water;
+  if (sandSDF(px, pz) > 0) return Biome.Sand;
+  return Biome.Grass;
+}
+
+/** Positive on the beach / pond / river banks, negative on inland grass. */
+function sandSDF(px: number, pz: number): number {
+  const islandD = Math.hypot(px - CENTER, pz - CENTER);
+  const beach = islandD - (ISLAND_RADIUS - BEACH_WIDTH);
+  const pondRing = POND_RADIUS + 1.8 - Math.hypot(px - POND_X, pz - POND_Z);
+  const riverRing =
+    px <= POND_X + 1.2 ? RIVER_HALF + 1.5 - riverDistance(px, pz) : -1e6;
+  return Math.max(beach, pondRing, riverRing);
 }
 
 export function buildBiomes(): Uint8Array {
@@ -50,26 +74,6 @@ export function buildBiomes(): Uint8Array {
       biomes[cellIndex(x, z)] = biomeAt(x, z);
     }
   }
-
-  for (let z = 0; z < GRID; z++) {
-    for (let x = 0; x < GRID; x++) {
-      const d = pondDist(x, z);
-      const i = cellIndex(x, z);
-      if (d <= POND_RADIUS) biomes[i] = Biome.Water;
-      else if (d <= POND_RADIUS + 1.6 && biomes[i] === Biome.Grass) biomes[i] = Biome.Sand;
-    }
-  }
-
-  for (let x = POND_X; x >= 0; x--) {
-    for (const dz of [0, 1]) {
-      const z = POND_Z + dz;
-      if (!inBounds(x, z)) continue;
-      if (cellCenterDist(x, z) > ISLAND_RADIUS + 1.5) continue;
-      biomes[cellIndex(x, z)] = Biome.Water;
-    }
-    if (cellCenterDist(x, POND_Z) > ISLAND_RADIUS) break;
-  }
-
   return biomes;
 }
 
@@ -162,62 +166,100 @@ export function nearestCell(
   return null;
 }
 
-export function buildIslandMesh(biomes: Uint8Array): THREE.Group {
-  const group = new THREE.Group();
-  group.name = "island";
-  group.add(buildBiomeMesh(biomes, Biome.Grass, GRASS_A));
-  group.add(buildBiomeMesh(biomes, Biome.Sand, SAND_A));
-  return group;
-}
-
-function buildBiomeMesh(biomes: Uint8Array, want: Biome, color: number): THREE.Mesh {
+export function buildIslandMesh(_biomes: Uint8Array): THREE.Mesh {
   const positions: number[] = [];
+  const colors: number[] = [];
+  const grassA = new THREE.Color(GRASS_A);
+  const grassB = new THREE.Color(GRASS_B);
+  const sandA = new THREE.Color(SAND_A);
+  const sandB = new THREE.Color(SAND_B);
+  const tint = new THREE.Color();
+
+  const pushTri = (poly: [number, number][], color: THREE.Color): void => {
+    for (let i = 1; i < poly.length - 1; i++) {
+      const ring: [number, number][] = [poly[0]!, poly[i]!, poly[i + 1]!];
+      for (const [px, pz] of ring) {
+        positions.push(px * CELL, GROUND_Y, pz * CELL);
+        colors.push(color.r, color.g, color.b);
+      }
+    }
+  };
 
   for (let z = 0; z < GRID; z++) {
     for (let x = 0; x < GRID; x++) {
-      if (biomes[cellIndex(x, z)] !== want) continue;
-
-      const x0 = x * CELL;
-      const z0 = z * CELL;
-      const x1 = x0 + CELL;
-      const z1 = z0 + CELL;
-      const y = GROUND_Y;
-      const quad: [number, number][] = [
-        [x0, z0],
-        [x0, z1],
-        [x1, z1],
-        [x0, z0],
-        [x1, z1],
-        [x1, z0],
-      ];
-      for (const [px, pz] of quad) {
-        positions.push(px, y, pz);
+      const sand = isoPoly(x, z, (px, pz) => Math.min(landSDF(px, pz), sandSDF(px, pz)));
+      const grass = isoPoly(x, z, (px, pz) => Math.min(landSDF(px, pz), -sandSDF(px, pz)));
+      if (sand.length >= 3) {
+        cellTint(Biome.Sand, x, z, grassA, grassB, sandA, sandB, tint);
+        pushTri(sand, tint);
+      }
+      if (grass.length >= 3) {
+        cellTint(Biome.Grass, x, z, grassA, grassB, sandA, sandB, tint);
+        pushTri(grass, tint);
       }
     }
   }
 
   const geo = new THREE.BufferGeometry();
   geo.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
+  geo.setAttribute("color", new THREE.Float32BufferAttribute(colors, 3));
   geo.computeVertexNormals();
 
-  const mat = new THREE.MeshLambertMaterial({ color, side: THREE.DoubleSide });
+  const mat = new THREE.MeshLambertMaterial({
+    vertexColors: true,
+    side: THREE.DoubleSide,
+  });
   const mesh = new THREE.Mesh(geo, mat);
   mesh.receiveShadow = true;
-  mesh.name = want === Biome.Sand ? "beach" : "grass";
+  mesh.name = "island";
   return mesh;
 }
 
-export function buildOcean(): THREE.Mesh {
-  const geo = new THREE.PlaneGeometry(420, 420);
-  const mat = new THREE.MeshLambertMaterial({
-    color: WATER,
-  });
-  const mesh = new THREE.Mesh(geo, mat);
-  mesh.rotation.x = -Math.PI / 2;
-  mesh.position.set(CENTER, WATER_Y, CENTER);
-  mesh.receiveShadow = true;
-  mesh.name = "ocean";
-  return mesh;
+function isoPoly(x: number, z: number, sdf: (px: number, pz: number) => number): [number, number][] {
+  const corners: [number, number][] = [
+    [x, z],
+    [x + 1, z],
+    [x + 1, z + 1],
+    [x, z + 1],
+  ];
+  const s = corners.map(([cx, cz]) => sdf(cx * CELL, cz * CELL));
+  const pts: [number, number][] = [];
+  for (let i = 0; i < 4; i++) {
+    const j = (i + 1) % 4;
+    const si = s[i]!;
+    const sj = s[j]!;
+    const ci = corners[i]!;
+    const cj = corners[j]!;
+    if (si >= 0) pts.push(ci);
+    if (si >= 0 !== sj >= 0) {
+      const t = si / (si - sj);
+      if (t > 1e-4 && t < 1 - 1e-4) {
+        pts.push([ci[0] + (cj[0] - ci[0]) * t, ci[1] + (cj[1] - ci[1]) * t]);
+      }
+    }
+  }
+  return pts;
+}
+
+function cellHash01(x: number, z: number): number {
+  let n = Math.imul(x | 0, 374761393) ^ Math.imul(z | 0, 668265263);
+  n = Math.imul(n ^ (n >>> 13), 1274126177);
+  return ((n >>> 0) % 1000) / 1000;
+}
+
+function cellTint(
+  biome: number,
+  x: number,
+  z: number,
+  grassA: THREE.Color,
+  grassB: THREE.Color,
+  sandA: THREE.Color,
+  sandB: THREE.Color,
+  out: THREE.Color,
+): void {
+  const u = cellHash01(x, z) * 0.22;
+  if (biome === Biome.Grass) out.copy(grassA).lerp(grassB, u);
+  else out.copy(sandA).lerp(sandB, u);
 }
 
 export function findSpawn(biomes: Uint8Array): { x: number; z: number } {

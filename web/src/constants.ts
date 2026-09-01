@@ -19,9 +19,15 @@ export const ZOOM_CELLS_IN = 10;
 export const ZOOM_CELLS_OUT = ISLAND_RADIUS;
 export const ZOOM_CELLS_START = 24;
 export const ZOOM_CELLS_PER_SEC = 28;
+/** Night fog pulls near/far in by this factor (1 = day distance). */
+export const FOG_NIGHT_SCALE = 0.4;
+/** Extra dawn haze on top of the zoom fog. */
+export const FOG_DAWN_SCALE = 0.76;
 export const SEED = "marooned-mvp-1";
 /** Distance falloff always. Stereo L/R from facing / side only if true. */
 export const SOUND_3D = false;
+/** Walkable-cell outline — off so terrain blends read as one surface. */
+export const DEBUG_GRID = false;
 
 /** Real seconds for a full 24h island day. */
 export const DAY_SECONDS = 8 * 60;
@@ -82,6 +88,8 @@ export const HEALTH_DRAIN_PER_EMPTY = 2 / (3 * 60);
 export const POND_X = 58;
 export const POND_Z = 82;
 export const POND_RADIUS = 4.6;
+/** Half-width of the outlet stream (cells). */
+export const RIVER_HALF = 1.55;
 
 export const GRASS_A = 0x7fe046;
 export const GRASS_B = 0x5ab83a;
