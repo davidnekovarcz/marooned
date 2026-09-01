@@ -279,7 +279,7 @@ Kenney [Asset Forge](https://kenney.nl/tools/asset-forge) covers one-off meshes 
 
 Do not start in Three.js “and port later.” That is the rewrite [`GAME.md`](GAME.md) already warned about.
 
-**Vertical slice stack (next physical step):** Godot 4.6 project, Kenney Survival + Nature + Watercraft, one Kenney survivor character, Kenney skybox, RPG/Impact/Interface audio, Terrain3D or a hand-placed island mesh, DirectionalLight day/night, rain particles, Jolt gravity. Same fantasy as GAME.md §9.1: wake → coconut → rain → fire → wreck race → lean-to.
+**First playable slice (locked in [`MVP.md`](MVP.md)):** Three.js + Vite in `web/`, Kenney glTF already in `assets/vendor/`, 100×100 rounded island, grid walking. Godot 4.6 stays the likely Steam product after that slice exists.
 
 ---
 

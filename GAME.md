@@ -441,4 +441,4 @@ These are not blockers for this design; they are the next decisions when a proto
 
 **Marooned** is a low-poly island survival game: DayZ body and loot logic, *Islanders* look, shared world, **no PvP** at launch. You start with nothing. You loot places that make sense. You race other players to wrecks. You spend real time and rare parts on a house. Education is flavor and an optional Academy pack, not a gate. Money comes from a **Steam buy**, a **free web/demo tease**, later **mobile premium**, and **cosmetics / Academy** — not pay-to-win.
 
-Next physical step after this file: a vertical slice in Godot 4 or Unity, not a store page and not a Three.js rewrite of the whole game.
+Next physical step: follow [`MVP.md`](MVP.md) (walkable Three.js island first). Godot remains the likely Steam product later — see [`STACK.md`](STACK.md).

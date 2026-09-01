@@ -1,0 +1,130 @@
+[
+  {
+    "slug": "survival-kit",
+    "url": "https://kenney.nl/media/pages/assets/survival-kit/4065a8185b-1712149243/kenney_survival-kit.zip",
+    "file": "kenney_survival-kit.zip",
+    "bytes": 1948174,
+    "sha256_16": "c3586341b5932c87",
+    "page": "https://kenney.nl/assets/survival-kit"
+  },
+  {
+    "slug": "nature-kit",
+    "url": "https://kenney.nl/media/pages/assets/nature-kit/37ac38a37b-1677698939/kenney_nature-kit.zip",
+    "file": "kenney_nature-kit.zip",
+    "bytes": 10537521,
+    "sha256_16": "fa7974a0d342bfe6",
+    "page": "https://kenney.nl/assets/nature-kit"
+  },
+  {
+    "slug": "mini-forest",
+    "url": "https://kenney.nl/media/pages/assets/mini-forest/44a89aed7f-1784024079/kenney_mini-forest_1.0.zip",
+    "file": "kenney_mini-forest_1.0.zip",
+    "bytes": 1118081,
+    "sha256_16": "8691614018075a66",
+    "page": "https://kenney.nl/assets/mini-forest"
+  },
+  {
+    "slug": "modular-cave-kit",
+    "url": "https://kenney.nl/media/pages/assets/modular-cave-kit/37ec3cb12d-1783667097/kenney_modular-cave-kit_1.0.zip",
+    "file": "kenney_modular-cave-kit_1.0.zip",
+    "bytes": 7025078,
+    "sha256_16": "48f37a6d4f241124",
+    "page": "https://kenney.nl/assets/modular-cave-kit"
+  },
+  {
+    "slug": "pirate-kit",
+    "url": "https://kenney.nl/media/pages/assets/pirate-kit/e6d4bb1525-1771333093/kenney_pirate-kit.zip",
+    "file": "kenney_pirate-kit.zip",
+    "bytes": 3154665,
+    "sha256_16": "667ed2caf92954dd",
+    "page": "https://kenney.nl/assets/pirate-kit"
+  },
+  {
+    "slug": "watercraft-kit",
+    "url": "https://kenney.nl/media/pages/assets/watercraft-kit/a335cfed49-1713519620/kenney_watercraft-pack.zip",
+    "file": "kenney_watercraft-pack.zip",
+    "bytes": 1870991,
+    "sha256_16": "cd1470c1cf441c7f",
+    "page": "https://kenney.nl/assets/watercraft-kit"
+  },
+  {
+    "slug": "food-kit",
+    "url": "https://kenney.nl/media/pages/assets/food-kit/83086fa91c-1719418518/kenney_food-kit.zip",
+    "file": "kenney_food-kit.zip",
+    "bytes": 4606270,
+    "sha256_16": "cdad90853682499b",
+    "page": "https://kenney.nl/assets/food-kit"
+  },
+  {
+    "slug": "furniture-kit",
+    "url": "https://kenney.nl/media/pages/assets/furniture-kit/440e0608a4-1677580847/kenney_furniture-kit.zip",
+    "file": "kenney_furniture-kit.zip",
+    "bytes": 5130729,
+    "sha256_16": "e67652d0932cee41",
+    "page": "https://kenney.nl/assets/furniture-kit"
+  },
+  {
+    "slug": "animated-characters-survivors",
+    "url": "https://kenney.nl/media/pages/assets/animated-characters-survivors/27b16052a7-1774772958/kenney_animated-characters-survivors.zip",
+    "file": "kenney_animated-characters-survivors.zip",
+    "bytes": 718027,
+    "sha256_16": "fdadced07a0454c9",
+    "page": "https://kenney.nl/assets/animated-characters-survivors"
+  },
+  {
+    "slug": "animated-characters-protagonists",
+    "url": "https://kenney.nl/media/pages/assets/animated-characters-protagonists/608191acc4-1774773108/kenney_animated-characters-protagonists.zip",
+    "file": "kenney_animated-characters-protagonists.zip",
+    "bytes": 581441,
+    "sha256_16": "ec3787de70fa2200",
+    "page": "https://kenney.nl/assets/animated-characters-protagonists"
+  },
+  {
+    "slug": "skyboxes",
+    "url": "https://kenney.nl/media/pages/assets/skyboxes/6736ff5c10-1784123473/kenney_skyboxes.zip",
+    "file": "kenney_skyboxes.zip",
+    "bytes": 4972122,
+    "sha256_16": "ff339713105fe1b7",
+    "page": "https://kenney.nl/assets/skyboxes"
+  },
+  {
+    "slug": "rpg-audio",
+    "url": "https://kenney.nl/media/pages/assets/rpg-audio/8e99002d76-1677590336/kenney_rpg-audio.zip",
+    "file": "kenney_rpg-audio.zip",
+    "bytes": 964837,
+    "sha256_16": "6dbeaf8544da958d",
+    "page": "https://kenney.nl/assets/rpg-audio"
+  },
+  {
+    "slug": "impact-sounds",
+    "url": "https://kenney.nl/media/pages/assets/impact-sounds/87b4ddecda-1677589768/kenney_impact-sounds.zip",
+    "file": "kenney_impact-sounds.zip",
+    "bytes": 800850,
+    "sha256_16": "029d734af1582474",
+    "page": "https://kenney.nl/assets/impact-sounds"
+  },
+  {
+    "slug": "interface-sounds",
+    "url": "https://kenney.nl/media/pages/assets/interface-sounds/fa43c1dd4d-1677589452/kenney_interface-sounds.zip",
+    "file": "kenney_interface-sounds.zip",
+    "bytes": 834536,
+    "sha256_16": "f2193d072726d675",
+    "page": "https://kenney.nl/assets/interface-sounds"
+  },
+  {
+    "slug": "ui-audio",
+    "url": "https://kenney.nl/media/pages/assets/ui-audio/490d233f68-1677590494/kenney_ui-audio.zip",
+    "file": "kenney_ui-audio.zip",
+    "bytes": 411949,
+    "sha256_16": "946fc23a63d535d6",
+    "page": "https://kenney.nl/assets/ui-audio"
+  },
+  {
+    "slug": "music-jingles",
+    "url": "https://kenney.nl/media/pages/assets/music-jingles/f37e530b9e-1677590399/kenney_music-jingles.zip",
+    "file": "kenney_music-jingles.zip",
+    "bytes": 1239525,
+    "sha256_16": "b729ba57959bd587",
+    "page": "https://kenney.nl/assets/music-jingles"
+  }
+]

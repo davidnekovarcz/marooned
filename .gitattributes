@@ -1,0 +1,2 @@
+# Treat vendor art as generated/third-party for GitHub linguist
+assets/vendor/** linguist-vendored

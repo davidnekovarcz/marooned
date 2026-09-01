@@ -1,0 +1,30 @@
+{
+  "title": "Universal Animation Library",
+  "coverImage": "https://img.itch.zone/aW1nLzI3OTEzMTMwLnBuZw==/315x250%23c/gcpRpe.png",
+  "authors": [
+    {
+      "url": "https://quaternius.itch.io",
+      "name": "Quaternius"
+    }
+  ],
+  "tags": [
+    "3d",
+    "animation",
+    "asset-pack",
+    "combat",
+    "godot",
+    "humanoid",
+    "locomotion",
+    "no-ai",
+    "rig",
+    "unity",
+    "unreal-engine"
+  ],
+  "id": 3408034,
+  "selfLink": "https://quaternius.itch.io/universal-animation-library",
+  "author": "quaternius",
+  "name": "universal-animation-library",
+  "domain": ".itch.io",
+  "itchGameUrl": "https://quaternius.itch.io/universal-animation-library",
+  "itchMetaDataUrl": "https://quaternius.itch.io/universal-animation-library/data.json"
+}
