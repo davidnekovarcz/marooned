@@ -11,6 +11,7 @@ import {
   TEMP_COOL_IDLE_NIGHT,
   TEMP_DRIFT,
   TEMP_HEAT_RUN_DAY,
+  TEMP_IDLE_DAY_RECOVER,
   TEMP_HOT,
   TEMP_HOT_ENERGY_MULT,
   THIRST_DRAIN_IDLE,
@@ -49,6 +50,13 @@ export class Needs {
     };
   }
 
+  private towardComfort(dt: number, rate: number): void {
+    const d = 0.5 - this.temperature;
+    const step = rate * dt;
+    if (Math.abs(d) <= step) this.temperature = 0.5;
+    else this.temperature += Math.sign(d) * step;
+  }
+
   /** Shade vs sun is later — for now daytime is the whole island. */
   tick(gait: PlayerGait, dt: number, daytime: boolean): void {
     const hot = this.temperature >= TEMP_HOT;
@@ -61,18 +69,18 @@ export class Needs {
       this.thirst -= THIRST_DRAIN_RUN * consume * dt;
       this.hunger -= HUNGER_DRAIN_RUN * consume * dt;
       if (daytime) this.temperature += TEMP_HEAT_RUN_DAY * dt;
-      else this.temperature += (0.5 - this.temperature) * TEMP_DRIFT * dt;
+      else this.towardComfort(dt, TEMP_DRIFT);
     } else if (gait === "walk") {
       this.energy += ENERGY_RECOVER_WALK * dt;
       this.thirst -= THIRST_DRAIN_WALK * consume * dt;
       this.hunger -= HUNGER_DRAIN_WALK * consume * dt;
-      this.temperature += (0.5 - this.temperature) * TEMP_DRIFT * dt;
+      this.towardComfort(dt, TEMP_DRIFT);
     } else {
       this.energy += ENERGY_RECOVER_IDLE * dt;
       this.thirst -= THIRST_DRAIN_IDLE * consume * dt;
       this.hunger -= HUNGER_DRAIN_IDLE * consume * dt;
       if (!daytime) this.temperature -= TEMP_COOL_IDLE_NIGHT * dt;
-      else this.temperature += (0.5 - this.temperature) * TEMP_DRIFT * dt;
+      else this.towardComfort(dt, TEMP_IDLE_DAY_RECOVER);
     }
 
     this.energy = clamp01(this.energy);

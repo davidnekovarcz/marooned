@@ -112,8 +112,20 @@ canvas {
   background: #e08a3c;
 }
 
-.need[data-need="temperature"] .need-fill {
+.need[data-need="temperature"][data-temp="ok"] .need-fill {
+  background: rgba(255, 255, 255, 0.35);
+}
+
+.need[data-need="temperature"][data-temp="warm"] .need-fill {
+  background: #e8c84a;
+}
+
+.need[data-need="temperature"][data-temp="hot"] .need-fill {
   background: #e07070;
+}
+
+.need[data-need="temperature"][data-temp="cold"] .need-fill {
+  background: #4aa7e0;
 }
 
 .need[data-need="health"] .need-fill {

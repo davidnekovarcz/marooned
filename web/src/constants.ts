@@ -50,8 +50,10 @@ export const HUNGER_DRAIN_RUN = 1 / (7 * 60);
 export const TEMP_HEAT_RUN_DAY = 1 / 28;
 /** Idle at night: comfortable→cold in this many seconds. */
 export const TEMP_COOL_IDLE_NIGHT = 1 / 50;
-/** Drift back toward 0.5 when not heating or cooling. */
-export const TEMP_DRIFT = 1 / 90;
+/** Idle in daylight: return to 50% in about this many seconds from full heat. */
+export const TEMP_IDLE_DAY_RECOVER = 1 / 55;
+/** Walking: slower drift back to 50%. */
+export const TEMP_DRIFT = 1 / 40;
 export const TEMP_HOT = 0.78;
 export const TEMP_COLD = 0.22;
 /** Extra stamina drain when overheated. */

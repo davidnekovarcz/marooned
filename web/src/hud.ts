@@ -20,7 +20,7 @@ const SKY_SVG: Record<SkyKind, string> = {
 const NEED_SVG: Record<NeedId, string> = {
   energy: `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M13.2 2 6 13.2h5.1L9.8 22 19 10.2h-5.4L13.2 2Z"/></svg>`,
   thirst: `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 3.2c0 0-6.2 7.1-6.2 11.2A6.2 6.2 0 0 0 12 20.6a6.2 6.2 0 0 0 6.2-6.2C18.2 10.3 12 3.2 12 3.2Z"/></svg>`,
-  hunger: `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12.2 4.2c-1.6 0-3.4.7-4.5 2.1C6.4 8 6.1 10 7 12c.8 1.8 2.4 3 3.5 4.6.4.6.7 1.3.8 2.2h1.8c0-1.1.4-2 .9-2.7 1.2-1.5 2.8-2.7 3.6-4.5.9-2 .5-4.1-.8-5.6-1.1-1.3-2.8-1.8-4.6-1.8Zm-1.6 4.1c.5-.7 1.2-1.1 2-.1.4.5.3 1.1 0 1.5-.4.5-1 .7-1.5.3-.5-.4-.7-1.1-.5-1.7Z"/></svg>`,
+  hunger: `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12.2 3.2c.2 1.4 1.3 2.6 2.7 3.1-.9.3-1.9.3-2.7 0C11.4 4.8 10.4 3.8 10 2.6c.8.1 1.6.3 2.2.6Z"/><path d="M12 7.2c-1.1 0-2.1.3-2.9.8C7.2 9 6 10.8 6 13.2c0 3.2 2.4 6.6 6 6.6s6-3.4 6-6.6c0-2.4-1.2-4.2-3.1-5.2-.8-.5-1.8-.8-2.9-.8Z"/></svg>`,
   temperature: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M10 13.4V6.6a2 2 0 1 1 4 0v6.8a3.4 3.4 0 1 1-4 0Z"/><path d="M12 15.6V18"/></svg>`,
   health: `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 20.2 4.8 13A4.6 4.6 0 0 1 12 6.8a4.6 4.6 0 0 1 7.2 6.2L12 20.2Z"/></svg>`,
 };
@@ -41,6 +41,7 @@ export function createHud(): { update: (state: HudState) => void } {
 
   needsRoot.replaceChildren();
   const fills = new Map<NeedId, HTMLElement>();
+  const cells = new Map<NeedId, HTMLElement>();
   for (const id of NEED_ORDER) {
     const cell = document.createElement("div");
     cell.className = "need";
@@ -54,6 +55,7 @@ export function createHud(): { update: (state: HudState) => void } {
     cell.append(fill, icon);
     needsRoot.append(cell);
     fills.set(id, fill);
+    cells.set(id, cell);
   }
 
   let lastSky: SkyKind | null = null;
@@ -69,6 +71,11 @@ export function createHud(): { update: (state: HudState) => void } {
       for (const id of NEED_ORDER) {
         const fill = fills.get(id);
         if (fill) fill.style.setProperty("--fill", `${Math.round(clamp01(state[id]) * 100)}%`);
+      }
+      const tempCell = cells.get("temperature");
+      if (tempCell) {
+        const t = clamp01(state.temperature);
+        tempCell.dataset.temp = t > 0.8 ? "hot" : t > 0.6 ? "warm" : t < 0.4 ? "cold" : "ok";
       }
     },
   };
