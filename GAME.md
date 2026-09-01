@@ -1,4 +1,4 @@
-# Marooned — scénář
+# Marooned — game design
 
 Code-name: **Marooned**  
 Working title: Island Survivor  
@@ -373,7 +373,7 @@ The renderer is not the expensive part. **A dedicated server plus persistence** 
 - **Unity:** strongest store + Asset Store path if you already know C# and want mobile later.
 - **Godot:** zero license fee, good 2.5D/3D, Steam + mobile + web; slightly more DIY for polish and mobile stores.
 
-Pick the engine **after** a vertical slice checklist (below), not before. The scénář does not lock the stack.
+Pick the engine **after** a vertical slice checklist (below), not before. This document does not lock the stack.
 
 ### 8.3 What any stack must budget for
 
@@ -423,7 +423,7 @@ Goal: prove the fantasy in a week-of-playtest sense, not a store launch.
 
 ## 10. Open questions
 
-These are not blockers for the scénář; they are the next decisions when a prototype exists.
+These are not blockers for this design; they are the next decisions when a prototype exists.
 
 1. **Engine:** Unity vs Godot for the vertical slice? (Three.js only if the first artifact is a web trailer-island.)
 2. **Indoor stash:** confirm “closed house is private, open world is contested.”
