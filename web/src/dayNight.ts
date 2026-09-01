@@ -73,8 +73,12 @@ export function createDayLights(scene: THREE.Scene): DayLights {
 }
 
 /** elevation: 1 noon, 0 horizon, −1 midnight. */
-function sunElevation(t: number): number {
+export function sunElevation(t: number): number {
   return Math.sin((t - 0.25) * Math.PI * 2);
+}
+
+export function isDaytime(t: number): boolean {
+  return sunElevation(t) > 0;
 }
 
 function mixSky(t: number, out: THREE.Color): THREE.Color {

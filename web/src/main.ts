@@ -4,7 +4,7 @@ import { DEFAULT_APPEARANCE } from "./appearance";
 import { setupIslandAudio } from "./audio";
 import { applyZoomFog, CameraZoom, offsetForZoom } from "./cameraZoom";
 import { CAMERA_OFFSET, CENTER, DAY_START, GRID } from "./constants";
-import { applyDayNight, createDayLights, DayClock } from "./dayNight";
+import { applyDayNight, createDayLights, DayClock, isDaytime } from "./dayNight";
 import { buildGridOverlay } from "./gridOverlay";
 import { createHud } from "./hud";
 import { buildBiomes, buildCoastField, buildIslandMesh, buildOcean, findSpawn } from "./island";
@@ -55,7 +55,7 @@ async function start(): Promise<void> {
   const hud = createHud();
   const needs = new Needs();
   const day = new DayClock();
-  hud.update({ weather: "sun", clock: day.clockLabel(), ...needs.snapshot() });
+  hud.update({ sky: isDaytime(day.t) ? "sun" : "moon", clock: day.clockLabel(), ...needs.snapshot() });
 
   const zoom = new CameraZoom();
 
@@ -72,14 +72,18 @@ async function start(): Promise<void> {
     zoom.update(dt);
     player.canSprint = needs.canSprint;
     player.update(dt);
-    needs.tick(player.gait, dt);
+    needs.tick(player.gait, dt, isDaytime(day.t));
     day.update(dt);
     applyDayNight(scene, lights, day.t);
     islandAudio.update();
     const offset = offsetForZoom(camera, zoom.cells);
     applyZoomFog(scene, camera, offset.length(), zoom.cells);
     player.followCamera(camera, offset);
-    hud.update({ weather: "sun", clock: day.clockLabel(), ...needs.snapshot() });
+    hud.update({
+      sky: isDaytime(day.t) ? "sun" : "moon",
+      clock: day.clockLabel(),
+      ...needs.snapshot(),
+    });
     renderer.render(scene, camera);
     requestAnimationFrame(frame);
   }

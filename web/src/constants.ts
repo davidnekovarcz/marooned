@@ -28,7 +28,7 @@ export const DAY_SECONDS = 8 * 60;
 /** Start a bit after dawn so the first load is daytime. */
 export const DAY_START = 8 / 24;
 
-/** Energy 0→empty in this many seconds of sprint. */
+/** Energy 0→empty in this many seconds of sprint (before heat extra). */
 export const ENERGY_DRAIN_RUN = 1 / 7;
 /** Energy empty→full while standing still. */
 export const ENERGY_RECOVER_IDLE = 1 / 3;
@@ -36,6 +36,28 @@ export const ENERGY_RECOVER_IDLE = 1 / 3;
 export const ENERGY_RECOVER_WALK = 1 / 12;
 /** Must refill past this before sprint is allowed again. */
 export const ENERGY_SPRINT_RESUME = 0.08;
+
+/** Thirst empty in this many idle seconds. */
+export const THIRST_DRAIN_IDLE = 1 / (18 * 60);
+export const THIRST_DRAIN_WALK = 1 / (10 * 60);
+export const THIRST_DRAIN_RUN = 1 / (5 * 60);
+/** Hunger is a bit slower than thirst. */
+export const HUNGER_DRAIN_IDLE = 1 / (24 * 60);
+export const HUNGER_DRAIN_WALK = 1 / (14 * 60);
+export const HUNGER_DRAIN_RUN = 1 / (7 * 60);
+
+/** Sprint in daylight: empty→hot in this many seconds. */
+export const TEMP_HEAT_RUN_DAY = 1 / 28;
+/** Idle at night: comfortable→cold in this many seconds. */
+export const TEMP_COOL_IDLE_NIGHT = 1 / 50;
+/** Drift back toward 0.5 when not heating or cooling. */
+export const TEMP_DRIFT = 1 / 90;
+export const TEMP_HOT = 0.78;
+export const TEMP_COLD = 0.22;
+/** Extra stamina drain when overheated. */
+export const TEMP_HOT_ENERGY_MULT = 1.7;
+/** Extra food/water drain when too cold. */
+export const TEMP_COLD_CONSUME_MULT = 1.7;
 
 export const POND_X = 58;
 export const POND_Z = 82;
