@@ -7,6 +7,11 @@ export const WATER_Y = -0.15;
 export const GROUND_Y = 0.02;
 export const STEP_SECONDS = 0.15;
 export const CAMERA_OFFSET = { x: -18, y: 24, z: -18 } as const;
+export const ZOOM_CELLS_IN = 10;
+/** Horizontal span ≈ half the island (radius cells). */
+export const ZOOM_CELLS_OUT = ISLAND_RADIUS;
+export const ZOOM_CELLS_START = 24;
+export const ZOOM_CELLS_PER_SEC = 28;
 export const SEED = "marooned-mvp-1";
 
 export const POND_X = 58;

@@ -1,6 +1,7 @@
 import "./style.css";
 import * as THREE from "three";
 import { setupIslandAudio } from "./audio";
+import { applyZoomFog, CameraZoom, offsetForZoom } from "./cameraZoom";
 import { CAMERA_OFFSET, CENTER, GRID } from "./constants";
 import { buildGridOverlay } from "./gridOverlay";
 import { buildBiomes, buildIslandMesh, buildOcean, findSpawn } from "./island";
@@ -14,7 +15,7 @@ const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x9fd4e4);
 scene.fog = new THREE.Fog(0x9fd4e4, 130, 300);
 
-const camera = new THREE.PerspectiveCamera(20, window.innerWidth / window.innerHeight, 0.1, 420*5);
+const camera = new THREE.PerspectiveCamera(20, window.innerWidth / window.innerHeight, 0.1, 420);
 camera.position.set(CENTER + CAMERA_OFFSET.x, CAMERA_OFFSET.y, CENTER + CAMERA_OFFSET.z);
 
 const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -60,6 +61,8 @@ async function start(): Promise<void> {
 
   setupIslandAudio(scene, player.mesh, scattered.audioAnchors);
 
+  const zoom = new CameraZoom();
+
   window.addEventListener("resize", () => {
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
@@ -70,8 +73,11 @@ async function start(): Promise<void> {
 
   function frame(): void {
     const dt = Math.min(0.05, clock.getDelta());
+    zoom.update(dt);
     player.update(dt);
-    player.followCamera(camera);
+    const offset = offsetForZoom(camera, zoom.cells);
+    applyZoomFog(scene, camera, offset.length());
+    player.followCamera(camera, offset);
     renderer.render(scene, camera);
     requestAnimationFrame(frame);
   }

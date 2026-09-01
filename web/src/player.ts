@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { CAMERA_OFFSET, CELL, GROUND_Y, STEP_SECONDS } from "./constants";
+import { CELL, GROUND_Y, STEP_SECONDS } from "./constants";
 import { isWalkable } from "./gridOverlay";
 
 const DIRS: Record<string, { x: number; z: number }> = {
@@ -89,11 +89,11 @@ export class GridPlayer {
     }
   }
 
-  followCamera(camera: THREE.PerspectiveCamera): void {
+  followCamera(camera: THREE.PerspectiveCamera, offset: THREE.Vector3): void {
     const target = new THREE.Vector3(
-      this.mesh.position.x + CAMERA_OFFSET.x,
-      this.mesh.position.y + CAMERA_OFFSET.y,
-      this.mesh.position.z + CAMERA_OFFSET.z,
+      this.mesh.position.x + offset.x,
+      this.mesh.position.y + offset.y,
+      this.mesh.position.z + offset.z,
     );
     camera.position.lerp(target, 0.12);
     camera.lookAt(this.mesh.position.x, 1.1, this.mesh.position.z);
