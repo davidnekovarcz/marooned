@@ -76,7 +76,7 @@ async function start(): Promise<void> {
     zoom.update(dt);
     player.update(dt);
     const offset = offsetForZoom(camera, zoom.cells);
-    applyZoomFog(scene, camera, offset.length());
+    applyZoomFog(scene, camera, offset.length(), zoom.cells);
     player.followCamera(camera, offset);
     renderer.render(scene, camera);
     requestAnimationFrame(frame);

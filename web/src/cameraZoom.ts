@@ -55,11 +55,21 @@ export function offsetForZoom(camera: THREE.PerspectiveCamera, cells: number): T
   return dir.multiplyScalar(dist);
 }
 
-export function applyZoomFog(scene: THREE.Scene, camera: THREE.PerspectiveCamera, dist: number): void {
+export function applyZoomFog(
+  scene: THREE.Scene,
+  camera: THREE.PerspectiveCamera,
+  dist: number,
+  cells: number,
+): void {
   camera.far = Math.max(420, dist + ISLAND_RADIUS * 3);
   camera.updateProjectionMatrix();
-  if (scene.fog instanceof THREE.Fog) {
-    scene.fog.near = dist * 0.85;
-    scene.fog.far = dist * 2.6;
-  }
+  if (!(scene.fog instanceof THREE.Fog)) return;
+  const t = THREE.MathUtils.clamp(
+    (cells - ZOOM_CELLS_IN) / (ZOOM_CELLS_OUT - ZOOM_CELLS_IN),
+    0,
+    1,
+  );
+  // t=0 zoomed in: fog starts beyond the close view. t=1 zoomed out: haze over the island.
+  scene.fog.near = THREE.MathUtils.lerp(dist * 2.4, dist * 0.22, t);
+  scene.fog.far = THREE.MathUtils.lerp(dist * 9, dist * 1.05, t);
 }
