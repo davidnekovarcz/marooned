@@ -222,7 +222,7 @@ export function setupIslandAudio(
 
     if (hint) {
       hint.textContent =
-        "WASD walk. + / − zoom. Ocean follows the nearest beach; frogs at the pond.";
+        "+ / − zoom. WASD walk. SHIFT run.";
     }
   };
 
