@@ -19,9 +19,17 @@ const _hemiGround = new THREE.Color();
 export class DayClock {
   /** 0 midnight … 0.25 dawn … 0.5 noon … 0.75 dusk. */
   t = DAY_START;
+  /** Real seconds since spawn (does not wrap). */
+  elapsed = 0;
 
   update(dt: number): void {
+    this.elapsed += dt;
     this.t = (this.t + dt / DAY_SECONDS) % 1;
+  }
+
+  /** Island hours survived (24h cycle = DAY_SECONDS real). */
+  survivedGameHours(): number {
+    return (this.elapsed / DAY_SECONDS) * 24;
   }
 
   clockLabel(): string {

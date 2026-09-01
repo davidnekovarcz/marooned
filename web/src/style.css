@@ -78,6 +78,7 @@ canvas {
   flex-direction: row;
   gap: 8px;
   pointer-events: none;
+  animation: hud-blink-pulse 0.72s ease-in-out infinite;
 }
 
 .need {
@@ -100,36 +101,65 @@ canvas {
   opacity: 0.92;
 }
 
-.need[data-need="energy"] .need-fill {
-  background: #e8c84a;
-}
-
-.need[data-need="thirst"] .need-fill {
-  background: #4aa7e0;
-}
-
-.need[data-need="hunger"] .need-fill {
-  background: #e08a3c;
-}
-
-.need[data-need="temperature"][data-temp="ok"] .need-fill {
+.need[data-tone="ok"] .need-fill {
   background: rgba(255, 255, 255, 0.35);
 }
 
-.need[data-need="temperature"][data-temp="warm"] .need-fill {
+.need[data-tone="warn"] .need-fill {
   background: #e8c84a;
 }
 
-.need[data-need="temperature"][data-temp="hot"] .need-fill {
+.need[data-tone="alert"] .need-fill {
   background: #e07070;
 }
 
-.need[data-need="temperature"][data-temp="cold"] .need-fill {
+.need[data-need="thirst"][data-tone="ok"] .need-fill {
   background: #4aa7e0;
 }
 
-.need[data-need="health"] .need-fill {
-  background: #d94a4a;
+.need[data-need="hunger"][data-tone="ok"] .need-fill {
+  background: #e08a3c;
+}
+
+.need[data-need="temperature"][data-tone="cold"] .need-fill {
+  background: #4aa7e0;
+}
+
+@property --hud-blink {
+  syntax: "<number>";
+  inherits: true;
+  initial-value: 1;
+}
+
+@keyframes hud-blink-pulse {
+  0%,
+  100% {
+    --hud-blink: 1;
+  }
+  50% {
+    --hud-blink: 0.22;
+  }
+}
+
+.need[data-blink="red"],
+.need[data-blink="cold"] {
+  opacity: var(--hud-blink);
+}
+
+.need[data-blink="red"] {
+  border-color: #e07070;
+}
+
+.need[data-blink="red"] .need-icon {
+  color: #e07070;
+}
+
+.need[data-blink="cold"] {
+  border-color: #4aa7e0;
+}
+
+.need[data-blink="cold"] .need-icon {
+  color: #4aa7e0;
 }
 
 .need-icon {
@@ -144,4 +174,56 @@ canvas {
   display: block;
   width: 100%;
   height: 100%;
+}
+
+body.dead #hud-world,
+body.dead #hud-needs,
+body.dead #hint {
+  display: none;
+}
+
+#death {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 28px;
+  padding: 24px;
+  background: #000;
+  color: #f4f7f2;
+  text-align: center;
+}
+
+#death[hidden] {
+  display: none;
+}
+
+#death-message {
+  margin: 0;
+  max-width: 22em;
+  font-size: 22px;
+  font-weight: 600;
+  line-height: 1.45;
+  letter-spacing: 0.02em;
+}
+
+#death-retry {
+  padding: 10px 28px;
+  border: 2px solid rgba(244, 247, 242, 0.82);
+  border-radius: 8px;
+  background: transparent;
+  color: #f4f7f2;
+  font: inherit;
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+}
+
+#death-retry:hover,
+#death-retry:focus-visible {
+  background: rgba(244, 247, 242, 0.12);
 }

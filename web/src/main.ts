@@ -3,10 +3,10 @@ import * as THREE from "three";
 import { DEFAULT_APPEARANCE } from "./appearance";
 import { setupIslandAudio } from "./audio";
 import { applyZoomFog, CameraZoom, offsetForZoom } from "./cameraZoom";
-import { CAMERA_OFFSET, CENTER, DAY_START, GRID } from "./constants";
+import { CAMERA_OFFSET, CENTER, DAY_START, GRID, HUD_BLINK } from "./constants";
 import { applyDayNight, createDayLights, DayClock, isDaytime } from "./dayNight";
 import { buildGridOverlay } from "./gridOverlay";
-import { createHud } from "./hud";
+import { createHud, showDeathScreen } from "./hud";
 import { buildBiomes, buildCoastField, buildIslandMesh, buildOcean, findSpawn } from "./island";
 import { Needs } from "./needs";
 import { GridPlayer } from "./player";
@@ -66,8 +66,16 @@ async function start(): Promise<void> {
   });
 
   const clock = new THREE.Clock();
+  let dead = false;
+
+  function applyHealthLook(health: number): void {
+    const gray = (1 - health) * 100;
+    const bright = health < HUD_BLINK ? health / HUD_BLINK : 1;
+    renderer.domElement.style.filter = `grayscale(${gray}%) brightness(${bright})`;
+  }
 
   function frame(): void {
+    if (dead) return;
     const dt = Math.min(0.05, clock.getDelta());
     zoom.update(dt);
     player.canSprint = needs.canSprint;
@@ -84,7 +92,15 @@ async function start(): Promise<void> {
       clock: day.clockLabel(),
       ...needs.snapshot(),
     });
+    applyHealthLook(needs.health);
     renderer.render(scene, camera);
+    if (needs.health <= 0) {
+      dead = true;
+      player.alive = false;
+      applyHealthLook(0);
+      showDeathScreen(day.survivedGameHours());
+      return;
+    }
     requestAnimationFrame(frame);
   }
 

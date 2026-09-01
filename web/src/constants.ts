@@ -56,10 +56,18 @@ export const TEMP_IDLE_DAY_RECOVER = 1 / 55;
 export const TEMP_DRIFT = 1 / 40;
 export const TEMP_HOT = 0.78;
 export const TEMP_COLD = 0.22;
-/** Extra stamina drain when overheated. */
+/** Extra stamina drain when overheated (sprint). */
 export const TEMP_HOT_ENERGY_MULT = 1.7;
-/** Extra food/water drain when too cold. */
-export const TEMP_COLD_CONSUME_MULT = 1.7;
+/** Extra hunger drain when too cold (all gaits). */
+export const TEMP_COLD_HUNGER_MULT = 1.7;
+
+/** HUD fill bands (also used for food/water/energy warning colors). */
+export const HUD_BAND_HIGH = 0.7;
+export const HUD_BAND_MID = 0.5;
+export const HUD_BAND_LOW = 0.3;
+export const HUD_BLINK = 0.2;
+/** Health empty→dead if one of food/water stays at 0. */
+export const HEALTH_DRAIN_PER_EMPTY = 2 / (3 * 60);
 
 export const POND_X = 58;
 export const POND_Z = 82;

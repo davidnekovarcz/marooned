@@ -6,8 +6,9 @@ import {
   HUNGER_DRAIN_IDLE,
   HUNGER_DRAIN_RUN,
   HUNGER_DRAIN_WALK,
+  HEALTH_DRAIN_PER_EMPTY,
   TEMP_COLD,
-  TEMP_COLD_CONSUME_MULT,
+  TEMP_COLD_HUNGER_MULT,
   TEMP_COOL_IDLE_NIGHT,
   TEMP_DRIFT,
   TEMP_HEAT_RUN_DAY,
@@ -61,24 +62,24 @@ export class Needs {
   tick(gait: PlayerGait, dt: number, daytime: boolean): void {
     const hot = this.temperature >= TEMP_HOT;
     const cold = this.temperature <= TEMP_COLD;
-    const consume = cold ? TEMP_COLD_CONSUME_MULT : 1;
+    const hungerMult = cold ? TEMP_COLD_HUNGER_MULT : 1;
 
     if (gait === "run") {
       const energyMult = hot ? TEMP_HOT_ENERGY_MULT : 1;
       this.energy -= ENERGY_DRAIN_RUN * energyMult * dt;
-      this.thirst -= THIRST_DRAIN_RUN * consume * dt;
-      this.hunger -= HUNGER_DRAIN_RUN * consume * dt;
+      this.thirst -= THIRST_DRAIN_RUN * dt;
+      this.hunger -= HUNGER_DRAIN_RUN * hungerMult * dt;
       if (daytime) this.temperature += TEMP_HEAT_RUN_DAY * dt;
       else this.towardComfort(dt, TEMP_DRIFT);
     } else if (gait === "walk") {
       this.energy += ENERGY_RECOVER_WALK * dt;
-      this.thirst -= THIRST_DRAIN_WALK * consume * dt;
-      this.hunger -= HUNGER_DRAIN_WALK * consume * dt;
+      this.thirst -= THIRST_DRAIN_WALK * dt;
+      this.hunger -= HUNGER_DRAIN_WALK * hungerMult * dt;
       this.towardComfort(dt, TEMP_DRIFT);
     } else {
       this.energy += ENERGY_RECOVER_IDLE * dt;
-      this.thirst -= THIRST_DRAIN_IDLE * consume * dt;
-      this.hunger -= HUNGER_DRAIN_IDLE * consume * dt;
+      this.thirst -= THIRST_DRAIN_IDLE * dt;
+      this.hunger -= HUNGER_DRAIN_IDLE * hungerMult * dt;
       if (!daytime) this.temperature -= TEMP_COOL_IDLE_NIGHT * dt;
       else this.towardComfort(dt, TEMP_IDLE_DAY_RECOVER);
     }
@@ -86,6 +87,9 @@ export class Needs {
     this.thirst = clamp01(this.thirst);
     this.hunger = clamp01(this.hunger);
     this.temperature = clamp01(this.temperature);
+    const emptyNeeds = (this.thirst <= 0 ? 1 : 0) + (this.hunger <= 0 ? 1 : 0);
+    if (emptyNeeds > 0) this.health -= HEALTH_DRAIN_PER_EMPTY * emptyNeeds * dt;
+    this.health = clamp01(this.health);
     const foodAvg = (this.thirst + this.hunger) / 2;
     this.energy = Math.min(1, 1.5 * foodAvg, Math.max(0, this.energy));
     if (this.energy <= 0) this.canSprint = false;

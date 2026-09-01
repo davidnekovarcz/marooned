@@ -21,6 +21,7 @@ export class GridPlayer {
   cellX: number;
   cellZ: number;
   canSprint = true;
+  alive = true;
   gait: PlayerGait = "idle";
   private moving = false;
   private sprinting = false;
@@ -69,6 +70,12 @@ export class GridPlayer {
 
   update(dt: number): void {
     this.visual.mixer.update(dt);
+    if (!this.alive) {
+      this.moving = false;
+      this.gait = "idle";
+      this.visual.setGait("idle");
+      return;
+    }
 
     if (this.moving) {
       this.visual.setGait(this.refreshGait());

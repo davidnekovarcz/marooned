@@ -1,3 +1,5 @@
+import { HUD_BAND_HIGH, HUD_BAND_LOW, HUD_BAND_MID, HUD_BLINK } from "./constants";
+
 export type SkyKind = "sun" | "moon";
 
 export type HudState = {
@@ -11,6 +13,8 @@ export type HudState = {
 };
 
 type NeedId = "energy" | "thirst" | "hunger" | "temperature" | "health";
+type Tone = "ok" | "warn" | "alert" | "cold";
+type Blink = "0" | "red" | "cold";
 
 const SKY_SVG: Record<SkyKind, string> = {
   sun: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="4" fill="currentColor" stroke="none"/><path d="M12 2v2.4M12 19.6V22M4.9 4.9l1.7 1.7M17.4 17.4l1.7 1.7M2 12h2.4M19.6 12H22M4.9 19.1l1.7-1.7M17.4 6.6l1.7-1.7"/></svg>`,
@@ -29,6 +33,26 @@ const NEED_ORDER: NeedId[] = ["energy", "thirst", "hunger", "temperature", "heal
 
 function clamp01(n: number): number {
   return Math.min(1, Math.max(0, n));
+}
+
+/** High is good: energy, thirst, hunger. */
+function supplyTone(v: number): Tone {
+  if (v < HUD_BAND_LOW) return "alert";
+  if (v < HUD_BAND_MID) return "warn";
+  return "ok";
+}
+
+function healthTone(v: number): Tone {
+  if (v < HUD_BAND_MID) return "alert";
+  if (v < 1) return "warn";
+  return "ok";
+}
+
+function tempTone(v: number): Tone {
+  if (v > HUD_BAND_HIGH) return "alert";
+  if (v > HUD_BAND_MID) return "warn";
+  if (v < HUD_BAND_LOW) return "cold";
+  return "ok";
 }
 
 export function createHud(): { update: (state: HudState) => void } {
@@ -70,13 +94,43 @@ export function createHud(): { update: (state: HudState) => void } {
       clockEl.textContent = state.clock;
       for (const id of NEED_ORDER) {
         const fill = fills.get(id);
-        if (fill) fill.style.setProperty("--fill", `${Math.round(clamp01(state[id]) * 100)}%`);
-      }
-      const tempCell = cells.get("temperature");
-      if (tempCell) {
-        const t = clamp01(state.temperature);
-        tempCell.dataset.temp = t > 0.8 ? "hot" : t > 0.6 ? "warm" : t < 0.4 ? "cold" : "ok";
+        const cell = cells.get(id);
+        const v = clamp01(state[id]);
+        if (fill) fill.style.setProperty("--fill", `${Math.round(v * 100)}%`);
+        if (!cell) continue;
+        if (id === "energy") cell.dataset.tone = "ok";
+        else if (id === "temperature") cell.dataset.tone = tempTone(v);
+        else if (id === "health") cell.dataset.tone = healthTone(v);
+        else cell.dataset.tone = supplyTone(v);
+        let blink: Blink = "0";
+        if (v < HUD_BLINK) {
+          if (id === "temperature") blink = "cold";
+          else if (id === "health" || id === "thirst" || id === "hunger") blink = "red";
+        }
+        cell.dataset.blink = blink;
       }
     },
   };
+}
+
+function unitLabel(n: number, one: string, many: string): string {
+  return n === 1 ? `1 ${one}` : `${n} ${many}`;
+}
+
+export function formatDeathMessage(gameHours: number): string {
+  const totalMinutes = Math.max(0, Math.floor(gameHours * 60));
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  return `You have survived for: ${unitLabel(hours, "hour", "hours")} + ${unitLabel(minutes, "minute", "minutes")}, but now you're dead.`;
+}
+
+export function showDeathScreen(gameHours: number): void {
+  const overlay = document.getElementById("death");
+  const message = document.getElementById("death-message");
+  const retry = document.getElementById("death-retry");
+  if (!overlay || !message || !retry) return;
+  document.body.classList.add("dead");
+  message.textContent = formatDeathMessage(gameHours);
+  overlay.hidden = false;
+  retry.addEventListener("click", () => window.location.reload(), { once: true });
 }
