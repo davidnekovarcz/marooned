@@ -83,7 +83,7 @@ function buildBiomeMesh(biomes: Uint8Array, want: Biome, color: number): THREE.M
   geo.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
   geo.computeVertexNormals();
 
-  const mat = new THREE.MeshBasicMaterial({ color, side: THREE.DoubleSide });
+  const mat = new THREE.MeshLambertMaterial({ color, side: THREE.DoubleSide });
   const mesh = new THREE.Mesh(geo, mat);
   mesh.receiveShadow = true;
   mesh.name = want === Biome.Sand ? "beach" : "grass";
