@@ -31,6 +31,56 @@ canvas {
   pointer-events: none;
 }
 
+#interact {
+  position: fixed;
+  left: 16px;
+  bottom: 56px;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: rgba(8, 24, 32, 0.55);
+  color: #f4f7f2;
+  font-size: 14px;
+  letter-spacing: 0.01em;
+  pointer-events: auto;
+}
+
+#interact[hidden] {
+  display: none;
+}
+
+#interact-name {
+  font-weight: 600;
+}
+
+#interact-action {
+  margin: 0;
+  padding: 6px 10px;
+  border: 0;
+  border-radius: 6px;
+  background: rgba(244, 247, 242, 0.18);
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+#interact-action:hover:not(:disabled) {
+  background: rgba(244, 247, 242, 0.28);
+}
+
+#interact-action:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+#interact-action[hidden] {
+  display: none;
+}
+
 #hud-world {
   position: fixed;
   top: 16px;
@@ -182,7 +232,8 @@ canvas {
 
 body.dead #hud-world,
 body.dead #hud-needs,
-body.dead #hint {
+body.dead #hint,
+body.dead #interact {
   display: none;
 }
 

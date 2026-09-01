@@ -7,6 +7,7 @@ import { CAMERA_OFFSET, CENTER, DAY_START, DEBUG_GRID, GRID, HUD_BLINK } from ".
 import { applyDayNight, createDayLights, DayClock, isDaytime } from "./dayNight";
 import { buildGridOverlay } from "./gridOverlay";
 import { createHud, showDeathScreen } from "./hud";
+import { createInteract } from "./interact";
 import { buildBiomes, buildCoastField, buildIslandMesh, findSpawn } from "./island";
 import { Needs } from "./needs";
 import { buildOcean } from "./ocean";
@@ -56,6 +57,7 @@ async function start(): Promise<void> {
   const islandAudio = setupIslandAudio(scene, player, scattered.audioAnchors, coast);
   const hud = createHud();
   const needs = new Needs();
+  const interact = createInteract(scattered.items, needs);
   const day = new DayClock();
   hud.update({ sky: isDaytime(day.t) ? "sun" : "moon", clock: day.clockLabel(), ...needs.snapshot() });
 
@@ -90,6 +92,7 @@ async function start(): Promise<void> {
     const offset = offsetForZoom(camera, zoom.cells);
     applyZoomFog(scene, camera, offset.length(), zoom.cells, day.t);
     player.followCamera(camera, offset);
+    interact.update(player.cellX, player.cellZ, player.alive);
     hud.update({
       sky: isDaytime(day.t) ? "sun" : "moon",
       clock: day.clockLabel(),
@@ -100,6 +103,7 @@ async function start(): Promise<void> {
     if (needs.health <= 0) {
       dead = true;
       player.alive = false;
+      interact.update(player.cellX, player.cellZ, false);
       applyHealthLook(0);
       showDeathScreen(day.survivedGameHours());
       return;

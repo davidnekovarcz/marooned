@@ -85,6 +85,16 @@ export const HUD_ENERGY_MAX_BLINK = 0.1;
 /** Health empty→dead if one of food/water stays at 0. */
 export const HEALTH_DRAIN_PER_EMPTY = 2 / (3 * 60);
 
+/** Open coconut: thirst / hunger restored. */
+export const EAT_COCONUT_THIRST = 0.3;
+export const EAT_COCONUT_HUNGER = 0.2;
+/** Raw fruit (orange). */
+export const EAT_FRUIT_HUNGER = 0.3;
+export const EAT_FRUIT_THIRST = 0.2;
+/** Seconds to apply a typical 0.3 bite. */
+export const EAT_RESTORE_SECONDS = 2.5;
+export const EAT_RESTORE_RATE = 0.3 / EAT_RESTORE_SECONDS;
+
 export const POND_X = 58;
 export const POND_Z = 82;
 export const POND_RADIUS = 4.6;

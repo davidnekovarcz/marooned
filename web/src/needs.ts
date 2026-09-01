@@ -1,4 +1,5 @@
 import {
+  EAT_RESTORE_RATE,
   ENERGY_DRAIN_RUN,
   ENERGY_FROM_FOOD,
   ENERGY_RECOVER_IDLE,
@@ -49,6 +50,13 @@ export class Needs {
   temperature = 0.5;
   health = 1;
   canSprint = true;
+  private pendingHunger = 0;
+  private pendingThirst = 0;
+
+  feed(hunger: number, thirst: number): void {
+    this.pendingHunger += hunger;
+    this.pendingThirst += thirst;
+  }
 
   snapshot(): NeedsState {
     return {
@@ -99,6 +107,14 @@ export class Needs {
       if (!daytime) this.temperature -= TEMP_COOL_IDLE_NIGHT * dt;
       else this.towardComfort(dt, TEMP_IDLE_DAY_RECOVER);
     }
+
+    const restore = EAT_RESTORE_RATE * dt;
+    const hungerGain = Math.min(this.pendingHunger, restore);
+    const thirstGain = Math.min(this.pendingThirst, restore);
+    this.hunger += hungerGain;
+    this.thirst += thirstGain;
+    this.pendingHunger -= hungerGain;
+    this.pendingThirst -= thirstGain;
 
     this.thirst = clamp01(this.thirst);
     this.hunger = clamp01(this.hunger);
