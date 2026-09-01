@@ -351,6 +351,8 @@ Convenience IAPs that skip hunger or building are P2W by another name. Skip them
 
 ## 8. Tech comparison (not locked)
 
+Practical follow-up (Cursor, map editors, CC0 asset links, lighting/weather): **[`STACK.md`](STACK.md)**.
+
 The renderer is not the expensive part. **A dedicated server plus persistence** (positions, loot state, house blueprints) is the real cost, on any engine.
 
 ### 8.1 Comparison
@@ -425,7 +427,7 @@ Goal: prove the fantasy in a week-of-playtest sense, not a store launch.
 
 These are not blockers for this design; they are the next decisions when a prototype exists.
 
-1. **Engine:** Unity vs Godot for the vertical slice? (Three.js only if the first artifact is a web trailer-island.)
+1. **Engine:** Unity vs Godot for the vertical slice? (Three.js only if the first artifact is a web trailer-island.) See [`STACK.md`](STACK.md) for a practical recommendation (Godot 4.6 + Three.js teaser).
 2. **Indoor stash:** confirm “closed house is private, open world is contested.”
 3. **Death:** pass-out and wake on the beach with a penalty vs permadeath vs “ghost walk back to corpse.” MVP should not be permadeath.
 4. **Population:** one global island vs several shards (EU/US, or overflow when >40).
