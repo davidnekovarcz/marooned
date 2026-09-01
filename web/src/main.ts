@@ -14,7 +14,7 @@ const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x9fd4e4);
 scene.fog = new THREE.Fog(0x9fd4e4, 130, 300);
 
-const camera = new THREE.PerspectiveCamera(20, window.innerWidth / window.innerHeight, 0.1, 420);
+const camera = new THREE.PerspectiveCamera(20, window.innerWidth / window.innerHeight, 0.1, 420*5);
 camera.position.set(CENTER + CAMERA_OFFSET.x, CAMERA_OFFSET.y, CENTER + CAMERA_OFFSET.z);
 
 const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -58,7 +58,7 @@ async function start(): Promise<void> {
   const player = new GridPlayer(biomes, blocked, spawn);
   scene.add(player.mesh);
 
-  setupIslandAudio(scene, camera, scattered.audioAnchors);
+  setupIslandAudio(scene, player.mesh, scattered.audioAnchors);
 
   window.addEventListener("resize", () => {
     camera.aspect = window.innerWidth / window.innerHeight;

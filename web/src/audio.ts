@@ -1,5 +1,11 @@
 import * as THREE from "three";
+import { CELL } from "./constants";
 import { SOUND_URLS } from "./models";
+
+/** Silent beyond this many grid cells. */
+const HEAR_CELLS = 20;
+const HEAR_DISTANCE = HEAR_CELLS * CELL;
+const REF_DISTANCE = 3 * CELL;
 
 function makeNoiseBuffer(ctx: AudioContext, seconds: number, lowpass = false): AudioBuffer {
   const rate = ctx.sampleRate;
@@ -25,14 +31,15 @@ function attachLoop(
   listener: THREE.AudioListener,
   buffer: AudioBuffer,
   position: THREE.Vector3,
-  refDistance: number,
   volume: number,
 ): THREE.PositionalAudio {
   const sound = new THREE.PositionalAudio(listener);
   sound.setBuffer(buffer);
   sound.setLoop(true);
-  sound.setRefDistance(refDistance);
-  sound.setMaxDistance(refDistance * 4.2);
+  sound.setDistanceModel("linear");
+  sound.setRefDistance(REF_DISTANCE);
+  sound.setMaxDistance(HEAR_DISTANCE);
+  sound.setRolloffFactor(1);
   sound.setVolume(volume);
   sound.position.copy(position);
   return sound;
@@ -40,11 +47,11 @@ function attachLoop(
 
 export function setupIslandAudio(
   scene: THREE.Scene,
-  camera: THREE.Camera,
+  listenerHost: THREE.Object3D,
   anchors: { id: string; position: THREE.Vector3 }[],
 ): void {
   const listener = new THREE.AudioListener();
-  camera.add(listener);
+  listenerHost.add(listener);
 
   const hint = document.getElementById("hint");
   const unlock = async () => {
@@ -66,31 +73,25 @@ export function setupIslandAudio(
 
     for (const a of anchors) {
       let clip: AudioBuffer | null = null;
-      let ref = 10;
       let vol = 0.45;
       if (a.id === "wreck") {
         clip = creak;
-        ref = 12;
         vol = 0.5;
       } else if (a.id === "hut") {
         clip = cloth;
-        ref = 9;
         vol = 0.4;
       } else if (a.id === "boat") {
         clip = chop;
-        ref = 8;
         vol = 0.28;
       } else if (a.id === "pond") {
         clip = pond;
-        ref = 11;
         vol = 0.35;
       } else if (a.id === "surf") {
         clip = surf;
-        ref = 18;
         vol = 0.32;
       }
       if (!clip) continue;
-      group.add(attachLoop(listener, clip, a.position, ref, vol));
+      group.add(attachLoop(listener, clip, a.position, vol));
     }
 
     scene.add(group);
