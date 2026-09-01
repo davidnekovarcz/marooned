@@ -4,6 +4,16 @@ This file is **instructions for the coding agent** (and a checklist for a human)
 
 **Do this slice before HUD, inventory, crafting, multiplayer, or Godot.**
 
+### Git (how we land work)
+
+| What | Where |
+| --- | --- |
+| Docs (`*.md`) | Commit on **`main`** |
+| Vendor assets (`assets/vendor/`, fetch scripts) | Feature branch → merge to `main` **before** game code. (First dump already landed on `main`.) |
+| Game / engine (`web/`, later Godot) | **Feature branch + PR.** Do not develop the playable slice on `main`. |
+
+Order: **assets branch → merge → game branch.** Do not mix a new asset dump and `web/` in the same PR.
+
 ---
 
 ## 0. Engine for *this* MVP: Three.js (not Godot)
