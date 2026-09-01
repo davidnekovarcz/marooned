@@ -84,16 +84,20 @@ export const HUD_TEMP_HOT_BLINK = 0.9;
 export const HUD_ENERGY_MAX_BLINK = 0.1;
 /** Health empty→dead if one of food/water stays at 0. */
 export const HEALTH_DRAIN_PER_EMPTY = 2 / (3 * 60);
+/** Health 0→full while food and water are both out of the yellow HUD band. */
+export const HEALTH_RESTORE = 1 / (4 * 60);
 
 /** Open coconut: thirst / hunger restored. */
-export const EAT_COCONUT_THIRST = 0.3;
-export const EAT_COCONUT_HUNGER = 0.2;
+export const EAT_COCONUT_THIRST = 0.15;
+export const EAT_COCONUT_HUNGER = 0.1;
 /** Raw fruit (orange). */
-export const EAT_FRUIT_HUNGER = 0.3;
-export const EAT_FRUIT_THIRST = 0.2;
-/** Seconds to apply a typical 0.3 bite. */
-export const EAT_RESTORE_SECONDS = 2.5;
-export const EAT_RESTORE_RATE = 0.3 / EAT_RESTORE_SECONDS;
+export const EAT_FRUIT_HUNGER = 0.15;
+export const EAT_FRUIT_THIRST = 0.1;
+/** Seconds to apply a typical 0.15 bite on the HUD. */
+export const EAT_RESTORE_SECONDS = 6;
+export const EAT_RESTORE_RATE = 0.15 / EAT_RESTORE_SECONDS;
+/** Locked crouch + eat/drink (no walking). */
+export const EAT_ACTION_SECONDS = 3;
 
 export const POND_X = 58;
 export const POND_Z = 82;

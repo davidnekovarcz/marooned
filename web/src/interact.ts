@@ -1,12 +1,15 @@
 import * as THREE from "three";
 import {
+  EAT_ACTION_SECONDS,
   EAT_COCONUT_HUNGER,
   EAT_COCONUT_THIRST,
   EAT_FRUIT_HUNGER,
   EAT_FRUIT_THIRST,
 } from "./constants";
+import type { MealKind } from "./audio";
 import type { Needs } from "./needs";
 import type { ModelKind } from "./models";
+import type { GridPlayer } from "./player";
 
 export type WorldKind = ModelKind | "lilypad";
 
@@ -130,7 +133,9 @@ export function nearestItem(items: WorldItem[], cellX: number, cellZ: number): W
 export function createInteract(
   items: WorldItem[],
   needs: Needs,
-): { update: (cellX: number, cellZ: number, alive: boolean) => void } {
+  player: GridPlayer,
+  audio: { playMeal: (kind: MealKind) => void },
+): { update: (cellX: number, cellZ: number, alive: boolean, busy: boolean) => void } {
   const panelEl = document.getElementById("interact");
   const nameEl = document.getElementById("interact-name");
   const btnEl = document.getElementById("interact-action");
@@ -150,8 +155,11 @@ export function createInteract(
   function perform(): void {
     const item = current;
     if (!item?.action || item.action.blockedReason) return;
+    if (!player.alive || player.busy) return;
+    player.faceToward(item.mesh.position.x, item.mesh.position.z);
+    if (!player.beginMeal(item.mesh, EAT_ACTION_SECONDS)) return;
     if (item.action.meal) needs.feed(item.action.meal.hunger, item.action.meal.thirst);
-    item.mesh.removeFromParent();
+    audio.playMeal(item.kind === "coconutHalf" ? "drink" : "eat");
     const i = items.indexOf(item);
     if (i >= 0) items.splice(i, 1);
     hide();
@@ -170,8 +178,8 @@ export function createInteract(
   });
 
   return {
-    update: (cellX, cellZ, alive) => {
-      if (!alive) {
+    update: (cellX, cellZ, alive, busy) => {
+      if (!alive || busy) {
         hide();
         return;
       }

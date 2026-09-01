@@ -8,13 +8,20 @@ const TARGET_HEIGHT = 1.6;
 const FADE = 0.14;
 const HELPER_BONE = /Ctrl|IK|Roll|_end$/;
 const FOOT_BONES = ["LeftFoot", "RightFoot", "LeftToes", "RightToes"] as const;
+const CROUCH_DROP = 0.32;
+const CROUCH_PITCH = 0.38;
+const _overlayQ = new THREE.Quaternion();
+const _overlayE = new THREE.Euler();
 
 export type PlayerGait = "idle" | "walk" | "run";
 
 export type PlayerVisual = {
   root: THREE.Object3D;
   mixer: THREE.AnimationMixer;
+  leftHand: THREE.Object3D | null;
   setGait: (gait: PlayerGait) => void;
+  setCrouch: (amount: number) => void;
+  applyPose: () => void;
 };
 
 const _foot = new THREE.Vector3();
@@ -123,6 +130,22 @@ function makeInPlace(clip: THREE.AnimationClip): void {
   });
 }
 
+function overlayBone(
+  model: THREE.Object3D,
+  name: string,
+  x: number,
+  y: number,
+  z: number,
+  amount: number,
+): void {
+  if (amount <= 0) return;
+  const bone = model.getObjectByName(name);
+  if (!bone) return;
+  _overlayE.set(x * amount, y * amount, z * amount, "XYZ");
+  _overlayQ.setFromEuler(_overlayE);
+  bone.quaternion.multiply(_overlayQ);
+}
+
 export async function loadPlayerModel(appearance: Appearance): Promise<PlayerVisual> {
   const [model, idleFbx, runFbx, map] = await Promise.all([
     loadFbx(PLAYER_URLS.model),
@@ -156,6 +179,10 @@ export async function loadPlayerModel(appearance: Appearance): Promise<PlayerVis
   mixer.update(0);
   plantFeet(model);
 
+  const restY = model.position.y;
+  const restPitch = model.rotation.x;
+  let crouch = 0;
+
   run.timeScale = WALK_ANIM_SCALE;
   run.enabled = false;
 
@@ -179,5 +206,27 @@ export async function loadPlayerModel(appearance: Appearance): Promise<PlayerVis
     }
   };
 
-  return { root, mixer, setGait };
+  return {
+    root,
+    mixer,
+    leftHand: model.getObjectByName("LeftHand") ?? null,
+    setGait,
+    setCrouch: (amount) => {
+      crouch = Math.min(1, Math.max(0, amount));
+    },
+    applyPose: () => {
+      model.position.y = restY - CROUCH_DROP * crouch;
+      model.rotation.x = restPitch + CROUCH_PITCH * crouch;
+      overlayBone(model, "Hips", 0.42, 0, 0, crouch);
+      overlayBone(model, "Spine", 0.28, 0, 0, crouch);
+      overlayBone(model, "LeftUpLeg", -0.7, 0, 0, crouch);
+      overlayBone(model, "RightUpLeg", -0.7, 0, 0, crouch);
+      overlayBone(model, "LeftLeg", 0.95, 0, 0, crouch);
+      overlayBone(model, "RightLeg", 0.95, 0, 0, crouch);
+      overlayBone(model, "LeftArm", 0.75, 0, 0.55, crouch);
+      overlayBone(model, "RightArm", 0.75, 0, -0.55, crouch);
+      overlayBone(model, "LeftForeArm", 0.45, 0, 0, crouch);
+      overlayBone(model, "RightForeArm", 0.45, 0, 0, crouch);
+    },
+  };
 }

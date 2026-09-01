@@ -57,7 +57,7 @@ async function start(): Promise<void> {
   const islandAudio = setupIslandAudio(scene, player, scattered.audioAnchors, coast);
   const hud = createHud();
   const needs = new Needs();
-  const interact = createInteract(scattered.items, needs);
+  const interact = createInteract(scattered.items, needs, player, islandAudio);
   const day = new DayClock();
   hud.update({ sky: isDaytime(day.t) ? "sun" : "moon", clock: day.clockLabel(), ...needs.snapshot() });
 
@@ -92,7 +92,7 @@ async function start(): Promise<void> {
     const offset = offsetForZoom(camera, zoom.cells);
     applyZoomFog(scene, camera, offset.length(), zoom.cells, day.t);
     player.followCamera(camera, offset);
-    interact.update(player.cellX, player.cellZ, player.alive);
+    interact.update(player.cellX, player.cellZ, player.alive, player.busy);
     hud.update({
       sky: isDaytime(day.t) ? "sun" : "moon",
       clock: day.clockLabel(),
@@ -103,7 +103,7 @@ async function start(): Promise<void> {
     if (needs.health <= 0) {
       dead = true;
       player.alive = false;
-      interact.update(player.cellX, player.cellZ, false);
+      interact.update(player.cellX, player.cellZ, false, false);
       applyHealthLook(0);
       showDeathScreen(day.survivedGameHours());
       return;

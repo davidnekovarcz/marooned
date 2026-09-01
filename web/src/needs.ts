@@ -9,6 +9,8 @@ import {
   HUNGER_DRAIN_RUN,
   HUNGER_DRAIN_WALK,
   HEALTH_DRAIN_PER_EMPTY,
+  HEALTH_RESTORE,
+  HUD_BAND_MID,
   HUD_TEMP_HOT_BLINK,
   TEMP_COLD,
   TEMP_COLD_HUNGER_MULT,
@@ -121,6 +123,9 @@ export class Needs {
     this.temperature = clamp01(this.temperature);
     const emptyNeeds = (this.thirst <= 0 ? 1 : 0) + (this.hunger <= 0 ? 1 : 0);
     if (emptyNeeds > 0) this.health -= HEALTH_DRAIN_PER_EMPTY * emptyNeeds * dt;
+    else if (this.thirst >= HUD_BAND_MID && this.hunger >= HUD_BAND_MID) {
+      this.health += HEALTH_RESTORE * dt;
+    }
     this.health = clamp01(this.health);
     this.energy = Math.min(energyMaxFromFood(this.thirst, this.hunger), Math.max(0, this.energy));
     if (this.energy <= 0) this.canSprint = false;
