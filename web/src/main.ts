@@ -3,9 +3,12 @@ import * as THREE from "three";
 import { DEFAULT_APPEARANCE } from "./appearance";
 import { setupIslandAudio } from "./audio";
 import { applyZoomFog, CameraZoom, offsetForZoom } from "./cameraZoom";
-import { CAMERA_OFFSET, CENTER, GRID } from "./constants";
+import { CAMERA_OFFSET, CENTER, DAY_START, GRID } from "./constants";
+import { applyDayNight, createDayLights, DayClock } from "./dayNight";
 import { buildGridOverlay } from "./gridOverlay";
+import { createHud } from "./hud";
 import { buildBiomes, buildCoastField, buildIslandMesh, buildOcean, findSpawn } from "./island";
+import { Needs } from "./needs";
 import { GridPlayer } from "./player";
 import { loadPlayerModel } from "./playerModel";
 import { scatterProps } from "./props";
@@ -29,23 +32,8 @@ renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 document.body.appendChild(renderer.domElement);
 
-scene.add(new THREE.HemisphereLight(0xfff2d4, 0x3d6b3a, 0.85));
-const sun = new THREE.DirectionalLight(0xfff1d0, 1.35);
-sun.position.set(CENTER + 40, 70, CENTER + 24);
-sun.target.position.set(CENTER, 0, CENTER);
-sun.castShadow = true;
-sun.shadow.mapSize.set(2048, 2048);
-sun.shadow.camera.near = 1;
-sun.shadow.camera.far = 280;
-sun.shadow.camera.left = -100;
-sun.shadow.camera.right = 100;
-sun.shadow.camera.top = 100;
-sun.shadow.camera.bottom = -100;
-sun.shadow.camera.updateProjectionMatrix();
-sun.shadow.bias = -0.0001;
-sun.shadow.normalBias = 0.02;
-scene.add(sun);
-scene.add(sun.target);
+const lights = createDayLights(scene);
+applyDayNight(scene, lights, DAY_START);
 
 scene.add(buildOcean());
 scene.add(buildIslandMesh(biomes));
@@ -64,6 +52,10 @@ async function start(): Promise<void> {
   scene.add(player.mesh);
 
   const islandAudio = setupIslandAudio(scene, player, scattered.audioAnchors, coast);
+  const hud = createHud();
+  const needs = new Needs();
+  const day = new DayClock();
+  hud.update({ weather: "sun", clock: day.clockLabel(), ...needs.snapshot() });
 
   const zoom = new CameraZoom();
 
@@ -78,11 +70,16 @@ async function start(): Promise<void> {
   function frame(): void {
     const dt = Math.min(0.05, clock.getDelta());
     zoom.update(dt);
+    player.canSprint = needs.canSprint;
     player.update(dt);
+    needs.tick(player.gait, dt);
+    day.update(dt);
+    applyDayNight(scene, lights, day.t);
     islandAudio.update();
     const offset = offsetForZoom(camera, zoom.cells);
     applyZoomFog(scene, camera, offset.length(), zoom.cells);
     player.followCamera(camera, offset);
+    hud.update({ weather: "sun", clock: day.clockLabel(), ...needs.snapshot() });
     renderer.render(scene, camera);
     requestAnimationFrame(frame);
   }

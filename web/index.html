@@ -6,7 +6,12 @@
     <title>Marooned — island walk</title>
   </head>
   <body>
-    <div id="hint">Click or press a key to hear the island. WASD walk. + / − zoom (debug).</div>
+    <div id="hud-world" aria-hidden="true">
+      <div id="hud-weather" data-weather="sun"></div>
+      <time id="hud-clock">08:00</time>
+    </div>
+    <div id="hud-needs" aria-hidden="true"></div>
+    <div id="hint">Click or press a key to hear the island. WASD walk. SHIFT run. + / − zoom (debug).</div>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

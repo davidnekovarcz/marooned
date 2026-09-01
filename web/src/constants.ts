@@ -23,6 +23,20 @@ export const SEED = "marooned-mvp-1";
 /** Distance falloff always. Stereo L/R from facing / side only if true. */
 export const SOUND_3D = false;
 
+/** Real seconds for a full 24h island day. */
+export const DAY_SECONDS = 8 * 60;
+/** Start a bit after dawn so the first load is daytime. */
+export const DAY_START = 8 / 24;
+
+/** Energy 0→empty in this many seconds of sprint. */
+export const ENERGY_DRAIN_RUN = 1 / 7;
+/** Energy empty→full while standing still. */
+export const ENERGY_RECOVER_IDLE = 1 / 3;
+/** Energy empty→full while walking. */
+export const ENERGY_RECOVER_WALK = 1 / 12;
+/** Must refill past this before sprint is allowed again. */
+export const ENERGY_SPRINT_RESUME = 0.08;
+
 export const POND_X = 58;
 export const POND_Z = 82;
 export const POND_RADIUS = 4.6;
