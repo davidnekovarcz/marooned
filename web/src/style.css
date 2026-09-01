@@ -146,6 +146,10 @@ canvas {
   opacity: var(--hud-blink);
 }
 
+.need[data-blink="fade"] {
+  opacity: 0.22;
+}
+
 .need[data-blink="red"] {
   border-color: #e07070;
 }

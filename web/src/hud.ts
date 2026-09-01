@@ -1,4 +1,4 @@
-import { HUD_BAND_HIGH, HUD_BAND_LOW, HUD_BAND_MID, HUD_BLINK } from "./constants";
+import { HUD_BAND_HIGH, HUD_BAND_LOW, HUD_BAND_MID, HUD_BLINK, HUD_ENERGY_MAX_BLINK, HUD_TEMP_HOT_BLINK } from "./constants";
 
 export type SkyKind = "sun" | "moon";
 
@@ -6,6 +6,7 @@ export type HudState = {
   sky: SkyKind;
   clock: string;
   energy: number;
+  energyMax: number;
   thirst: number;
   hunger: number;
   temperature: number;
@@ -14,7 +15,7 @@ export type HudState = {
 
 type NeedId = "energy" | "thirst" | "hunger" | "temperature" | "health";
 type Tone = "ok" | "warn" | "alert" | "cold";
-type Blink = "0" | "red" | "cold";
+type Blink = "0" | "red" | "cold" | "fade";
 
 const SKY_SVG: Record<SkyKind, string> = {
   sun: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="4" fill="currentColor" stroke="none"/><path d="M12 2v2.4M12 19.6V22M4.9 4.9l1.7 1.7M17.4 17.4l1.7 1.7M2 12h2.4M19.6 12H22M4.9 19.1l1.7-1.7M17.4 6.6l1.7-1.7"/></svg>`,
@@ -103,9 +104,13 @@ export function createHud(): { update: (state: HudState) => void } {
         else if (id === "health") cell.dataset.tone = healthTone(v);
         else cell.dataset.tone = supplyTone(v);
         let blink: Blink = "0";
-        if (v < HUD_BLINK) {
-          if (id === "temperature") blink = "cold";
-          else if (id === "health" || id === "thirst" || id === "hunger") blink = "red";
+        if (id === "energy") {
+          if (state.energyMax < HUD_ENERGY_MAX_BLINK) blink = "fade";
+        } else if (id === "temperature") {
+          if (v > HUD_TEMP_HOT_BLINK) blink = "red";
+          else if (v < HUD_BLINK) blink = "cold";
+        } else if (v < HUD_BLINK) {
+          if (id === "health" || id === "thirst" || id === "hunger") blink = "red";
         }
         cell.dataset.blink = blink;
       }

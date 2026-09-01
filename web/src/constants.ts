@@ -36,6 +36,8 @@ export const ENERGY_RECOVER_IDLE = 1 / 3;
 export const ENERGY_RECOVER_WALK = 1 / 12;
 /** Must refill past this before sprint is allowed again. */
 export const ENERGY_SPRINT_RESUME = 0.08;
+/** Energy ceiling = min(1, this × geometric mean of thirst and hunger). */
+export const ENERGY_FROM_FOOD = 1.5;
 
 /** Thirst empty in this many idle seconds. */
 export const THIRST_DRAIN_IDLE = 1 / (18 * 60);
@@ -58,6 +60,10 @@ export const TEMP_HOT = 0.78;
 export const TEMP_COLD = 0.22;
 /** Extra stamina drain when overheated (sprint). */
 export const TEMP_HOT_ENERGY_MULT = 1.7;
+/** Extra thirst drain when overheated. */
+export const TEMP_HOT_THIRST_MULT = 1.7;
+/** Extra thirst drain while the temperature meter is pulsing hot. */
+export const TEMP_HOT_BLINK_THIRST_MULT = 2.8;
 /** Extra hunger drain when too cold (all gaits). */
 export const TEMP_COLD_HUNGER_MULT = 1.7;
 
@@ -66,6 +72,10 @@ export const HUD_BAND_HIGH = 0.7;
 export const HUD_BAND_MID = 0.5;
 export const HUD_BAND_LOW = 0.3;
 export const HUD_BLINK = 0.2;
+/** Temperature overheat pulse (fill already turns red at HUD_BAND_HIGH). */
+export const HUD_TEMP_HOT_BLINK = 0.9;
+/** Pulse the energy cell when its food/water cap is below this. */
+export const HUD_ENERGY_MAX_BLINK = 0.1;
 /** Health empty→dead if one of food/water stays at 0. */
 export const HEALTH_DRAIN_PER_EMPTY = 2 / (3 * 60);
 
