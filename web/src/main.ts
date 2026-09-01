@@ -4,12 +4,13 @@ import { setupIslandAudio } from "./audio";
 import { applyZoomFog, CameraZoom, offsetForZoom } from "./cameraZoom";
 import { CAMERA_OFFSET, CENTER, GRID } from "./constants";
 import { buildGridOverlay } from "./gridOverlay";
-import { buildBiomes, buildIslandMesh, buildOcean, findSpawn } from "./island";
+import { buildBiomes, buildCoastField, buildIslandMesh, buildOcean, findSpawn } from "./island";
 import { GridPlayer } from "./player";
 import { scatterProps } from "./props";
 
 const blocked = new Uint8Array(GRID * GRID);
 const biomes = buildBiomes();
+const coast = buildCoastField(biomes);
 
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x9fd4e4);
@@ -59,7 +60,7 @@ async function start(): Promise<void> {
   const player = new GridPlayer(biomes, blocked, spawn);
   scene.add(player.mesh);
 
-  setupIslandAudio(scene, player.mesh, scattered.audioAnchors);
+  const islandAudio = setupIslandAudio(scene, player, scattered.audioAnchors, coast);
 
   const zoom = new CameraZoom();
 
@@ -75,6 +76,7 @@ async function start(): Promise<void> {
     const dt = Math.min(0.05, clock.getDelta());
     zoom.update(dt);
     player.update(dt);
+    islandAudio.update();
     const offset = offsetForZoom(camera, zoom.cells);
     applyZoomFog(scene, camera, offset.length(), zoom.cells);
     player.followCamera(camera, offset);

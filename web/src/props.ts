@@ -267,18 +267,6 @@ export async function scatterProps(
 
   audioAnchors.push({ id: "pond", position: worldPos(POND_X, POND_Z) });
 
-  for (const [sx, sz] of [
-    [CENTER, CENTER - ISLAND_RADIUS - 2],
-    [CENTER, CENTER + ISLAND_RADIUS + 2],
-    [CENTER - ISLAND_RADIUS - 2, CENTER],
-    [CENTER + ISLAND_RADIUS + 2, CENTER],
-  ] as const) {
-    audioAnchors.push({
-      id: "surf",
-      position: new THREE.Vector3(sx, 1, sz),
-    });
-  }
-
   const placeCoconuts = (px: number, pz: number) => {
     const n = rng() < 0.25 ? 0 : rng() < 0.55 ? 1 : 2;
     let put = 0;

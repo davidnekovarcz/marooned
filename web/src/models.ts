@@ -42,8 +42,12 @@ import bridgeUrl from "../../assets/vendor/kenney/mini-forest/Models/GLB format/
 
 import lilyObjUrl from "../../assets/vendor/quaternius/150-lowpoly-nature-models/OBJ/Lilypad.obj?url";
 
-import creakUrl from "../../assets/vendor/kenney/rpg-audio/Audio/creak1.ogg?url";
-import clothUrl from "../../assets/vendor/kenney/rpg-audio/Audio/cloth1.ogg?url";
+import creak1Url from "../../assets/vendor/kenney/rpg-audio/Audio/creak1.ogg?url";
+import creak2Url from "../../assets/vendor/kenney/rpg-audio/Audio/creak2.ogg?url";
+import creak3Url from "../../assets/vendor/kenney/rpg-audio/Audio/creak3.ogg?url";
+import cloth1Url from "../../assets/vendor/kenney/rpg-audio/Audio/cloth1.ogg?url";
+import cloth2Url from "../../assets/vendor/kenney/rpg-audio/Audio/cloth2.ogg?url";
+import cloth3Url from "../../assets/vendor/kenney/rpg-audio/Audio/cloth3.ogg?url";
 import chopUrl from "../../assets/vendor/kenney/rpg-audio/Audio/chop.ogg?url";
 
 export const MODEL_URLS = {
@@ -88,9 +92,9 @@ export const MODEL_URLS = {
 export const LILY_URL = lilyObjUrl;
 
 export const SOUND_URLS = {
-  creak: creakUrl,
-  cloth: clothUrl,
-  chop: chopUrl,
+  creaks: [creak1Url, creak2Url, creak3Url],
+  cloths: [cloth1Url, cloth2Url, cloth3Url],
+  chops: [chopUrl],
 } as const;
 
 export type ModelKind = keyof typeof MODEL_URLS;

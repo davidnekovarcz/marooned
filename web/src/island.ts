@@ -73,6 +73,72 @@ export function buildBiomes(): Uint8Array {
   return biomes;
 }
 
+export function isOceanCell(x: number, z: number, biomes: Uint8Array): boolean {
+  if (!inBounds(x, z)) return false;
+  return biomes[cellIndex(x, z)] === Biome.Water && cellCenterDist(x, z) >= ISLAND_RADIUS;
+}
+
+export type CoastField = {
+  dist: Float32Array;
+  nearX: Int16Array;
+  nearZ: Int16Array;
+};
+
+/** Distance (in cells) from every tile to the nearest open-ocean cell — not pond/river. */
+export function buildCoastField(biomes: Uint8Array): CoastField {
+  const n = GRID * GRID;
+  const dist = new Float32Array(n);
+  dist.fill(1e9);
+  const nearX = new Int16Array(n);
+  const nearZ = new Int16Array(n);
+  const qx = new Int16Array(n);
+  const qz = new Int16Array(n);
+  let head = 0;
+  let tail = 0;
+
+  for (let z = 0; z < GRID; z++) {
+    for (let x = 0; x < GRID; x++) {
+      if (!isOceanCell(x, z, biomes)) continue;
+      const i = cellIndex(x, z);
+      dist[i] = 0;
+      nearX[i] = x;
+      nearZ[i] = z;
+      qx[tail] = x;
+      qz[tail] = z;
+      tail += 1;
+    }
+  }
+
+  const step: [number, number][] = [
+    [1, 0],
+    [-1, 0],
+    [0, 1],
+    [0, -1],
+  ];
+  while (head < tail) {
+    const x = qx[head]!;
+    const z = qz[head]!;
+    head += 1;
+    const i = cellIndex(x, z);
+    for (const [dx, dz] of step) {
+      const nx = x + dx;
+      const nz = z + dz;
+      if (!inBounds(nx, nz)) continue;
+      const ni = cellIndex(nx, nz);
+      const nd = dist[i] + 1;
+      if (nd >= dist[ni]) continue;
+      dist[ni] = nd;
+      nearX[ni] = nearX[i];
+      nearZ[ni] = nearZ[i];
+      qx[tail] = nx;
+      qz[tail] = nz;
+      tail += 1;
+    }
+  }
+
+  return { dist, nearX, nearZ };
+}
+
 export function nearestCell(
   biomes: Uint8Array,
   tx: number,
