@@ -1,6 +1,7 @@
 import * as THREE from "three";
-import { CAMERA_OFFSET, CELL, GROUND_Y, STEP_SECONDS } from "./constants";
+import { CELL, STEP_SECONDS_RUN, STEP_SECONDS_WALK } from "./constants";
 import { isWalkable } from "./gridOverlay";
+import type { PlayerGait, PlayerVisual } from "./playerModel";
 
 const DIRS: Record<string, { x: number; z: number }> = {
   KeyW: { x: 0, z: 1 },
@@ -13,11 +14,15 @@ const DIRS: Record<string, { x: number; z: number }> = {
   ArrowRight: { x: -1, z: 0 },
 };
 
+const SHIFT = new Set(["ShiftLeft", "ShiftRight"]);
+
 export class GridPlayer {
   readonly mesh: THREE.Object3D;
   cellX: number;
   cellZ: number;
   private moving = false;
+  private sprinting = false;
+  private stepSeconds = STEP_SECONDS_WALK;
   private t = 0;
   private from = new THREE.Vector3();
   private to = new THREE.Vector3();
@@ -27,30 +32,22 @@ export class GridPlayer {
     private biomes: Uint8Array,
     private blocked: Uint8Array,
     start: { x: number; z: number },
+    private visual: PlayerVisual,
   ) {
-    const geo = new THREE.CapsuleGeometry(0.28, 0.9, 4, 10);
-    const mat = new THREE.MeshStandardMaterial({
-      color: 0xf0d2a8,
-      roughness: 0.7,
-      metalness: 0,
-    });
-    const body = new THREE.Mesh(geo, mat);
-    body.castShadow = true;
-    body.position.y = 0.73 + GROUND_Y;
-    const wrap = new THREE.Group();
-    wrap.add(body);
-    this.mesh = wrap;
+    this.mesh = visual.root;
     this.cellX = start.x;
     this.cellZ = start.z;
     this.snap();
 
     window.addEventListener("keydown", (e) => {
+      if (SHIFT.has(e.code)) this.sprinting = true;
       if (e.code in DIRS) {
         e.preventDefault();
         this.pressed.add(e.code);
       }
     });
     window.addEventListener("keyup", (e) => {
+      if (SHIFT.has(e.code)) this.sprinting = false;
       this.pressed.delete(e.code);
     });
   }
@@ -59,19 +56,26 @@ export class GridPlayer {
     this.mesh.position.set(this.cellX * CELL + CELL / 2, 0, this.cellZ * CELL + CELL / 2);
   }
 
+  private gait(): PlayerGait {
+    if (!this.moving) return "idle";
+    return this.sprinting ? "run" : "walk";
+  }
+
   update(dt: number): void {
+    this.visual.mixer.update(dt);
+
     if (this.moving) {
-      this.t += dt / STEP_SECONDS;
+      this.visual.setGait(this.gait());
+      this.t += dt / this.stepSeconds;
       const u = Math.min(1, this.t);
       const s = u * u * (3 - 2 * u);
       this.mesh.position.lerpVectors(this.from, this.to, s);
-      if (u >= 1) {
-        this.moving = false;
-        this.cellX = Math.round(this.to.x - CELL / 2);
-        this.cellZ = Math.round(this.to.z - CELL / 2);
-        this.snap();
-      }
-      return;
+      if (u < 1) return;
+
+      this.moving = false;
+      this.cellX = Math.round(this.to.x - CELL / 2);
+      this.cellZ = Math.round(this.to.z - CELL / 2);
+      this.snap();
     }
 
     for (const code of this.pressed) {
@@ -80,20 +84,24 @@ export class GridPlayer {
       const nx = this.cellX + dir.x;
       const nz = this.cellZ + dir.z;
       if (!isWalkable(this.biomes, this.blocked, nx, nz)) continue;
+      this.stepSeconds = this.sprinting ? STEP_SECONDS_RUN : STEP_SECONDS_WALK;
       this.from.copy(this.mesh.position);
       this.to.set(nx * CELL + CELL / 2, 0, nz * CELL + CELL / 2);
       this.t = 0;
       this.moving = true;
       this.mesh.lookAt(this.to.x, 0, this.to.z);
+      this.visual.setGait(this.gait());
       break;
     }
+
+    if (!this.moving) this.visual.setGait("idle");
   }
 
-  followCamera(camera: THREE.PerspectiveCamera): void {
+  followCamera(camera: THREE.PerspectiveCamera, offset: THREE.Vector3): void {
     const target = new THREE.Vector3(
-      this.mesh.position.x + CAMERA_OFFSET.x,
-      this.mesh.position.y + CAMERA_OFFSET.y,
-      this.mesh.position.z + CAMERA_OFFSET.z,
+      this.mesh.position.x + offset.x,
+      this.mesh.position.y + offset.y,
+      this.mesh.position.z + offset.z,
     );
     camera.position.lerp(target, 0.12);
     camera.lookAt(this.mesh.position.x, 1.1, this.mesh.position.z);

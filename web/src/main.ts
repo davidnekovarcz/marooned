@@ -1,19 +1,24 @@
 import "./style.css";
 import * as THREE from "three";
+import { DEFAULT_APPEARANCE } from "./appearance";
+import { setupIslandAudio } from "./audio";
+import { applyZoomFog, CameraZoom, offsetForZoom } from "./cameraZoom";
 import { CAMERA_OFFSET, CENTER, GRID } from "./constants";
 import { buildGridOverlay } from "./gridOverlay";
-import { buildBiomes, buildIslandMesh, buildOcean, findSpawn } from "./island";
+import { buildBiomes, buildCoastField, buildIslandMesh, buildOcean, findSpawn } from "./island";
 import { GridPlayer } from "./player";
+import { loadPlayerModel } from "./playerModel";
 import { scatterProps } from "./props";
 
 const blocked = new Uint8Array(GRID * GRID);
 const biomes = buildBiomes();
+const coast = buildCoastField(biomes);
 
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x9fd4e4);
-scene.fog = new THREE.Fog(0x9fd4e4, 90, 180);
+scene.fog = new THREE.Fog(0x9fd4e4, 130, 300);
 
-const camera = new THREE.PerspectiveCamera(20, window.innerWidth / window.innerHeight, 0.1, 300);
+const camera = new THREE.PerspectiveCamera(20, window.innerWidth / window.innerHeight, 0.1, 420);
 camera.position.set(CENTER + CAMERA_OFFSET.x, CAMERA_OFFSET.y, CENTER + CAMERA_OFFSET.z);
 
 const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -26,16 +31,16 @@ document.body.appendChild(renderer.domElement);
 
 scene.add(new THREE.HemisphereLight(0xfff2d4, 0x3d6b3a, 0.85));
 const sun = new THREE.DirectionalLight(0xfff1d0, 1.35);
-sun.position.set(CENTER + 30, 48, CENTER + 18);
+sun.position.set(CENTER + 40, 70, CENTER + 24);
 sun.target.position.set(CENTER, 0, CENTER);
 sun.castShadow = true;
 sun.shadow.mapSize.set(2048, 2048);
 sun.shadow.camera.near = 1;
-sun.shadow.camera.far = 200;
-sun.shadow.camera.left = -70;
-sun.shadow.camera.right = 70;
-sun.shadow.camera.top = 70;
-sun.shadow.camera.bottom = -70;
+sun.shadow.camera.far = 280;
+sun.shadow.camera.left = -100;
+sun.shadow.camera.right = 100;
+sun.shadow.camera.top = 100;
+sun.shadow.camera.bottom = -100;
 sun.shadow.camera.updateProjectionMatrix();
 sun.shadow.bias = -0.0001;
 sun.shadow.normalBias = 0.02;
@@ -49,14 +54,18 @@ async function start(): Promise<void> {
   const spawn = findSpawn(biomes);
   blocked[spawn.z * GRID + spawn.x] = 1;
 
-  await scatterProps(scene, biomes, blocked);
+  const scattered = await scatterProps(scene, biomes, blocked);
   blocked[spawn.z * GRID + spawn.x] = 0;
 
   scene.add(buildGridOverlay(biomes, blocked));
 
-  const player = new GridPlayer(biomes, blocked, spawn);
-
+  const visual = await loadPlayerModel(DEFAULT_APPEARANCE);
+  const player = new GridPlayer(biomes, blocked, spawn, visual);
   scene.add(player.mesh);
+
+  const islandAudio = setupIslandAudio(scene, player, scattered.audioAnchors, coast);
+
+  const zoom = new CameraZoom();
 
   window.addEventListener("resize", () => {
     camera.aspect = window.innerWidth / window.innerHeight;
@@ -68,8 +77,12 @@ async function start(): Promise<void> {
 
   function frame(): void {
     const dt = Math.min(0.05, clock.getDelta());
+    zoom.update(dt);
     player.update(dt);
-    player.followCamera(camera);
+    islandAudio.update();
+    const offset = offsetForZoom(camera, zoom.cells);
+    applyZoomFog(scene, camera, offset.length(), zoom.cells);
+    player.followCamera(camera, offset);
     renderer.render(scene, camera);
     requestAnimationFrame(frame);
   }
