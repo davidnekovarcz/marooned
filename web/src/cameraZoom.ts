@@ -2,12 +2,15 @@ import * as THREE from "three";
 import {
   CAMERA_OFFSET,
   CELL,
+  FOG_DAWN_SCALE,
+  FOG_NIGHT_SCALE,
   ISLAND_RADIUS,
   ZOOM_CELLS_IN,
   ZOOM_CELLS_OUT,
   ZOOM_CELLS_PER_SEC,
   ZOOM_CELLS_START,
 } from "./constants";
+import { sunElevation } from "./dayNight";
 
 function isZoomIn(e: KeyboardEvent): boolean {
   return e.key === "+" || e.key === "=" || e.code === "NumpadAdd";
@@ -60,6 +63,7 @@ export function applyZoomFog(
   camera: THREE.PerspectiveCamera,
   dist: number,
   cells: number,
+  dayT: number,
 ): void {
   camera.far = Math.max(420, dist + ISLAND_RADIUS * 3);
   camera.updateProjectionMatrix();
@@ -70,6 +74,13 @@ export function applyZoomFog(
     1,
   );
   // t=0 zoomed in: fog starts beyond the close view. t=1 zoomed out: haze over the island.
-  scene.fog.near = THREE.MathUtils.lerp(dist * 2.4, dist * 0.22, t);
-  scene.fog.far = THREE.MathUtils.lerp(dist * 9, dist * 1.05, t);
+  let near = THREE.MathUtils.lerp(dist * 2.4, dist * 0.22, t);
+  let far = THREE.MathUtils.lerp(dist * 9, dist * 1.05, t);
+
+  const elev = sunElevation(dayT);
+  const night = THREE.MathUtils.clamp(-elev, 0, 1);
+  const dawn = elev > 0 ? THREE.MathUtils.clamp(1 - elev / 0.28, 0, 1) : 0;
+  const vis = THREE.MathUtils.lerp(1, FOG_NIGHT_SCALE, night) * THREE.MathUtils.lerp(1, FOG_DAWN_SCALE, dawn);
+  scene.fog.near = near * vis;
+  scene.fog.far = Math.max(near * vis + 8, far * vis);
 }

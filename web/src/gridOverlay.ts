@@ -31,7 +31,7 @@ export function buildGridOverlay(
   const mat = new THREE.LineBasicMaterial({
     color: 0xffffff,
     transparent: true,
-    opacity: 0.16,
+    opacity: 0.05,
     depthWrite: false,
   });
   const lines = new THREE.LineSegments(geo, mat);

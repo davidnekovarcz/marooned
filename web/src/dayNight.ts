@@ -1,16 +1,16 @@
 import * as THREE from "three";
 import { CENTER, DAY_SECONDS, DAY_START } from "./constants";
 
-const SKY_NOON = new THREE.Color(0x9fd4e4);
-const SKY_DAWN = new THREE.Color(0xf0b070);
+const SKY_NOON = new THREE.Color(0xb5e8f6);
+const SKY_DAWN = new THREE.Color(0xf4b878);
 const SKY_DUSK = new THREE.Color(0xc45a3a);
-const SKY_NIGHT = new THREE.Color(0x0b1a2e);
+const SKY_NIGHT = new THREE.Color(0x040914);
 
-const HEMI_SKY_NOON = new THREE.Color(0xfff2d4);
+const HEMI_SKY_NOON = new THREE.Color(0xfff8e8);
 const HEMI_SKY_DUSK = new THREE.Color(0xff9a62);
-const HEMI_SKY_NIGHT = new THREE.Color(0x1a2848);
-const HEMI_GROUND_NOON = new THREE.Color(0x3d6b3a);
-const HEMI_GROUND_NIGHT = new THREE.Color(0x0a1218);
+const HEMI_SKY_NIGHT = new THREE.Color(0x0d1528);
+const HEMI_GROUND_NOON = new THREE.Color(0x4a8044);
+const HEMI_GROUND_NIGHT = new THREE.Color(0x05080c);
 
 const _sky = new THREE.Color();
 const _hemiSky = new THREE.Color();
@@ -60,10 +60,10 @@ function configureShadowCam(light: THREE.DirectionalLight): void {
 }
 
 export function createDayLights(scene: THREE.Scene): DayLights {
-  const hemi = new THREE.HemisphereLight(0xfff2d4, 0x3d6b3a, 0.85);
+  const hemi = new THREE.HemisphereLight(0xfff8e8, 0x4a8044, 1.15);
   scene.add(hemi);
 
-  const sun = new THREE.DirectionalLight(0xfff1d0, 1.35);
+  const sun = new THREE.DirectionalLight(0xfff6e0, 1.85);
   sun.target.position.set(CENTER, 0, CENTER);
   sun.castShadow = true;
   configureShadowCam(sun);
@@ -124,9 +124,9 @@ export function applyDayNight(scene: THREE.Scene, lights: DayLights, t: number):
 
   const sunUp = elev > 0.04;
   const moonUp = elev < -0.04;
-  lights.sun.intensity = sunUp ? 0.25 + elev * 1.15 : 0;
+  lights.sun.intensity = sunUp ? 0.45 + elev * 1.55 : 0;
   lights.sun.castShadow = sunUp;
-  lights.moon.intensity = moonUp ? 0.18 + Math.min(1, -elev) * 0.28 : 0;
+  lights.moon.intensity = moonUp ? 0.08 + Math.min(1, -elev) * 0.16 : 0;
   lights.moon.castShadow = moonUp && !sunUp;
 
   const duskAmt = THREE.MathUtils.clamp(1 - Math.abs(elev) / 0.35, 0, 1);
@@ -139,5 +139,5 @@ export function applyDayNight(scene: THREE.Scene, lights: DayLights, t: number):
   _hemiGround.copy(HEMI_GROUND_NOON).lerp(HEMI_GROUND_NIGHT, night);
   lights.hemi.color.copy(_hemiSky);
   lights.hemi.groundColor.copy(_hemiGround);
-  lights.hemi.intensity = THREE.MathUtils.lerp(0.85, 0.22, night);
+  lights.hemi.intensity = THREE.MathUtils.lerp(1.15, 0.08, night);
 }

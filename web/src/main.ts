@@ -3,12 +3,13 @@ import * as THREE from "three";
 import { DEFAULT_APPEARANCE } from "./appearance";
 import { setupIslandAudio } from "./audio";
 import { applyZoomFog, CameraZoom, offsetForZoom } from "./cameraZoom";
-import { CAMERA_OFFSET, CENTER, DAY_START, GRID, HUD_BLINK } from "./constants";
+import { CAMERA_OFFSET, CENTER, DAY_START, DEBUG_GRID, GRID, HUD_BLINK } from "./constants";
 import { applyDayNight, createDayLights, DayClock, isDaytime } from "./dayNight";
 import { buildGridOverlay } from "./gridOverlay";
 import { createHud, showDeathScreen } from "./hud";
-import { buildBiomes, buildCoastField, buildIslandMesh, buildOcean, findSpawn } from "./island";
+import { buildBiomes, buildCoastField, buildIslandMesh, findSpawn } from "./island";
 import { Needs } from "./needs";
+import { buildOcean } from "./ocean";
 import { GridPlayer } from "./player";
 import { loadPlayerModel } from "./playerModel";
 import { scatterProps } from "./props";
@@ -35,7 +36,8 @@ document.body.appendChild(renderer.domElement);
 const lights = createDayLights(scene);
 applyDayNight(scene, lights, DAY_START);
 
-scene.add(buildOcean());
+const ocean = buildOcean();
+scene.add(ocean.mesh);
 scene.add(buildIslandMesh(biomes));
 
 async function start(): Promise<void> {
@@ -45,7 +47,7 @@ async function start(): Promise<void> {
   const scattered = await scatterProps(scene, biomes, blocked);
   blocked[spawn.z * GRID + spawn.x] = 0;
 
-  scene.add(buildGridOverlay(biomes, blocked));
+  if (DEBUG_GRID) scene.add(buildGridOverlay(biomes, blocked));
 
   const visual = await loadPlayerModel(DEFAULT_APPEARANCE);
   const player = new GridPlayer(biomes, blocked, spawn, visual);
@@ -83,9 +85,10 @@ async function start(): Promise<void> {
     needs.tick(player.gait, dt, isDaytime(day.t));
     day.update(dt);
     applyDayNight(scene, lights, day.t);
+    ocean.update(clock.elapsedTime);
     islandAudio.update();
     const offset = offsetForZoom(camera, zoom.cells);
-    applyZoomFog(scene, camera, offset.length(), zoom.cells);
+    applyZoomFog(scene, camera, offset.length(), zoom.cells, day.t);
     player.followCamera(camera, offset);
     hud.update({
       sky: isDaytime(day.t) ? "sun" : "moon",
