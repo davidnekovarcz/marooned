@@ -126,7 +126,7 @@ export function formatDeathMessage(gameHours: number): string {
   const totalMinutes = Math.max(0, Math.floor(gameHours * 60));
   const hours = Math.floor(totalMinutes / 60);
   const minutes = totalMinutes % 60;
-  return `You have survived for: ${unitLabel(hours, "hour", "hours")} + ${unitLabel(minutes, "minute", "minutes")}, but now you're dead.`;
+  return `You have survived ${unitLabel(hours, "hour", "hours")} + ${unitLabel(minutes, "minute", "minutes")}... but now you're dead.`;
 }
 
 export function showDeathScreen(gameHours: number): void {

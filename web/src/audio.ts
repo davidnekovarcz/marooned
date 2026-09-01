@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { CELL, SOUND_3D } from "./constants";
+import { CELL, EAT_ACTION_SECONDS, SOUND_3D } from "./constants";
 import type { CoastField } from "./island";
 import { cellIndex } from "./island";
 import { SOUND_URLS } from "./models";
@@ -161,18 +161,77 @@ function attachRandomOneShots(
   return sound;
 }
 
+function makeDrinkBuffer(ctx: AudioContext, seconds: number): AudioBuffer {
+  const rate = ctx.sampleRate;
+  const n = Math.floor(rate * seconds);
+  const buffer = ctx.createBuffer(1, n, rate);
+  const data = buffer.getChannelData(0);
+  const gulps = [0.14, 0.7, 1.28, 1.86, 2.42];
+  let prev = 0;
+  for (let i = 0; i < n; i++) {
+    const t = i / rate;
+    const white = Math.random() * 2 - 1;
+    prev = prev * 0.96 + white * 0.04;
+    const fade = Math.min(t * 10, (seconds - t) * 10, 1);
+    let s = prev * 0.05 * fade;
+    for (const g of gulps) {
+      const u = t - g;
+      if (u < 0 || u > 0.24) continue;
+      const env = Math.sin((u / 0.24) * Math.PI) ** 1.25;
+      const freq = 280 - u * 720;
+      s += Math.sin(t * freq * Math.PI * 2) * env * 0.34;
+      s += prev * env * 0.16;
+    }
+    data[i] = s * 0.72;
+  }
+  return buffer;
+}
+
+function makeChewBuffer(ctx: AudioContext, seconds: number): AudioBuffer {
+  const rate = ctx.sampleRate;
+  const n = Math.floor(rate * seconds);
+  const buffer = ctx.createBuffer(1, n, rate);
+  const data = buffer.getChannelData(0);
+  const chews: number[] = [];
+  for (let t = 0.18; t < seconds - 0.2; t += 0.36) chews.push(t);
+  let prev = 0;
+  for (let i = 0; i < n; i++) {
+    const t = i / rate;
+    const white = Math.random() * 2 - 1;
+    prev = prev * 0.9 + white * 0.1;
+    const fade = Math.min(t * 12, (seconds - t) * 12, 1);
+    let s = 0;
+    for (const c of chews) {
+      const u = t - c;
+      if (u < 0 || u > 0.09) continue;
+      const env = Math.sin((u / 0.09) * Math.PI) ** 1.1;
+      s += prev * env * 0.55;
+      s += Math.sin(t * 90 * Math.PI * 2) * env * 0.12;
+    }
+    data[i] = s * fade * 0.65;
+  }
+  return buffer;
+}
+
+export type MealKind = "drink" | "eat";
+
 export function setupIslandAudio(
   scene: THREE.Scene,
   player: GridPlayer,
   anchors: { id: string; position: THREE.Vector3 }[],
   coast: CoastField,
-): { update: () => void } {
+): { update: () => void; playMeal: (kind: MealKind) => void } {
   const listener = new THREE.AudioListener();
   player.mesh.add(listener);
 
   let oceanSound: THREE.PositionalAudio | null = null;
   const oceanSource = new THREE.Vector3();
   const tracked: { sound: THREE.PositionalAudio; source: THREE.Vector3 }[] = [];
+  const mealSound = new THREE.Audio(listener);
+  const rustleSound = new THREE.Audio(listener);
+  let drinkBuf: AudioBuffer | null = null;
+  let chewBuf: AudioBuffer | null = null;
+  let rustleBuf: AudioBuffer | null = null;
 
   const hint = document.getElementById("hint");
   const unlock = async () => {
@@ -189,6 +248,9 @@ export function setupIslandAudio(
     const waves = makeWaveBuffer(ctx);
     const pondBed = makePondBed(ctx);
     const frogs = [0, 1, 2, 3].map((v) => makeFrogBuffer(ctx, v));
+    drinkBuf = makeDrinkBuffer(ctx, EAT_ACTION_SECONDS);
+    chewBuf = makeChewBuffer(ctx, EAT_ACTION_SECONDS);
+    rustleBuf = cloths[0] ?? null;
 
     const group = new THREE.Group();
     group.name = "audio";
@@ -235,6 +297,20 @@ export function setupIslandAudio(
       const i = cellIndex(player.cellX, player.cellZ);
       oceanSource.set(coast.nearX[i]! * CELL + CELL / 2, 0.8, coast.nearZ[i]! * CELL + CELL / 2);
       for (const item of tracked) applySpatial(item.sound, item.source, listener);
+    },
+    playMeal: (kind) => {
+      if (rustleBuf) {
+        if (rustleSound.isPlaying) rustleSound.stop();
+        rustleSound.setBuffer(rustleBuf);
+        rustleSound.setVolume(0.38);
+        rustleSound.play();
+      }
+      const buf = kind === "drink" ? drinkBuf : chewBuf;
+      if (!buf) return;
+      if (mealSound.isPlaying) mealSound.stop();
+      mealSound.setBuffer(buf);
+      mealSound.setVolume(kind === "drink" ? 0.52 : 0.46);
+      mealSound.play();
     },
   };
 }

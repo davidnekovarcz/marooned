@@ -19,6 +19,7 @@ import {
   isLand,
   nearestCell,
 } from "./island";
+import { makeWorldItem, type WorldItem } from "./interact";
 import { loadGlb, loadObj } from "./loaders";
 import { LILY_URL, MODEL_URLS, type ModelKind } from "./models";
 import { mulberry32 } from "./rng";
@@ -87,6 +88,7 @@ export type AudioAnchor = { id: string; position: THREE.Vector3 };
 export type ScatterResult = {
   group: THREE.Group;
   audioAnchors: AudioAnchor[];
+  items: WorldItem[];
 };
 
 function scaleToHeight(obj: THREE.Object3D, height: number): void {
@@ -181,6 +183,7 @@ export async function scatterProps(
   const group = new THREE.Group();
   group.name = "props";
   const audioAnchors: AudioAnchor[] = [];
+  const items: WorldItem[] = [];
 
   const add = (
     kind: ModelKind | "lilypad",
@@ -199,6 +202,7 @@ export async function scatterProps(
     if (extra?.tiltZ) clone.rotation.z += extra.tiltZ;
     if (extra?.tiltX || extra?.tiltZ) sitOnGround(clone);
     group.add(clone);
+    items.push(makeWorldItem(kind, x, z, clone));
     return clone;
   };
 
@@ -361,5 +365,5 @@ export async function scatterProps(
   }
 
   scene.add(group);
-  return { group, audioAnchors };
+  return { group, audioAnchors, items };
 }
