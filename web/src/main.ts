@@ -1,11 +1,13 @@
 import "./style.css";
 import * as THREE from "three";
+import { DEFAULT_APPEARANCE } from "./appearance";
 import { setupIslandAudio } from "./audio";
 import { applyZoomFog, CameraZoom, offsetForZoom } from "./cameraZoom";
 import { CAMERA_OFFSET, CENTER, GRID } from "./constants";
 import { buildGridOverlay } from "./gridOverlay";
 import { buildBiomes, buildCoastField, buildIslandMesh, buildOcean, findSpawn } from "./island";
 import { GridPlayer } from "./player";
+import { loadPlayerModel } from "./playerModel";
 import { scatterProps } from "./props";
 
 const blocked = new Uint8Array(GRID * GRID);
@@ -57,7 +59,8 @@ async function start(): Promise<void> {
 
   scene.add(buildGridOverlay(biomes, blocked));
 
-  const player = new GridPlayer(biomes, blocked, spawn);
+  const visual = await loadPlayerModel(DEFAULT_APPEARANCE);
+  const player = new GridPlayer(biomes, blocked, spawn, visual);
   scene.add(player.mesh);
 
   const islandAudio = setupIslandAudio(scene, player, scattered.audioAnchors, coast);

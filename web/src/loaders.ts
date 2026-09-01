@@ -1,8 +1,10 @@
 import * as THREE from "three";
+import { FBXLoader } from "three/addons/loaders/FBXLoader.js";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { OBJLoader } from "three/addons/loaders/OBJLoader.js";
 
 const gltfLoader = new GLTFLoader();
+const fbxLoader = new FBXLoader();
 
 export function prepareTemplate(root: THREE.Object3D): THREE.Object3D {
   root.traverse((obj) => {
@@ -25,6 +27,10 @@ export function prepareTemplate(root: THREE.Object3D): THREE.Object3D {
 export async function loadGlb(url: string): Promise<THREE.Object3D> {
   const gltf = await gltfLoader.loadAsync(url);
   return prepareTemplate(gltf.scene);
+}
+
+export async function loadFbx(url: string): Promise<THREE.Group> {
+  return fbxLoader.loadAsync(url);
 }
 
 export async function loadObj(url: string, color = 0x3a7a32): Promise<THREE.Object3D> {

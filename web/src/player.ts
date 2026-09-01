@@ -1,6 +1,7 @@
 import * as THREE from "three";
-import { CELL, GROUND_Y, STEP_SECONDS } from "./constants";
+import { CELL, STEP_SECONDS } from "./constants";
 import { isWalkable } from "./gridOverlay";
+import type { PlayerVisual } from "./playerModel";
 
 const DIRS: Record<string, { x: number; z: number }> = {
   KeyW: { x: 0, z: 1 },
@@ -27,19 +28,9 @@ export class GridPlayer {
     private biomes: Uint8Array,
     private blocked: Uint8Array,
     start: { x: number; z: number },
+    private visual: PlayerVisual,
   ) {
-    const geo = new THREE.CapsuleGeometry(0.28, 0.9, 4, 10);
-    const mat = new THREE.MeshStandardMaterial({
-      color: 0xf0d2a8,
-      roughness: 0.7,
-      metalness: 0,
-    });
-    const body = new THREE.Mesh(geo, mat);
-    body.castShadow = true;
-    body.position.y = 0.73 + GROUND_Y;
-    const wrap = new THREE.Group();
-    wrap.add(body);
-    this.mesh = wrap;
+    this.mesh = visual.root;
     this.cellX = start.x;
     this.cellZ = start.z;
     this.snap();
@@ -60,18 +51,21 @@ export class GridPlayer {
   }
 
   update(dt: number): void {
+    this.visual.mixer.update(dt);
+
     if (this.moving) {
       this.t += dt / STEP_SECONDS;
       const u = Math.min(1, this.t);
       const s = u * u * (3 - 2 * u);
       this.mesh.position.lerpVectors(this.from, this.to, s);
-      if (u >= 1) {
-        this.moving = false;
-        this.cellX = Math.round(this.to.x - CELL / 2);
-        this.cellZ = Math.round(this.to.z - CELL / 2);
-        this.snap();
+      if (u < 1) {
+        this.visual.setMoving(true);
+        return;
       }
-      return;
+      this.moving = false;
+      this.cellX = Math.round(this.to.x - CELL / 2);
+      this.cellZ = Math.round(this.to.z - CELL / 2);
+      this.snap();
     }
 
     for (const code of this.pressed) {
@@ -87,6 +81,7 @@ export class GridPlayer {
       this.mesh.lookAt(this.to.x, 0, this.to.z);
       break;
     }
+    this.visual.setMoving(this.moving);
   }
 
   followCamera(camera: THREE.PerspectiveCamera, offset: THREE.Vector3): void {

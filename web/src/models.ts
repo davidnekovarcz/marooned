@@ -42,6 +42,12 @@ import bridgeUrl from "../../assets/vendor/kenney/mini-forest/Models/GLB format/
 
 import lilyObjUrl from "../../assets/vendor/quaternius/150-lowpoly-nature-models/OBJ/Lilypad.obj?url";
 
+import characterFbxUrl from "../../assets/vendor/kenney/animated-characters-survivors/Model/characterMedium.fbx?url";
+import idleFbxUrl from "../../assets/vendor/kenney/animated-characters-survivors/Animations/idle.fbx?url";
+import runFbxUrl from "../../assets/vendor/kenney/animated-characters-survivors/Animations/run.fbx?url";
+import survivorMaleUrl from "../../assets/vendor/kenney/animated-characters-survivors/Skins/survivorMaleB.png?url";
+import survivorFemaleUrl from "../../assets/vendor/kenney/animated-characters-survivors/Skins/survivorFemaleA.png?url";
+
 import creak1Url from "../../assets/vendor/kenney/rpg-audio/Audio/creak1.ogg?url";
 import creak2Url from "../../assets/vendor/kenney/rpg-audio/Audio/creak2.ogg?url";
 import creak3Url from "../../assets/vendor/kenney/rpg-audio/Audio/creak3.ogg?url";
@@ -90,6 +96,14 @@ export const MODEL_URLS = {
 } as const;
 
 export const LILY_URL = lilyObjUrl;
+
+export const PLAYER_URLS = {
+  model: characterFbxUrl,
+  idle: idleFbxUrl,
+  run: runFbxUrl,
+  male: survivorMaleUrl,
+  female: survivorFemaleUrl,
+} as const;
 
 export const SOUND_URLS = {
   creaks: [creak1Url, creak2Url, creak3Url],
