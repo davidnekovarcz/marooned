@@ -5,11 +5,9 @@ import {
   CELL,
   CENTER,
   GRASS_A,
-  GRASS_B,
   GRID,
   ISLAND_RADIUS,
   SAND_A,
-  SAND_B,
   WATER,
   WATER_Y,
 } from "./constants";
@@ -37,12 +35,6 @@ export function isLand(biome: Biome): boolean {
   return biome !== Biome.Water;
 }
 
-function hexColor(hex: number, rng: () => number, other: number): THREE.Color {
-  const c = new THREE.Color(hex);
-  c.lerp(new THREE.Color(other), rng() * 0.35);
-  return c;
-}
-
 export function buildBiomes(): Uint8Array {
   const biomes = new Uint8Array(GRID * GRID);
   for (let z = 0; z < GRID; z++) {
@@ -53,68 +45,55 @@ export function buildBiomes(): Uint8Array {
   return biomes;
 }
 
-export function buildIslandMesh(biomes: Uint8Array, rng: () => number): THREE.Mesh {
-  const positions: number[] = [];
-  const colors: number[] = [];
-  const normals: number[] = [];
+export function buildIslandMesh(biomes: Uint8Array): THREE.Group {
+  const group = new THREE.Group();
+  group.name = "island";
+  group.add(buildBiomeMesh(biomes, Biome.Grass, GRASS_A));
+  group.add(buildBiomeMesh(biomes, Biome.Sand, SAND_A));
+  return group;
+}
 
-  const up = [0, 1, 0];
+function buildBiomeMesh(biomes: Uint8Array, want: Biome, color: number): THREE.Mesh {
+  const positions: number[] = [];
 
   for (let z = 0; z < GRID; z++) {
     for (let x = 0; x < GRID; x++) {
-      const biome = biomes[cellIndex(x, z)] as Biome;
-      if (!isLand(biome)) continue;
+      if (biomes[cellIndex(x, z)] !== want) continue;
 
       const x0 = x * CELL;
       const z0 = z * CELL;
       const x1 = x0 + CELL;
       const z1 = z0 + CELL;
-      const y = 0;
-
-      // two triangles: (x0,z0)-(x1,z0)-(x1,z1) and (x0,z0)-(x1,z1)-(x0,z1)
+      const y = 0.02;
       const quad: [number, number][] = [
         [x0, z0],
-        [x1, z0],
+        [x0, z1],
         [x1, z1],
         [x0, z0],
         [x1, z1],
-        [x0, z1],
+        [x1, z0],
       ];
-      const color =
-        biome === Biome.Sand
-          ? hexColor(SAND_A, rng, SAND_B)
-          : hexColor(GRASS_A, rng, GRASS_B);
-
       for (const [px, pz] of quad) {
         positions.push(px, y, pz);
-        colors.push(color.r, color.g, color.b);
-        normals.push(...up);
       }
     }
   }
 
   const geo = new THREE.BufferGeometry();
   geo.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
-  geo.setAttribute("color", new THREE.Float32BufferAttribute(colors, 3));
-  geo.setAttribute("normal", new THREE.Float32BufferAttribute(normals, 3));
+  geo.computeVertexNormals();
 
-  const mat = new THREE.MeshStandardMaterial({
-    vertexColors: true,
-    roughness: 0.92,
-    metalness: 0,
-  });
+  const mat = new THREE.MeshBasicMaterial({ color, side: THREE.DoubleSide });
   const mesh = new THREE.Mesh(geo, mat);
   mesh.receiveShadow = true;
-  mesh.name = "island";
+  mesh.name = want === Biome.Sand ? "beach" : "grass";
   return mesh;
 }
 
 export function buildOcean(): THREE.Mesh {
   const geo = new THREE.PlaneGeometry(250, 250);
-  const mat = new THREE.MeshStandardMaterial({
+  const mat = new THREE.MeshLambertMaterial({
     color: WATER,
-    roughness: 0.28,
-    metalness: 0.05,
   });
   const mesh = new THREE.Mesh(geo, mat);
   mesh.rotation.x = -Math.PI / 2;

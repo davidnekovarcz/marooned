@@ -8,11 +8,11 @@ export const STEP_SECONDS = 0.15;
 export const CAMERA_OFFSET = { x: 16, y: 22, z: 16 } as const;
 export const SEED = "marooned-mvp-1";
 
-export const GRASS_A = 0x5aab3a;
-export const GRASS_B = 0x6bc24a;
-export const SAND_A = 0xe2c98a;
-export const SAND_B = 0xcbb56a;
-export const WATER = 0x1e6b8a;
+export const GRASS_A = 0x7fe046;
+export const GRASS_B = 0x5ab83a;
+export const SAND_A = 0xf6d56a;
+export const SAND_B = 0xe0bc62;
+export const WATER = 0x0d5a75;
 
 export enum Biome {
   Water = 0,

@@ -1,19 +1,17 @@
 import "./style.css";
 import * as THREE from "three";
-import { CAMERA_OFFSET, CENTER, GRID, SEED } from "./constants";
+import { CAMERA_OFFSET, CENTER, GRID } from "./constants";
 import { buildGridOverlay } from "./gridOverlay";
 import { buildBiomes, buildIslandMesh, buildOcean, findSpawn } from "./island";
 import { GridPlayer } from "./player";
 import { scatterProps } from "./props";
-import { mulberry32 } from "./rng";
 
 const blocked = new Uint8Array(GRID * GRID);
-const rng = mulberry32(`${SEED}-terrain`);
 const biomes = buildBiomes();
 
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x8ec8d8);
-scene.fog = new THREE.Fog(0x8ec8d8, 40, 120);
+scene.background = new THREE.Color(0x9fd4e4);
+scene.fog = new THREE.Fog(0x9fd4e4, 90, 180);
 
 const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 300);
 camera.position.set(CENTER + CAMERA_OFFSET.x, CAMERA_OFFSET.y, CENTER + CAMERA_OFFSET.z);
@@ -41,7 +39,7 @@ sun.shadow.bias = -0.0008;
 scene.add(sun);
 
 scene.add(buildOcean());
-scene.add(buildIslandMesh(biomes, rng));
+scene.add(buildIslandMesh(biomes));
 
 async function start(): Promise<void> {
   const spawn = findSpawn(biomes);
