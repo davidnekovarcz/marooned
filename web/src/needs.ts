@@ -33,7 +33,7 @@ function clamp01(n: number): number {
 }
 
 export class Needs {
-  energy = 1;
+  energy = 0.75;
   thirst = 0.5;
   hunger = 0.5;
   temperature = 0.5;
@@ -83,10 +83,11 @@ export class Needs {
       else this.towardComfort(dt, TEMP_IDLE_DAY_RECOVER);
     }
 
-    this.energy = clamp01(this.energy);
     this.thirst = clamp01(this.thirst);
     this.hunger = clamp01(this.hunger);
     this.temperature = clamp01(this.temperature);
+    const foodAvg = (this.thirst + this.hunger) / 2;
+    this.energy = Math.min(1, 1.5 * foodAvg, Math.max(0, this.energy));
     if (this.energy <= 0) this.canSprint = false;
     else if (this.energy >= ENERGY_SPRINT_RESUME) this.canSprint = true;
   }
