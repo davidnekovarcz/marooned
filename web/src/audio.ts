@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { CELL } from "./constants";
+import { CELL, SOUND_3D } from "./constants";
 import type { CoastField } from "./island";
 import { cellIndex } from "./island";
 import { SOUND_URLS } from "./models";
@@ -79,6 +79,10 @@ async function loadBuffer(ctx: AudioContext, url: string): Promise<AudioBuffer> 
   return ctx.decodeAudioData(raw.slice(0));
 }
 
+const _listenerPos = new THREE.Vector3();
+const _listenerQuat = new THREE.Quaternion();
+const _ahead = new THREE.Vector3();
+
 function spatialize(
   sound: THREE.PositionalAudio,
   position: THREE.Vector3,
@@ -91,6 +95,23 @@ function spatialize(
   sound.setRolloffFactor(1);
   sound.setVolume(volume);
   sound.position.copy(position);
+}
+
+/** Keep distance attenuation; with SOUND_3D off, pin the source in front so it never pans L/R. */
+function applySpatial(
+  sound: THREE.PositionalAudio,
+  source: THREE.Vector3,
+  listener: THREE.AudioListener,
+): void {
+  if (SOUND_3D) {
+    sound.position.copy(source);
+    return;
+  }
+  listener.getWorldPosition(_listenerPos);
+  listener.getWorldQuaternion(_listenerQuat);
+  const dist = _listenerPos.distanceTo(source);
+  _ahead.set(0, 0, -1).applyQuaternion(_listenerQuat).multiplyScalar(dist);
+  sound.position.copy(_listenerPos).add(_ahead);
 }
 
 function randRange(min: number, max: number): number {
@@ -150,6 +171,8 @@ export function setupIslandAudio(
   player.mesh.add(listener);
 
   let oceanSound: THREE.PositionalAudio | null = null;
+  const oceanSource = new THREE.Vector3();
+  const tracked: { sound: THREE.PositionalAudio; source: THREE.Vector3 }[] = [];
 
   const hint = document.getElementById("hint");
   const unlock = async () => {
@@ -170,22 +193,28 @@ export function setupIslandAudio(
     const group = new THREE.Group();
     group.name = "audio";
 
-    oceanSound = attachLoop(listener, waves, new THREE.Vector3(), 0.5, OCEAN_HEAR);
-    group.add(oceanSound);
+    const track = (sound: THREE.PositionalAudio, source: THREE.Vector3) => {
+      group.add(sound);
+      tracked.push({ sound, source });
+    };
+
+    oceanSound = attachLoop(listener, waves, oceanSource, 0.5, OCEAN_HEAR);
+    track(oceanSound, oceanSource);
     oceanSound.play();
 
     for (const a of anchors) {
+      const source = a.position.clone();
       if (a.id === "wreck") {
-        group.add(attachRandomOneShots(listener, creaks, a.position, 0.55, [2.5, 8], LANDMARK_HEAR));
+        track(attachRandomOneShots(listener, creaks, source, 0.55, [2.5, 8], LANDMARK_HEAR), source);
       } else if (a.id === "hut") {
-        group.add(attachRandomOneShots(listener, cloths, a.position, 0.42, [3.5, 11], LANDMARK_HEAR));
+        track(attachRandomOneShots(listener, cloths, source, 0.42, [3.5, 11], LANDMARK_HEAR), source);
       } else if (a.id === "boat") {
-        group.add(attachRandomOneShots(listener, chops, a.position, 0.32, [4, 12], LANDMARK_HEAR));
+        track(attachRandomOneShots(listener, chops, source, 0.32, [4, 12], LANDMARK_HEAR), source);
       } else if (a.id === "pond") {
-        const bed = attachLoop(listener, pondBed, a.position, 0.22, LANDMARK_HEAR);
-        group.add(bed);
+        const bed = attachLoop(listener, pondBed, source, 0.22, LANDMARK_HEAR);
+        track(bed, source);
         bed.play();
-        group.add(attachRandomOneShots(listener, frogs, a.position, 0.48, [1.2, 3.6], LANDMARK_HEAR));
+        track(attachRandomOneShots(listener, frogs, source, 0.48, [1.2, 3.6], LANDMARK_HEAR), source);
       }
     }
 
@@ -204,7 +233,8 @@ export function setupIslandAudio(
     update: () => {
       if (!oceanSound) return;
       const i = cellIndex(player.cellX, player.cellZ);
-      oceanSound.position.set(coast.nearX[i]! * CELL + CELL / 2, 0.8, coast.nearZ[i]! * CELL + CELL / 2);
+      oceanSource.set(coast.nearX[i]! * CELL + CELL / 2, 0.8, coast.nearZ[i]! * CELL + CELL / 2);
+      for (const item of tracked) applySpatial(item.sound, item.source, listener);
     },
   };
 }

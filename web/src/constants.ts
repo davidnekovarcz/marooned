@@ -13,6 +13,8 @@ export const ZOOM_CELLS_OUT = ISLAND_RADIUS;
 export const ZOOM_CELLS_START = 24;
 export const ZOOM_CELLS_PER_SEC = 28;
 export const SEED = "marooned-mvp-1";
+/** Distance falloff always. Stereo L/R from facing / side only if true. */
+export const SOUND_3D = false;
 
 export const POND_X = 58;
 export const POND_Z = 82;
