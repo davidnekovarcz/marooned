@@ -14,7 +14,7 @@ import {
 import type { MealKind } from "./audio";
 import type { Needs } from "./needs";
 import type { ModelKind } from "./models";
-import type { GridPlayer, HeldKind, PocketSlot } from "./player";
+import { isHeldFood, type GridPlayer, type HeldKind, type PocketSlot } from "./player";
 
 export type WorldKind = ModelKind | "lilypad";
 
@@ -26,6 +26,7 @@ export type WorldItemAction = {
   needsHeld?: HeldKind;
   cut?: boolean;
   crack?: boolean;
+  eatHeld?: boolean;
 };
 
 export type WorldItem = {
@@ -81,16 +82,37 @@ const NAMES: Record<WorldKind, string> = {
 const HELD_NAME: Record<HeldKind, string> = {
   knife: "Knife",
   hammer: "Hammer",
+  coconutHalf: "Open coconut",
+  orange: "Orange",
+  pineapple: "Pineapple",
 };
 
-const ACTIONS: Partial<Record<WorldKind, WorldItemAction>> = {
+const HELD_MEAL: Record<"coconutHalf" | "orange" | "pineapple", WorldItemAction> = {
   coconutHalf: {
     label: "Eat / drink",
+    eatHeld: true,
     meal: { hunger: EAT_COCONUT_HUNGER, thirst: EAT_COCONUT_THIRST },
   },
   orange: {
     label: "Eat",
+    eatHeld: true,
     meal: { hunger: EAT_FRUIT_HUNGER, thirst: EAT_FRUIT_THIRST },
+  },
+  pineapple: {
+    label: "Eat",
+    eatHeld: true,
+    meal: { hunger: EAT_PINEAPPLE_HUNGER, thirst: EAT_PINEAPPLE_THIRST },
+  },
+};
+
+const ACTIONS: Partial<Record<WorldKind, WorldItemAction>> = {
+  coconutHalf: {
+    label: "Pick up",
+    pickup: "coconutHalf",
+  },
+  orange: {
+    label: "Pick up",
+    pickup: "orange",
   },
   coconut: {
     label: "Break (needs a hammer)",
@@ -137,9 +159,7 @@ export function makeWorldItem(
 
 function resolveAction(item: WorldItem, held: HeldKind | null): WorldItemAction | undefined {
   if (item.kind === "pineapple") {
-    if (item.cut) {
-      return { label: "Eat", meal: { hunger: EAT_PINEAPPLE_HUNGER, thirst: EAT_PINEAPPLE_THIRST } };
-    }
+    if (item.cut) return { label: "Pick up", pickup: "pineapple" };
     if (held === "knife") return { label: "Cut", cut: true, needsHeld: "knife" };
     return ACTIONS.pineapple;
   }
@@ -148,6 +168,11 @@ function resolveAction(item: WorldItem, held: HeldKind | null): WorldItemAction 
     return ACTIONS.coconut;
   }
   return item.action;
+}
+
+function heldMealAction(held: HeldKind | null): WorldItemAction | undefined {
+  if (!isHeldFood(held)) return undefined;
+  return HELD_MEAL[held];
 }
 
 function actionEnabled(action: WorldItemAction | undefined): boolean {
@@ -211,9 +236,11 @@ export function createInteract(
   const rightItem = document.getElementById("gear-right-item");
 
   let current: WorldItem | null = null;
+  let currentAction: WorldItemAction | null = null;
 
   function hide(): void {
     current = null;
+    currentAction = null;
     panel.hidden = true;
   }
 
@@ -230,15 +257,31 @@ export function createInteract(
   }
 
   function dropToWorld(dropped: { mesh: THREE.Object3D; kind: HeldKind }): void {
-    items.push(makeWorldItem(dropped.kind, player.cellX, player.cellZ, dropped.mesh));
+    const item = makeWorldItem(dropped.kind, player.cellX, player.cellZ, dropped.mesh);
+    if (dropped.kind === "pineapple") {
+      item.cut = true;
+      item.name = "Cut pineapple";
+    }
+    items.push(item);
   }
 
   function perform(): void {
-    const item = current;
-    if (!item) return;
-    const action = resolveAction(item, player.heldKind);
+    const action = currentAction;
     if (!action || action.blockedReason) return;
     if (!player.alive || player.busy) return;
+
+    if (action.eatHeld) {
+      if (!action.meal || !isHeldFood(player.heldKind)) return;
+      const food = player.heldKind;
+      if (!player.beginHeldMeal(EAT_ACTION_SECONDS)) return;
+      needs.feed(action.meal.hunger, action.meal.thirst);
+      audio.playMeal(food === "coconutHalf" ? "drink" : "eat");
+      hide();
+      return;
+    }
+
+    const item = current;
+    if (!item) return;
     player.faceToward(item.mesh.position.x, item.mesh.position.z);
 
     if (action.pickup) {
@@ -274,23 +317,6 @@ export function createInteract(
       }
       audio.playPickup();
       hide();
-      return;
-    }
-
-    if (action.meal) {
-      if (player.heldKind && !player.stowHeld()) {
-        const dropped = player.dropHeld();
-        if (dropped) dropToWorld(dropped);
-      }
-      const pineapple = item.kind === "pineapple";
-      if (!player.beginMeal(item.mesh, EAT_ACTION_SECONDS, pineapple ? { pineapple: true } : undefined)) {
-        return;
-      }
-      needs.feed(action.meal.hunger, action.meal.thirst);
-      audio.playMeal(item.kind === "coconutHalf" ? "drink" : "eat");
-      const i = items.indexOf(item);
-      if (i >= 0) items.splice(i, 1);
-      hide();
     }
   }
 
@@ -301,9 +327,7 @@ export function createInteract(
   window.addEventListener("keydown", (e) => {
     if (e.code !== "Space" && e.key !== " ") return;
     if (e.repeat) return;
-    if (!current) return;
-    const action = resolveAction(current, player.heldKind);
-    if (!actionEnabled(action)) return;
+    if (!actionEnabled(currentAction ?? undefined)) return;
     e.preventDefault();
     perform();
   });
@@ -357,21 +381,29 @@ export function createInteract(
         return;
       }
       const next = nearestItem(items, cellX, cellZ, player.heldKind);
-      current = next;
-      if (!next) {
+      const worldAction = next ? resolveAction(next, player.heldKind) : undefined;
+      const eatHeld = heldMealAction(player.heldKind);
+      const preferWorld = Boolean(next && actionEnabled(worldAction));
+      if (preferWorld && next && worldAction) {
+        current = next;
+        currentAction = worldAction;
+      } else if (eatHeld) {
+        current = null;
+        currentAction = eatHeld;
+      } else if (next && worldAction) {
+        current = next;
+        currentAction = worldAction;
+      } else {
         panel.hidden = true;
+        current = null;
+        currentAction = null;
         return;
       }
       panel.hidden = false;
-      nameEl.textContent = next.name;
-      const action = resolveAction(next, player.heldKind);
-      if (!action) {
-        btn.hidden = true;
-        return;
-      }
+      nameEl.textContent = current ? current.name : slotLabel(player.heldKind);
       btn.hidden = false;
-      btn.textContent = action.label;
-      btn.disabled = Boolean(action.blockedReason);
+      btn.textContent = currentAction.label;
+      btn.disabled = Boolean(currentAction.blockedReason);
     },
   };
 }
