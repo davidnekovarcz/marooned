@@ -26,7 +26,7 @@ const PICK_AT = 0.32;
 
 export type HeldKind = "knife" | "hammer" | "coconutHalf" | "orange" | "pineapple";
 export type PocketSlot = "left" | "right";
-type LockKind = "meal" | "pickup" | "cut" | "break";
+type LockKind = "meal" | "cut" | "break";
 type PocketItem = { kind: HeldKind; mesh: THREE.Object3D };
 
 const FOOD_HOLD = { rot: new THREE.Euler(0.4, 0.2, 0.5) };
@@ -110,7 +110,6 @@ export class GridPlayer {
   private tool: THREE.Object3D | null = null;
   private meal: THREE.Object3D | null = null;
   private grabbed = false;
-  private pendingKind: HeldKind | null = null;
   private pockets: Record<PocketSlot, PocketItem | null> = { left: null, right: null };
   private pocketGroup = new THREE.Group();
   private onCutDone: (() => void) | null = null;
@@ -190,25 +189,12 @@ export class GridPlayer {
     return this.detachToolToWorld();
   }
 
-  /** Returns `{ dropped }` when a previous tool had to go to the ground (pockets full). */
-  beginPickup(
-    mesh: THREE.Object3D,
-    kind: HeldKind,
-    seconds: number,
-  ): { dropped: { mesh: THREE.Object3D; kind: HeldKind } | null } | null {
+  /** Instant — no crouch. Previous held item stows or drops. */
+  pickup(mesh: THREE.Object3D, kind: HeldKind): { dropped: { mesh: THREE.Object3D; kind: HeldKind } | null } | null {
     if (!this.alive || this.busy) return null;
-    this.stopMoving();
     let dropped: { mesh: THREE.Object3D; kind: HeldKind } | null = null;
     if (this.tool && this.heldKind && !this.stowHeld()) dropped = this.detachToolToWorld();
-    this.busy = true;
-    this.lock = "pickup";
-    this.lockT = 0;
-    this.lockSeconds = seconds;
-    this.meal = mesh;
-    this.pendingKind = kind;
-    this.grabbed = false;
-    this.gait = this.inWater() ? "swim" : "idle";
-    this.visual.setGait(this.gait);
+    this.grabHeld(mesh, kind);
     return { dropped };
   }
 
@@ -272,27 +258,23 @@ export class GridPlayer {
       this.meal = null;
     }
     if (lock === "cut" && finished) this.onCutDone?.();
-    if (lock === "pickup" && this.meal && !this.grabbed) this.grabHeld(this.meal);
     if (this.tool) this.tool.visible = true;
     this.meal = null;
     this.grabbed = false;
     this.busy = false;
     this.lock = null;
     this.lockT = 0;
-    this.pendingKind = null;
     this.onCutDone = null;
     this.onCrack = null;
     this.visual.setCrouch(0);
   }
 
-  private grabHeld(mesh: THREE.Object3D): void {
-    const kind = this.pendingKind ?? "knife";
+  private grabHeld(mesh: THREE.Object3D, kind: HeldKind): void {
     const hold = poseFor(kind);
     placeInGrip(this.visual.grip, mesh, hold.length, hold.rot);
     this.tool = mesh;
     this.heldKind = kind;
     this.meal = null;
-    this.pendingKind = null;
   }
 
   private hideInPocket(slot: PocketSlot, item: PocketItem): void {
@@ -347,8 +329,7 @@ export class GridPlayer {
     if (this.lockT < PICK_AT || this.grabbed) return;
     this.grabbed = true;
     if (!this.meal) return;
-    if (this.lock === "pickup") this.grabHeld(this.meal);
-    else if (this.lock === "break") {
+    if (this.lock === "break") {
       this.meal.removeFromParent();
       this.meal = null;
       this.onCrack?.();

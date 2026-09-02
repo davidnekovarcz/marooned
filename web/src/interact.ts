@@ -9,7 +9,6 @@ import {
   EAT_FRUIT_THIRST,
   EAT_PINEAPPLE_HUNGER,
   EAT_PINEAPPLE_THIRST,
-  PICKUP_SECONDS,
 } from "./constants";
 import type { MealKind } from "./audio";
 import type { Needs } from "./needs";
@@ -285,7 +284,7 @@ export function createInteract(
     player.faceToward(item.mesh.position.x, item.mesh.position.z);
 
     if (action.pickup) {
-      const started = player.beginPickup(item.mesh, action.pickup, PICKUP_SECONDS);
+      const started = player.pickup(item.mesh, action.pickup);
       if (!started) return;
       if (started.dropped) dropToWorld(started.dropped);
       audio.playPickup();
@@ -348,7 +347,10 @@ export function createInteract(
     e.preventDefault();
     if (action === "drop") {
       const dropped = player.dropHeld();
-      if (dropped) dropToWorld(dropped);
+      if (dropped) {
+        dropToWorld(dropped);
+        audio.playPickup();
+      }
       return;
     }
     if (action === "hands") {

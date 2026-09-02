@@ -102,8 +102,6 @@ export const EAT_RESTORE_SECONDS = 6;
 export const EAT_RESTORE_RATE = 0.15 / EAT_RESTORE_SECONDS;
 /** Locked crouch + eat/drink (no walking). */
 export const EAT_ACTION_SECONDS = 3;
-/** Reach down and pick up a tool. */
-export const PICKUP_SECONDS = 0.75;
 /** Cut pineapple with a held knife (eat is a second interact). */
 export const CUT_SECONDS = 2.2;
 /** Crack a whole coconut with a hammer. */
