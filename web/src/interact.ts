@@ -278,16 +278,12 @@ export function createInteract(
     }
 
     if (action.meal) {
-      if (item.kind === "pineapple") {
-        const hadKnife = player.heldKind === "knife";
-        if (player.heldKind && !player.stowHeld()) {
-          const dropped = player.dropHeld();
-          if (dropped) dropToWorld(dropped);
-        }
-        const restorePocket =
-          hadKnife && (player.pocket("left") === "knife" || player.pocket("right") === "knife");
-        if (!player.beginMeal(item.mesh, EAT_ACTION_SECONDS, { pineapple: true, restorePocket })) return;
-      } else if (!player.beginMeal(item.mesh, EAT_ACTION_SECONDS)) {
+      if (player.heldKind && !player.stowHeld()) {
+        const dropped = player.dropHeld();
+        if (dropped) dropToWorld(dropped);
+      }
+      const pineapple = item.kind === "pineapple";
+      if (!player.beginMeal(item.mesh, EAT_ACTION_SECONDS, pineapple ? { pineapple: true } : undefined)) {
         return;
       }
       needs.feed(action.meal.hunger, action.meal.thirst);
@@ -312,15 +308,45 @@ export function createInteract(
     perform();
   });
 
+  function hotkey(e: KeyboardEvent): "hands" | PocketSlot | "drop" | null {
+    if (e.repeat || e.metaKey || e.ctrlKey || e.altKey) return null;
+    if (e.code === "Digit1" || e.code === "Numpad1") return "left";
+    if (e.code === "Digit2" || e.code === "Numpad2") return "right";
+    if (e.code === "Digit0" || e.code === "Numpad0") return "hands";
+    if (e.code === "KeyG") return "drop";
+    return null;
+  }
+
+  window.addEventListener("keydown", (e) => {
+    const action = hotkey(e);
+    if (!action) return;
+    if (!player.alive || player.busy) return;
+    e.preventDefault();
+    if (action === "drop") {
+      const dropped = player.dropHeld();
+      if (dropped) dropToWorld(dropped);
+      return;
+    }
+    if (action === "hands") {
+      player.stowHeld();
+      return;
+    }
+    player.swapPocket(action);
+  });
+
   gearEl?.addEventListener("click", (e) => {
     const target = e.target;
     if (!(target instanceof Element)) return;
     const slotBtn = target.closest("[data-slot]");
     if (!(slotBtn instanceof HTMLElement)) return;
     const slot = slotBtn.dataset.slot;
-    if (slot !== "left" && slot !== "right") return;
     e.preventDefault();
-    player.swapPocket(slot as PocketSlot);
+    if (!player.alive || player.busy) return;
+    if (slot === "hands") {
+      player.stowHeld();
+      return;
+    }
+    if (slot === "left" || slot === "right") player.swapPocket(slot as PocketSlot);
   });
 
   return {

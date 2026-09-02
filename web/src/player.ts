@@ -102,8 +102,6 @@ export class GridPlayer {
   private mealRot = FOOD_HOLD.rot;
   private pockets: Record<PocketSlot, PocketItem | null> = { left: null, right: null };
   private pocketGroup = new THREE.Group();
-  private lastStowed: PocketSlot | null = null;
-  private restoreAfterMeal = false;
   private onCutDone: (() => void) | null = null;
   private onCrack: (() => void) | null = null;
 
@@ -154,7 +152,6 @@ export class GridPlayer {
     this.hideInPocket(slot, { kind: this.heldKind, mesh: this.tool });
     this.tool = null;
     this.heldKind = null;
-    this.lastStowed = slot;
     return true;
   }
 
@@ -204,11 +201,7 @@ export class GridPlayer {
     return { dropped };
   }
 
-  beginMeal(
-    mesh: THREE.Object3D,
-    seconds: number,
-    extra?: { pineapple?: boolean; restorePocket?: boolean },
-  ): boolean {
+  beginMeal(mesh: THREE.Object3D, seconds: number, extra?: { pineapple?: boolean }): boolean {
     if (!this.alive || this.busy) return false;
     this.stopMoving();
     this.busy = true;
@@ -219,7 +212,6 @@ export class GridPlayer {
     this.grabbed = false;
     this.mealHold = extra?.pineapple ? PINEAPPLE_HOLD.length : FOOD_HOLD.length;
     this.mealRot = extra?.pineapple ? PINEAPPLE_HOLD.rot : FOOD_HOLD.rot;
-    this.restoreAfterMeal = Boolean(extra?.restorePocket && this.lastStowed);
     if (this.tool) this.tool.visible = false;
     this.gait = this.inWater() ? "swim" : "idle";
     this.visual.setGait(this.gait);
@@ -261,7 +253,6 @@ export class GridPlayer {
   private endLock(): void {
     const finished = this.lockT >= this.lockSeconds;
     const lock = this.lock;
-    const restoreSlot = this.restoreAfterMeal ? this.lastStowed : null;
     if (lock === "meal") {
       this.meal?.removeFromParent();
       this.meal = null;
@@ -275,11 +266,9 @@ export class GridPlayer {
     this.lock = null;
     this.lockT = 0;
     this.pendingKind = null;
-    this.restoreAfterMeal = false;
     this.onCutDone = null;
     this.onCrack = null;
     this.visual.setCrouch(0);
-    if (lock === "meal" && finished && restoreSlot) this.swapPocket(restoreSlot);
   }
 
   private grabTool(mesh: THREE.Object3D): void {
