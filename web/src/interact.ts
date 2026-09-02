@@ -183,12 +183,24 @@ export function createInteract(
   }
   const panel = panelEl;
   const btn = btnEl;
+  const handsEl = document.getElementById("hands");
+  const handsItem = document.getElementById("hands-item");
 
   let current: WorldItem | null = null;
 
   function hide(): void {
     current = null;
     panel.hidden = true;
+  }
+
+  function updateHands(alive: boolean): void {
+    if (!handsEl || !handsItem) return;
+    if (!alive || !player.heldKind) {
+      handsEl.hidden = true;
+      return;
+    }
+    handsEl.hidden = false;
+    handsItem.textContent = player.heldKind === "knife" ? "Knife" : player.heldKind;
   }
 
   function dropReturnedKnife(mesh: THREE.Object3D): void {
@@ -250,6 +262,7 @@ export function createInteract(
 
   return {
     update: (cellX, cellZ, alive, busy) => {
+      updateHands(alive);
       if (!alive || busy) {
         hide();
         return;

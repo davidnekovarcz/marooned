@@ -83,6 +83,17 @@ const HEIGHT: Partial<Record<ModelKind | "lilypad", number>> = {
   lilypad: 0.08,
 };
 
+/** Kenney food/tools are often not Y-up — scale by longest edge so a knife is not boat-sized. */
+const LONGEST: Partial<Record<ModelKind | "lilypad", number>> = {
+  knife: 0.28,
+  coconutHalf: 0.17,
+  pineapple: 0.62,
+  orange: 0.14,
+  hammer: 0.4,
+  axe: 0.5,
+  shovel: 0.55,
+};
+
 export type AudioAnchor = { id: string; position: THREE.Vector3 };
 
 export type ScatterResult = {
@@ -98,6 +109,14 @@ function scaleToHeight(obj: THREE.Object3D, height: number): void {
   obj.scale.multiplyScalar(height / size.y);
 }
 
+function scaleToLongest(obj: THREE.Object3D, length: number): void {
+  const box = new THREE.Box3().setFromObject(obj);
+  const size = box.getSize(new THREE.Vector3());
+  const longest = Math.max(size.x, size.y, size.z);
+  if (longest < 1e-4) return;
+  obj.scale.multiplyScalar(length / longest);
+}
+
 function sitOnGround(obj: THREE.Object3D): void {
   const box = new THREE.Box3().setFromObject(obj);
   obj.position.y += GROUND_Y - box.min.y;
@@ -108,12 +127,14 @@ function placeAtCell(
   x: number,
   z: number,
   yaw: number,
-  height: number,
+  size: number,
   y: number = GROUND_Y,
+  byLongest = false,
 ): void {
   obj.position.set(x * CELL + CELL / 2, 0, z * CELL + CELL / 2);
   obj.rotation.y = yaw;
-  scaleToHeight(obj, height);
+  if (byLongest) scaleToLongest(obj, size);
+  else scaleToHeight(obj, size);
   const box = new THREE.Box3().setFromObject(obj);
   obj.position.y += y - box.min.y;
 }
@@ -196,8 +217,14 @@ export async function scatterProps(
     const src = templates[kind];
     if (!src) return null;
     const clone = src.clone(true);
-    const h = (HEIGHT[kind] ?? 1) * (0.92 + rng() * 0.16);
-    placeAtCell(clone, x, z, yaw, h, extra?.y ?? GROUND_Y);
+    const vary = 0.92 + rng() * 0.16;
+    const longest = LONGEST[kind];
+    if (longest !== undefined) {
+      placeAtCell(clone, x, z, yaw, longest * vary, extra?.y ?? GROUND_Y, true);
+    } else {
+      const h = (HEIGHT[kind] ?? 1) * vary;
+      placeAtCell(clone, x, z, yaw, h, extra?.y ?? GROUND_Y, false);
+    }
     if (extra?.tiltX) clone.rotation.x += extra.tiltX;
     if (extra?.tiltZ) clone.rotation.z += extra.tiltZ;
     if (extra?.tiltX || extra?.tiltZ) sitOnGround(clone);

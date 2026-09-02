@@ -24,8 +24,32 @@ const DIRS: Record<string, { x: number; z: number }> = {
 const SHIFT = new Set(["ShiftLeft", "ShiftRight"]);
 const PICK_AT = 0.32;
 
-const FOOD_HOLD = { pos: new THREE.Vector3(0.05, 0.02, 0.1), rot: new THREE.Euler(0.5, 0.3, 0.8) };
-const KNIFE_HOLD = { pos: new THREE.Vector3(0.03, 0.05, 0.12), rot: new THREE.Euler(1.15, 0.15, 1.35) };
+const FOOD_HOLD = { length: 0.16, pos: new THREE.Vector3(0, 0, 0), rot: new THREE.Euler(0.4, 0.2, 0.5) };
+const KNIFE_HOLD = { length: 0.28, pos: new THREE.Vector3(0, 0, 0), rot: new THREE.Euler(0.2, 0.9, 1.2) };
+
+const _holdBox = new THREE.Box3();
+const _holdSize = new THREE.Vector3();
+const _holdCenter = new THREE.Vector3();
+
+function placeInGrip(grip: THREE.Object3D, mesh: THREE.Object3D, length: number, rot: THREE.Euler): void {
+  grip.attach(mesh);
+  mesh.rotation.copy(rot);
+  mesh.position.set(0, 0, 0);
+  mesh.updateWorldMatrix(true, true);
+  _holdBox.setFromObject(mesh);
+  _holdBox.getSize(_holdSize);
+  const longest = Math.max(_holdSize.x, _holdSize.y, _holdSize.z, 1e-4);
+  mesh.scale.multiplyScalar(length / longest);
+  mesh.updateWorldMatrix(true, true);
+  _holdBox.setFromObject(mesh);
+  _holdBox.getCenter(_holdCenter);
+  const local = grip.worldToLocal(_holdCenter);
+  mesh.position.sub(local);
+  mesh.visible = true;
+  mesh.traverse((obj) => {
+    obj.frustumCulled = false;
+  });
+}
 
 export type HeldKind = "knife";
 type LockKind = "meal" | "pickup" | "cut";
@@ -162,30 +186,15 @@ export class GridPlayer {
   }
 
   private grabTool(mesh: THREE.Object3D): void {
-    const hand = this.visual.leftHand;
-    if (!hand) {
-      mesh.removeFromParent();
-      return;
-    }
-    hand.attach(mesh);
-    mesh.position.copy(KNIFE_HOLD.pos);
-    mesh.rotation.copy(KNIFE_HOLD.rot);
-    mesh.visible = true;
+    placeInGrip(this.visual.grip, mesh, KNIFE_HOLD.length, KNIFE_HOLD.rot);
     this.tool = mesh;
     this.heldKind = "knife";
     this.meal = null;
   }
 
   private grabFood(mesh: THREE.Object3D): void {
-    const hand = this.visual.leftHand;
-    if (!hand) {
-      mesh.removeFromParent();
-      this.meal = null;
-      return;
-    }
-    hand.attach(mesh);
-    mesh.position.copy(FOOD_HOLD.pos);
-    mesh.rotation.copy(FOOD_HOLD.rot);
+    placeInGrip(this.visual.grip, mesh, FOOD_HOLD.length, FOOD_HOLD.rot);
+    this.meal = mesh;
   }
 
   private detachToolToWorld(): THREE.Object3D | null {

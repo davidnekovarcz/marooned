@@ -19,6 +19,7 @@ export type PlayerVisual = {
   root: THREE.Object3D;
   mixer: THREE.AnimationMixer;
   leftHand: THREE.Object3D | null;
+  grip: THREE.Object3D;
   setGait: (gait: PlayerGait) => void;
   setCrouch: (amount: number) => void;
   setSwim: (amount: number) => void;
@@ -164,6 +165,11 @@ export async function loadPlayerModel(appearance: Appearance): Promise<PlayerVis
   root.name = "player";
   root.add(model);
 
+  const grip = new THREE.Group();
+  grip.name = "grip";
+  grip.position.set(0.22, 0.88, 0.16);
+  root.add(grip);
+
   const mixer = new THREE.AnimationMixer(model);
   const idleClip = pickClip(idleFbx, "Idle");
   const runClip = pickClip(runFbx, "Run");
@@ -216,6 +222,7 @@ export async function loadPlayerModel(appearance: Appearance): Promise<PlayerVis
     root,
     mixer,
     leftHand: model.getObjectByName("LeftHand") ?? null,
+    grip,
     setGait,
     setCrouch: (amount) => {
       crouch = Math.min(1, Math.max(0, amount));
