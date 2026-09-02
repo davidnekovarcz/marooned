@@ -29,8 +29,8 @@ export type PocketSlot = "left" | "right";
 type LockKind = "meal" | "pickup" | "cut" | "break";
 type PocketItem = { kind: HeldKind; mesh: THREE.Object3D };
 
-const FOOD_HOLD = { length: 0.16, rot: new THREE.Euler(0.4, 0.2, 0.5) };
-const PINEAPPLE_HOLD = { length: 0.32, rot: new THREE.Euler(0.35, 0.15, 0.45) };
+const FOOD_HOLD = { rot: new THREE.Euler(0.4, 0.2, 0.5) };
+const PINEAPPLE_HOLD = { rot: new THREE.Euler(0.35, 0.15, 0.45) };
 const HOLD: Record<HeldKind, { length: number; rot: THREE.Euler }> = {
   knife: { length: 0.28, rot: new THREE.Euler(0.2, 0.9, 1.2) },
   hammer: { length: 0.36, rot: new THREE.Euler(0.15, 0.7, 1.05) },
@@ -40,16 +40,19 @@ const _holdBox = new THREE.Box3();
 const _holdSize = new THREE.Vector3();
 const _holdCenter = new THREE.Vector3();
 
-function placeInGrip(grip: THREE.Object3D, mesh: THREE.Object3D, length: number, rot: THREE.Euler): void {
+/** `length` null keeps the mesh's world size (food while eating). */
+function placeInGrip(grip: THREE.Object3D, mesh: THREE.Object3D, length: number | null, rot: THREE.Euler): void {
   grip.attach(mesh);
   mesh.rotation.copy(rot);
   mesh.position.set(0, 0, 0);
   mesh.updateWorldMatrix(true, true);
-  _holdBox.setFromObject(mesh);
-  _holdBox.getSize(_holdSize);
-  const longest = Math.max(_holdSize.x, _holdSize.y, _holdSize.z, 1e-4);
-  mesh.scale.multiplyScalar(length / longest);
-  mesh.updateWorldMatrix(true, true);
+  if (length !== null) {
+    _holdBox.setFromObject(mesh);
+    _holdBox.getSize(_holdSize);
+    const longest = Math.max(_holdSize.x, _holdSize.y, _holdSize.z, 1e-4);
+    mesh.scale.multiplyScalar(length / longest);
+    mesh.updateWorldMatrix(true, true);
+  }
   _holdBox.setFromObject(mesh);
   _holdBox.getCenter(_holdCenter);
   const local = grip.worldToLocal(_holdCenter);
@@ -98,7 +101,6 @@ export class GridPlayer {
   private meal: THREE.Object3D | null = null;
   private grabbed = false;
   private pendingKind: HeldKind | null = null;
-  private mealHold = FOOD_HOLD.length;
   private mealRot = FOOD_HOLD.rot;
   private pockets: Record<PocketSlot, PocketItem | null> = { left: null, right: null };
   private pocketGroup = new THREE.Group();
@@ -210,7 +212,6 @@ export class GridPlayer {
     this.lockSeconds = seconds;
     this.meal = mesh;
     this.grabbed = false;
-    this.mealHold = extra?.pineapple ? PINEAPPLE_HOLD.length : FOOD_HOLD.length;
     this.mealRot = extra?.pineapple ? PINEAPPLE_HOLD.rot : FOOD_HOLD.rot;
     if (this.tool) this.tool.visible = false;
     this.gait = this.inWater() ? "swim" : "idle";
@@ -282,7 +283,7 @@ export class GridPlayer {
   }
 
   private grabFood(mesh: THREE.Object3D): void {
-    placeInGrip(this.visual.grip, mesh, this.mealHold, this.mealRot);
+    placeInGrip(this.visual.grip, mesh, null, this.mealRot);
     this.meal = mesh;
   }
 
