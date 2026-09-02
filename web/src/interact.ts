@@ -1,15 +1,19 @@
 import * as THREE from "three";
 import {
+  CUT_SECONDS,
   EAT_ACTION_SECONDS,
   EAT_COCONUT_HUNGER,
   EAT_COCONUT_THIRST,
   EAT_FRUIT_HUNGER,
   EAT_FRUIT_THIRST,
+  EAT_PINEAPPLE_HUNGER,
+  EAT_PINEAPPLE_THIRST,
+  PICKUP_SECONDS,
 } from "./constants";
 import type { MealKind } from "./audio";
 import type { Needs } from "./needs";
 import type { ModelKind } from "./models";
-import type { GridPlayer } from "./player";
+import type { GridPlayer, HeldKind } from "./player";
 
 export type WorldKind = ModelKind | "lilypad";
 
@@ -17,6 +21,9 @@ export type WorldItemAction = {
   label: string;
   blockedReason?: string;
   meal?: { hunger: number; thirst: number };
+  pickup?: HeldKind;
+  needsHeld?: HeldKind;
+  cut?: boolean;
 };
 
 export type WorldItem = {
@@ -84,6 +91,13 @@ const ACTIONS: Partial<Record<WorldKind, WorldItemAction>> = {
   pineapple: {
     label: "Peel (needs a knife)",
     blockedReason: "needs a knife",
+    needsHeld: "knife",
+    cut: true,
+    meal: { hunger: EAT_PINEAPPLE_HUNGER, thirst: EAT_PINEAPPLE_THIRST },
+  },
+  knife: {
+    label: "Pick up",
+    pickup: "knife",
   },
 };
 
@@ -103,11 +117,36 @@ export function makeWorldItem(
   };
 }
 
+function resolveAction(item: WorldItem, held: HeldKind | null): WorldItemAction | undefined {
+  const action = item.action;
+  if (!action) return undefined;
+  if (action.needsHeld) {
+    if (held === action.needsHeld) {
+      return {
+        ...action,
+        label: "Cut / eat",
+        blockedReason: undefined,
+      };
+    }
+    return action;
+  }
+  return action;
+}
+
+function actionEnabled(action: WorldItemAction | undefined): boolean {
+  return Boolean(action && !action.blockedReason);
+}
+
 function chebyshev(ax: number, az: number, bx: number, bz: number): number {
   return Math.max(Math.abs(ax - bx), Math.abs(az - bz));
 }
 
-export function nearestItem(items: WorldItem[], cellX: number, cellZ: number): WorldItem | null {
+export function nearestItem(
+  items: WorldItem[],
+  cellX: number,
+  cellZ: number,
+  held: HeldKind | null = null,
+): WorldItem | null {
   const px = cellX + 0.5;
   const pz = cellZ + 0.5;
   let best: WorldItem | null = null;
@@ -118,7 +157,7 @@ export function nearestItem(items: WorldItem[], cellX: number, cellZ: number): W
     const dx = it.mesh.position.x - px;
     const dz = it.mesh.position.z - pz;
     const dist = dx * dx + dz * dz;
-    const enabled = Boolean(it.action && !it.action.blockedReason);
+    const enabled = actionEnabled(resolveAction(it, held));
     const closer = dist < bestDist - 1e-12;
     const tiePreferAction = Math.abs(dist - bestDist) <= 1e-12 && enabled && !bestEnabled;
     if (!best || closer || tiePreferAction) {
@@ -134,7 +173,7 @@ export function createInteract(
   items: WorldItem[],
   needs: Needs,
   player: GridPlayer,
-  audio: { playMeal: (kind: MealKind) => void },
+  audio: { playMeal: (kind: MealKind) => void; playPickup: () => void },
 ): { update: (cellX: number, cellZ: number, alive: boolean, busy: boolean) => void } {
   const panelEl = document.getElementById("interact");
   const nameEl = document.getElementById("interact-name");
@@ -152,17 +191,47 @@ export function createInteract(
     panel.hidden = true;
   }
 
+  function dropReturnedKnife(mesh: THREE.Object3D): void {
+    items.push(makeWorldItem("knife", player.cellX, player.cellZ, mesh));
+  }
+
   function perform(): void {
     const item = current;
-    if (!item?.action || item.action.blockedReason) return;
+    if (!item) return;
+    const action = resolveAction(item, player.heldKind);
+    if (!action || action.blockedReason) return;
     if (!player.alive || player.busy) return;
     player.faceToward(item.mesh.position.x, item.mesh.position.z);
-    if (!player.beginMeal(item.mesh, EAT_ACTION_SECONDS)) return;
-    if (item.action.meal) needs.feed(item.action.meal.hunger, item.action.meal.thirst);
-    audio.playMeal(item.kind === "coconutHalf" ? "drink" : "eat");
-    const i = items.indexOf(item);
-    if (i >= 0) items.splice(i, 1);
-    hide();
+
+    if (action.pickup === "knife") {
+      const started = player.beginPickup(item.mesh, PICKUP_SECONDS);
+      if (!started) return;
+      if (started.dropped) dropReturnedKnife(started.dropped);
+      audio.playPickup();
+      const i = items.indexOf(item);
+      if (i >= 0) items.splice(i, 1);
+      hide();
+      return;
+    }
+
+    if (action.cut && action.meal) {
+      if (!player.beginCut(item.mesh, CUT_SECONDS)) return;
+      needs.feed(action.meal.hunger, action.meal.thirst);
+      audio.playMeal("eat");
+      const i = items.indexOf(item);
+      if (i >= 0) items.splice(i, 1);
+      hide();
+      return;
+    }
+
+    if (action.meal) {
+      if (!player.beginMeal(item.mesh, EAT_ACTION_SECONDS)) return;
+      needs.feed(action.meal.hunger, action.meal.thirst);
+      audio.playMeal(item.kind === "coconutHalf" ? "drink" : "eat");
+      const i = items.indexOf(item);
+      if (i >= 0) items.splice(i, 1);
+      hide();
+    }
   }
 
   btn.addEventListener("click", (e) => {
@@ -172,7 +241,9 @@ export function createInteract(
   window.addEventListener("keydown", (e) => {
     if (e.code !== "Space" && e.key !== " ") return;
     if (e.repeat) return;
-    if (!current?.action || current.action.blockedReason) return;
+    if (!current) return;
+    const action = resolveAction(current, player.heldKind);
+    if (!actionEnabled(action)) return;
     e.preventDefault();
     perform();
   });
@@ -183,7 +254,7 @@ export function createInteract(
         hide();
         return;
       }
-      const next = nearestItem(items, cellX, cellZ);
+      const next = nearestItem(items, cellX, cellZ, player.heldKind);
       current = next;
       if (!next) {
         panel.hidden = true;
@@ -191,13 +262,14 @@ export function createInteract(
       }
       panel.hidden = false;
       nameEl.textContent = next.name;
-      if (!next.action) {
+      const action = resolveAction(next, player.heldKind);
+      if (!action) {
         btn.hidden = true;
         return;
       }
       btn.hidden = false;
-      btn.textContent = next.action.label;
-      btn.disabled = Boolean(next.action.blockedReason);
+      btn.textContent = action.label;
+      btn.disabled = Boolean(action.blockedReason);
     },
   };
 }

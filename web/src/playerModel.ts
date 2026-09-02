@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import type { Appearance } from "./appearance";
-import { GROUND_Y, RUN_ANIM_SCALE, WALK_ANIM_SCALE } from "./constants";
+import { GROUND_Y, RUN_ANIM_SCALE, SWIM_SINK, WALK_ANIM_SCALE } from "./constants";
 import { loadFbx } from "./loaders";
 import { PLAYER_URLS } from "./models";
 
@@ -13,7 +13,7 @@ const CROUCH_PITCH = 0.38;
 const _overlayQ = new THREE.Quaternion();
 const _overlayE = new THREE.Euler();
 
-export type PlayerGait = "idle" | "walk" | "run";
+export type PlayerGait = "idle" | "walk" | "run" | "swim";
 
 export type PlayerVisual = {
   root: THREE.Object3D;
@@ -21,6 +21,7 @@ export type PlayerVisual = {
   leftHand: THREE.Object3D | null;
   setGait: (gait: PlayerGait) => void;
   setCrouch: (amount: number) => void;
+  setSwim: (amount: number) => void;
   applyPose: () => void;
 };
 
@@ -182,6 +183,8 @@ export async function loadPlayerModel(appearance: Appearance): Promise<PlayerVis
   const restY = model.position.y;
   const restPitch = model.rotation.x;
   let crouch = 0;
+  let swim = 0;
+  let swimTarget = 0;
 
   run.timeScale = WALK_ANIM_SCALE;
   run.enabled = false;
@@ -189,17 +192,20 @@ export async function loadPlayerModel(appearance: Appearance): Promise<PlayerVis
   let gait: PlayerGait = "idle";
   const setGait = (next: PlayerGait) => {
     if (next === gait) return;
-    const prev = gait;
+    const landMove = next === "walk" || next === "run";
+    const wasLandMove = gait === "walk" || gait === "run";
     gait = next;
 
-    if (next === "idle") {
-      idle.reset().setEffectiveWeight(1).fadeIn(FADE).play();
-      run.fadeOut(FADE);
+    if (!landMove) {
+      if (wasLandMove) {
+        idle.reset().setEffectiveWeight(1).fadeIn(FADE).play();
+        run.fadeOut(FADE);
+      }
       return;
     }
 
     run.timeScale = next === "run" ? RUN_ANIM_SCALE : WALK_ANIM_SCALE;
-    if (prev === "idle") {
+    if (!wasLandMove) {
       run.enabled = true;
       run.reset().setEffectiveWeight(1).fadeIn(FADE).play();
       idle.fadeOut(FADE);
@@ -214,9 +220,14 @@ export async function loadPlayerModel(appearance: Appearance): Promise<PlayerVis
     setCrouch: (amount) => {
       crouch = Math.min(1, Math.max(0, amount));
     },
+    setSwim: (amount) => {
+      swimTarget = Math.min(1, Math.max(0, amount));
+    },
     applyPose: () => {
-      model.position.y = restY - CROUCH_DROP * crouch;
-      model.rotation.x = restPitch + CROUCH_PITCH * crouch;
+      swim += (swimTarget - swim) * 0.18;
+      if (Math.abs(swimTarget - swim) < 0.002) swim = swimTarget;
+      model.position.y = restY - CROUCH_DROP * crouch - SWIM_SINK * swim;
+      model.rotation.x = restPitch + CROUCH_PITCH * crouch + 0.55 * swim;
       overlayBone(model, "Hips", 0.42, 0, 0, crouch);
       overlayBone(model, "Spine", 0.28, 0, 0, crouch);
       overlayBone(model, "LeftUpLeg", -0.7, 0, 0, crouch);
@@ -227,6 +238,11 @@ export async function loadPlayerModel(appearance: Appearance): Promise<PlayerVis
       overlayBone(model, "RightArm", 0.75, 0, -0.55, crouch);
       overlayBone(model, "LeftForeArm", 0.45, 0, 0, crouch);
       overlayBone(model, "RightForeArm", 0.45, 0, 0, crouch);
+      const paddle = Math.sin(mixer.time * 5.2) * swim;
+      overlayBone(model, "LeftArm", 0.35 + paddle * 0.55, 0, 0.7, swim);
+      overlayBone(model, "RightArm", 0.35 - paddle * 0.55, 0, -0.7, swim);
+      overlayBone(model, "LeftForeArm", 0.5, 0, 0, swim);
+      overlayBone(model, "RightForeArm", 0.5, 0, 0, swim);
     },
   };
 }

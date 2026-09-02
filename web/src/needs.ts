@@ -22,6 +22,7 @@ import {
   TEMP_HOT_BLINK_THIRST_MULT,
   TEMP_HOT_ENERGY_MULT,
   TEMP_HOT_THIRST_MULT,
+  TEMP_SWIM_COOL,
   THIRST_DRAIN_IDLE,
   THIRST_DRAIN_RUN,
   THIRST_DRAIN_WALK,
@@ -102,6 +103,11 @@ export class Needs {
       this.thirst -= THIRST_DRAIN_WALK * thirstMult * dt;
       this.hunger -= HUNGER_DRAIN_WALK * hungerMult * dt;
       this.towardComfort(dt, TEMP_DRIFT);
+    } else if (gait === "swim") {
+      this.energy += ENERGY_RECOVER_WALK * 0.45 * dt;
+      this.thirst -= THIRST_DRAIN_WALK * thirstMult * dt;
+      this.hunger -= HUNGER_DRAIN_WALK * hungerMult * dt;
+      this.temperature -= TEMP_SWIM_COOL * dt;
     } else {
       this.energy += ENERGY_RECOVER_IDLE * dt;
       this.thirst -= THIRST_DRAIN_IDLE * thirstMult * dt;

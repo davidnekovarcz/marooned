@@ -220,7 +220,7 @@ export function setupIslandAudio(
   player: GridPlayer,
   anchors: { id: string; position: THREE.Vector3 }[],
   coast: CoastField,
-): { update: () => void; playMeal: (kind: MealKind) => void } {
+): { update: () => void; playMeal: (kind: MealKind) => void; playPickup: () => void } {
   const listener = new THREE.AudioListener();
   player.mesh.add(listener);
 
@@ -311,6 +311,13 @@ export function setupIslandAudio(
       mealSound.setBuffer(buf);
       mealSound.setVolume(kind === "drink" ? 0.52 : 0.46);
       mealSound.play();
+    },
+    playPickup: () => {
+      if (!rustleBuf) return;
+      if (rustleSound.isPlaying) rustleSound.stop();
+      rustleSound.setBuffer(rustleBuf);
+      rustleSound.setVolume(0.4);
+      rustleSound.play();
     },
   };
 }

@@ -1,6 +1,13 @@
 import * as THREE from "three";
-import { CELL, STEP_SECONDS_RUN, STEP_SECONDS_WALK } from "./constants";
-import { isWalkable } from "./gridOverlay";
+import {
+  CELL,
+  GROUND_Y,
+  STEP_SECONDS_RUN,
+  STEP_SECONDS_SWIM,
+  STEP_SECONDS_WALK,
+} from "./constants";
+import { canEnter } from "./gridOverlay";
+import { isInlandWater } from "./island";
 import type { PlayerGait, PlayerVisual } from "./playerModel";
 
 const DIRS: Record<string, { x: number; z: number }> = {
@@ -17,14 +24,20 @@ const DIRS: Record<string, { x: number; z: number }> = {
 const SHIFT = new Set(["ShiftLeft", "ShiftRight"]);
 const PICK_AT = 0.32;
 
+const FOOD_HOLD = { pos: new THREE.Vector3(0.05, 0.02, 0.1), rot: new THREE.Euler(0.5, 0.3, 0.8) };
+const KNIFE_HOLD = { pos: new THREE.Vector3(0.03, 0.05, 0.12), rot: new THREE.Euler(1.15, 0.15, 1.35) };
+
+export type HeldKind = "knife";
+type LockKind = "meal" | "pickup" | "cut";
+
 function smooth01(t: number): number {
   const u = Math.min(1, Math.max(0, t));
   return u * u * (3 - 2 * u);
 }
 
 function crouchEnvelope(t: number, duration: number): number {
-  const down = 0.4;
-  const up = 0.4;
+  const down = Math.min(0.4, duration * 0.45);
+  const up = Math.min(0.4, duration * 0.45);
   if (t <= 0) return 0;
   if (t < down) return smooth01(t / down);
   if (t > duration - up) return smooth01((duration - t) / up);
@@ -38,18 +51,22 @@ export class GridPlayer {
   canSprint = true;
   alive = true;
   busy = false;
+  heldKind: HeldKind | null = null;
   gait: PlayerGait = "idle";
   private moving = false;
+  private destWater = false;
   private sprinting = false;
   private stepSeconds = STEP_SECONDS_WALK;
   private t = 0;
   private from = new THREE.Vector3();
   private to = new THREE.Vector3();
   private pressed = new Set<string>();
-  private mealT = 0;
-  private mealSeconds = 0;
-  private held: THREE.Object3D | null = null;
-  private picked = false;
+  private lock: LockKind | null = null;
+  private lockT = 0;
+  private lockSeconds = 0;
+  private tool: THREE.Object3D | null = null;
+  private meal: THREE.Object3D | null = null;
+  private grabbed = false;
 
   constructor(
     private biomes: Uint8Array,
@@ -75,30 +92,114 @@ export class GridPlayer {
     });
   }
 
+  inWater(): boolean {
+    return isInlandWater(this.cellX, this.cellZ, this.biomes);
+  }
+
   faceToward(x: number, z: number): void {
     this.mesh.lookAt(x, this.mesh.position.y, z);
+  }
+
+  /** Returns `{ dropped }` on success; `dropped` is a previous knife left on this cell. */
+  beginPickup(mesh: THREE.Object3D, seconds: number): { dropped: THREE.Object3D | null } | null {
+    if (!this.alive || this.busy) return null;
+    this.stopMoving();
+    const dropped = this.detachToolToWorld();
+    this.busy = true;
+    this.lock = "pickup";
+    this.lockT = 0;
+    this.lockSeconds = seconds;
+    this.meal = mesh;
+    this.grabbed = false;
+    this.gait = this.inWater() ? "swim" : "idle";
+    this.visual.setGait(this.gait);
+    return { dropped };
   }
 
   beginMeal(mesh: THREE.Object3D, seconds: number): boolean {
     if (!this.alive || this.busy) return false;
     this.stopMoving();
     this.busy = true;
-    this.mealT = 0;
-    this.mealSeconds = seconds;
-    this.held = mesh;
-    this.picked = false;
-    this.gait = "idle";
-    this.visual.setGait("idle");
+    this.lock = "meal";
+    this.lockT = 0;
+    this.lockSeconds = seconds;
+    this.meal = mesh;
+    this.grabbed = false;
+    if (this.tool) this.tool.visible = false;
+    this.gait = this.inWater() ? "swim" : "idle";
+    this.visual.setGait(this.gait);
     return true;
   }
 
-  private endMeal(): void {
-    this.held?.removeFromParent();
-    this.held = null;
-    this.picked = false;
+  beginCut(mesh: THREE.Object3D, seconds: number): boolean {
+    if (!this.alive || this.busy || this.heldKind !== "knife") return false;
+    this.stopMoving();
+    this.busy = true;
+    this.lock = "cut";
+    this.lockT = 0;
+    this.lockSeconds = seconds;
+    this.meal = mesh;
+    this.grabbed = false;
+    if (this.tool) this.tool.visible = true;
+    this.gait = this.inWater() ? "swim" : "idle";
+    this.visual.setGait(this.gait);
+    return true;
+  }
+
+  private endLock(): void {
+    if (this.lock === "meal" || this.lock === "cut") {
+      this.meal?.removeFromParent();
+      this.meal = null;
+    }
+    if (this.lock === "pickup" && this.meal && !this.grabbed) this.grabTool(this.meal);
+    if (this.tool) this.tool.visible = true;
+    this.meal = null;
+    this.grabbed = false;
     this.busy = false;
-    this.mealT = 0;
+    this.lock = null;
+    this.lockT = 0;
     this.visual.setCrouch(0);
+  }
+
+  private grabTool(mesh: THREE.Object3D): void {
+    const hand = this.visual.leftHand;
+    if (!hand) {
+      mesh.removeFromParent();
+      return;
+    }
+    hand.attach(mesh);
+    mesh.position.copy(KNIFE_HOLD.pos);
+    mesh.rotation.copy(KNIFE_HOLD.rot);
+    mesh.visible = true;
+    this.tool = mesh;
+    this.heldKind = "knife";
+    this.meal = null;
+  }
+
+  private grabFood(mesh: THREE.Object3D): void {
+    const hand = this.visual.leftHand;
+    if (!hand) {
+      mesh.removeFromParent();
+      this.meal = null;
+      return;
+    }
+    hand.attach(mesh);
+    mesh.position.copy(FOOD_HOLD.pos);
+    mesh.rotation.copy(FOOD_HOLD.rot);
+  }
+
+  private detachToolToWorld(): THREE.Object3D | null {
+    if (!this.tool) return null;
+    const mesh = this.tool;
+    const parent = this.mesh.parent;
+    if (parent) parent.attach(mesh);
+    else mesh.removeFromParent();
+    mesh.position.set(this.cellX * CELL + CELL / 2, GROUND_Y + 0.04, this.cellZ * CELL + CELL / 2);
+    mesh.rotation.set(0, 0.4, 0);
+    mesh.visible = true;
+    this.tool = null;
+    this.heldKind = null;
+    return mesh;
   }
 
   private stopMoving(): void {
@@ -116,6 +217,10 @@ export class GridPlayer {
   }
 
   private refreshGait(): PlayerGait {
+    if (this.inWater() || (this.moving && this.destWater)) {
+      this.gait = "swim";
+      return this.gait;
+    }
     if (!this.moving) {
       this.gait = "idle";
       return this.gait;
@@ -124,41 +229,43 @@ export class GridPlayer {
     return this.gait;
   }
 
-  private pickUp(): void {
-    if (this.picked || !this.held) return;
-    this.picked = true;
-    const hand = this.visual.leftHand;
-    if (!hand) {
-      this.held.removeFromParent();
-      this.held = null;
-      return;
+  private onLockTick(): void {
+    if (this.lockT < PICK_AT || this.grabbed) return;
+    this.grabbed = true;
+    if (!this.meal) return;
+    if (this.lock === "pickup") this.grabTool(this.meal);
+    else if (this.lock === "meal") this.grabFood(this.meal);
+    else if (this.lock === "cut") {
+      this.meal.removeFromParent();
+      this.meal = null;
     }
-    hand.attach(this.held);
-    this.held.position.set(0.05, 0.02, 0.1);
-    this.held.rotation.set(0.5, 0.3, 0.8);
   }
 
   update(dt: number): void {
     this.visual.mixer.update(dt);
 
     if (!this.alive) {
-      if (this.busy) this.endMeal();
+      if (this.busy) this.endLock();
       this.moving = false;
       this.gait = "idle";
       this.visual.setGait("idle");
       this.visual.setCrouch(0);
+      this.visual.setSwim(0);
       this.visual.applyPose();
       return;
     }
 
+    const water = this.inWater();
+    this.visual.setSwim(water && this.lock !== "meal" ? 1 : 0);
+
     if (this.busy) {
-      this.mealT += dt;
-      this.visual.setCrouch(crouchEnvelope(this.mealT, this.mealSeconds));
-      if (this.mealT >= PICK_AT) this.pickUp();
+      this.lockT += dt;
+      this.visual.setCrouch(crouchEnvelope(this.lockT, this.lockSeconds));
+      this.onLockTick();
       this.visual.applyPose();
-      this.gait = "idle";
-      this.visual.setGait("idle");
-      if (this.mealT >= this.mealSeconds) this.endMeal();
+      this.gait = water ? "swim" : "idle";
+      this.visual.setGait(this.gait);
+      if (this.lockT >= this.lockSeconds) this.endLock();
       return;
     }
 
@@ -179,14 +286,19 @@ export class GridPlayer {
       this.snap();
     }
 
-    const sprint = this.sprinting && this.canSprint;
     for (const code of this.pressed) {
       const dir = DIRS[code];
       if (!dir) continue;
       const nx = this.cellX + dir.x;
       const nz = this.cellZ + dir.z;
-      if (!isWalkable(this.biomes, this.blocked, nx, nz)) continue;
-      this.stepSeconds = sprint ? STEP_SECONDS_RUN : STEP_SECONDS_WALK;
+      if (!canEnter(this.biomes, this.blocked, nx, nz)) continue;
+      const intoWater = isInlandWater(nx, nz, this.biomes);
+      this.destWater = intoWater;
+      this.stepSeconds = intoWater
+        ? STEP_SECONDS_SWIM
+        : this.sprinting && this.canSprint
+          ? STEP_SECONDS_RUN
+          : STEP_SECONDS_WALK;
       this.from.copy(this.mesh.position);
       this.to.set(nx * CELL + CELL / 2, 0, nz * CELL + CELL / 2);
       this.t = 0;
@@ -200,12 +312,13 @@ export class GridPlayer {
   }
 
   followCamera(camera: THREE.PerspectiveCamera, offset: THREE.Vector3): void {
+    const lookY = this.inWater() ? 0.45 : 1.1;
     const target = new THREE.Vector3(
       this.mesh.position.x + offset.x,
       this.mesh.position.y + offset.y,
       this.mesh.position.z + offset.z,
     );
     camera.position.lerp(target, 0.12);
-    camera.lookAt(this.mesh.position.x, 1.1, this.mesh.position.z);
+    camera.lookAt(this.mesh.position.x, lookY, this.mesh.position.z);
   }
 }

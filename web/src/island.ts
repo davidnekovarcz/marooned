@@ -82,6 +82,12 @@ export function isOceanCell(x: number, z: number, biomes: Uint8Array): boolean {
   return biomes[cellIndex(x, z)] === Biome.Water && cellCenterDist(x, z) >= ISLAND_RADIUS;
 }
 
+/** Pond and river — not the open sea. */
+export function isInlandWater(x: number, z: number, biomes: Uint8Array): boolean {
+  if (!inBounds(x, z)) return false;
+  return biomes[cellIndex(x, z)] === Biome.Water && !isOceanCell(x, z, biomes);
+}
+
 export type CoastField = {
   dist: Float32Array;
   nearX: Int16Array;
