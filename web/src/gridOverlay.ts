@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import { CELL, GRID } from "./constants";
-import { cellIndex, inBounds } from "./island";
+import { cellIndex, inBounds, isOceanCell } from "./island";
 
 /** Semi-transparent grid on walkable cells only. */
 export function buildGridOverlay(
@@ -45,4 +45,13 @@ export function isWalkable(biomes: Uint8Array, blocked: Uint8Array, x: number, z
   const i = cellIndex(x, z);
   if (blocked[i]) return false;
   return biomes[i] !== 0;
+}
+
+/** Land, or inland pond/river. Open ocean stays blocked. */
+export function canEnter(biomes: Uint8Array, blocked: Uint8Array, x: number, z: number): boolean {
+  if (!inBounds(x, z)) return false;
+  const i = cellIndex(x, z);
+  if (blocked[i]) return false;
+  if (biomes[i] !== 0) return true;
+  return !isOceanCell(x, z, biomes);
 }

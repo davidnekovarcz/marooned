@@ -9,6 +9,10 @@ export const GROUND_Y = 0.02;
 export const STEP_SECONDS_WALK = 0.24;
 /** Seconds per grid step when holding Shift. */
 export const STEP_SECONDS_RUN = 0.09;
+/** Inland pond / river — slower than a land walk. */
+export const STEP_SECONDS_SWIM = 0.4;
+/** How far the body sinks into inland water (model local Y). */
+export const SWIM_SINK = 0.52;
 /** Run-clip playback while walking — unchanged from the first character pass. */
 export const WALK_ANIM_SCALE = 0.72;
 /** Run-clip playback while sprinting. */
@@ -98,6 +102,14 @@ export const EAT_RESTORE_SECONDS = 6;
 export const EAT_RESTORE_RATE = 0.15 / EAT_RESTORE_SECONDS;
 /** Locked crouch + eat/drink (no walking). */
 export const EAT_ACTION_SECONDS = 3;
+/** Cut pineapple with a held knife (eat is a second interact). */
+export const CUT_SECONDS = 2.2;
+/** Crack a whole coconut with a hammer. */
+export const BREAK_SECONDS = 2.2;
+export const EAT_PINEAPPLE_HUNGER = EAT_FRUIT_HUNGER;
+export const EAT_PINEAPPLE_THIRST = EAT_FRUIT_THIRST;
+/** Extra cooling while swimming inland water. */
+export const TEMP_SWIM_COOL = 1 / 35;
 
 export const POND_X = 58;
 export const POND_Z = 82;

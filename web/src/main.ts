@@ -57,7 +57,7 @@ async function start(): Promise<void> {
   const islandAudio = setupIslandAudio(scene, player, scattered.audioAnchors, coast);
   const hud = createHud();
   const needs = new Needs();
-  const interact = createInteract(scattered.items, needs, player, islandAudio);
+  const interact = createInteract(scattered.items, needs, player, islandAudio, scattered.spawn);
   const day = new DayClock();
   hud.update({ sky: isDaytime(day.t) ? "sun" : "moon", clock: day.clockLabel(), ...needs.snapshot() });
 

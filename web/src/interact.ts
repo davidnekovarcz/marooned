@@ -1,15 +1,19 @@
 import * as THREE from "three";
 import {
+  BREAK_SECONDS,
+  CUT_SECONDS,
   EAT_ACTION_SECONDS,
   EAT_COCONUT_HUNGER,
   EAT_COCONUT_THIRST,
   EAT_FRUIT_HUNGER,
   EAT_FRUIT_THIRST,
+  EAT_PINEAPPLE_HUNGER,
+  EAT_PINEAPPLE_THIRST,
 } from "./constants";
 import type { MealKind } from "./audio";
 import type { Needs } from "./needs";
 import type { ModelKind } from "./models";
-import type { GridPlayer } from "./player";
+import { isHeldFood, type GridPlayer, type HeldKind, type PocketSlot } from "./player";
 
 export type WorldKind = ModelKind | "lilypad";
 
@@ -17,6 +21,11 @@ export type WorldItemAction = {
   label: string;
   blockedReason?: string;
   meal?: { hunger: number; thirst: number };
+  pickup?: HeldKind;
+  needsHeld?: HeldKind;
+  cut?: boolean;
+  crack?: boolean;
+  eatHeld?: boolean;
 };
 
 export type WorldItem = {
@@ -26,6 +35,7 @@ export type WorldItem = {
   cellZ: number;
   mesh: THREE.Object3D;
   action?: WorldItemAction;
+  cut?: boolean;
 };
 
 const NAMES: Record<WorldKind, string> = {
@@ -68,24 +78,67 @@ const NAMES: Record<WorldKind, string> = {
   lilypad: "Lily pad",
 };
 
-const ACTIONS: Partial<Record<WorldKind, WorldItemAction>> = {
+const HELD_NAME: Record<HeldKind, string> = {
+  knife: "Knife",
+  hammer: "Hammer",
+  coconutHalf: "Open coconut",
+  orange: "Orange",
+  pineapple: "Pineapple",
+};
+
+const HELD_MEAL: Record<"coconutHalf" | "orange" | "pineapple", WorldItemAction> = {
   coconutHalf: {
     label: "Eat / drink",
+    eatHeld: true,
     meal: { hunger: EAT_COCONUT_HUNGER, thirst: EAT_COCONUT_THIRST },
   },
   orange: {
     label: "Eat",
+    eatHeld: true,
     meal: { hunger: EAT_FRUIT_HUNGER, thirst: EAT_FRUIT_THIRST },
   },
+  pineapple: {
+    label: "Eat",
+    eatHeld: true,
+    meal: { hunger: EAT_PINEAPPLE_HUNGER, thirst: EAT_PINEAPPLE_THIRST },
+  },
+};
+
+const ACTIONS: Partial<Record<WorldKind, WorldItemAction>> = {
+  coconutHalf: {
+    label: "Pick up",
+    pickup: "coconutHalf",
+  },
+  orange: {
+    label: "Pick up",
+    pickup: "orange",
+  },
   coconut: {
-    label: "Open (needs hammer / knife)",
-    blockedReason: "needs hammer / knife",
+    label: "Break (needs a hammer)",
+    blockedReason: "needs a hammer",
+    needsHeld: "hammer",
   },
   pineapple: {
     label: "Peel (needs a knife)",
     blockedReason: "needs a knife",
+    needsHeld: "knife",
+  },
+  knife: {
+    label: "Pick up",
+    pickup: "knife",
+  },
+  hammer: {
+    label: "Pick up",
+    pickup: "hammer",
   },
 };
+
+export type SpawnFn = (
+  kind: ModelKind,
+  x: number,
+  z: number,
+  extra?: { yaw?: number; dx?: number; dz?: number },
+) => WorldItem | null;
 
 export function makeWorldItem(
   kind: WorldKind,
@@ -103,11 +156,42 @@ export function makeWorldItem(
   };
 }
 
+function resolveAction(item: WorldItem, held: HeldKind | null): WorldItemAction | undefined {
+  if (item.kind === "pineapple") {
+    if (item.cut) return { label: "Pick up", pickup: "pineapple" };
+    if (held === "knife") return { label: "Cut", cut: true, needsHeld: "knife" };
+    return ACTIONS.pineapple;
+  }
+  if (item.kind === "coconut") {
+    if (held === "hammer") return { label: "Break", crack: true, needsHeld: "hammer" };
+    return ACTIONS.coconut;
+  }
+  return item.action;
+}
+
+function heldMealAction(held: HeldKind | null): WorldItemAction | undefined {
+  if (!isHeldFood(held)) return undefined;
+  return HELD_MEAL[held];
+}
+
+function actionEnabled(action: WorldItemAction | undefined): boolean {
+  return Boolean(action && !action.blockedReason);
+}
+
 function chebyshev(ax: number, az: number, bx: number, bz: number): number {
   return Math.max(Math.abs(ax - bx), Math.abs(az - bz));
 }
 
-export function nearestItem(items: WorldItem[], cellX: number, cellZ: number): WorldItem | null {
+function slotLabel(kind: HeldKind | null): string {
+  return kind ? HELD_NAME[kind] : "Empty";
+}
+
+export function nearestItem(
+  items: WorldItem[],
+  cellX: number,
+  cellZ: number,
+  held: HeldKind | null = null,
+): WorldItem | null {
   const px = cellX + 0.5;
   const pz = cellZ + 0.5;
   let best: WorldItem | null = null;
@@ -118,7 +202,7 @@ export function nearestItem(items: WorldItem[], cellX: number, cellZ: number): W
     const dx = it.mesh.position.x - px;
     const dz = it.mesh.position.z - pz;
     const dist = dx * dx + dz * dz;
-    const enabled = Boolean(it.action && !it.action.blockedReason);
+    const enabled = actionEnabled(resolveAction(it, held));
     const closer = dist < bestDist - 1e-12;
     const tiePreferAction = Math.abs(dist - bestDist) <= 1e-12 && enabled && !bestEnabled;
     if (!best || closer || tiePreferAction) {
@@ -134,7 +218,8 @@ export function createInteract(
   items: WorldItem[],
   needs: Needs,
   player: GridPlayer,
-  audio: { playMeal: (kind: MealKind) => void },
+  audio: { playMeal: (kind: MealKind) => void; playPickup: () => void },
+  spawn: SpawnFn,
 ): { update: (cellX: number, cellZ: number, alive: boolean, busy: boolean) => void } {
   const panelEl = document.getElementById("interact");
   const nameEl = document.getElementById("interact-name");
@@ -144,25 +229,94 @@ export function createInteract(
   }
   const panel = panelEl;
   const btn = btnEl;
+  const gearEl = document.getElementById("gear");
+  const handsItem = document.getElementById("gear-hands-item");
+  const leftItem = document.getElementById("gear-left-item");
+  const rightItem = document.getElementById("gear-right-item");
 
   let current: WorldItem | null = null;
+  let currentAction: WorldItemAction | null = null;
 
   function hide(): void {
     current = null;
+    currentAction = null;
     panel.hidden = true;
   }
 
+  function updateGear(alive: boolean): void {
+    if (!gearEl || !handsItem || !leftItem || !rightItem) return;
+    if (!alive) {
+      gearEl.hidden = true;
+      return;
+    }
+    gearEl.hidden = false;
+    handsItem.textContent = slotLabel(player.heldKind);
+    leftItem.textContent = slotLabel(player.pocket("left"));
+    rightItem.textContent = slotLabel(player.pocket("right"));
+  }
+
+  function dropToWorld(dropped: { mesh: THREE.Object3D; kind: HeldKind }): void {
+    const item = makeWorldItem(dropped.kind, player.cellX, player.cellZ, dropped.mesh);
+    if (dropped.kind === "pineapple") {
+      item.cut = true;
+      item.name = "Cut pineapple";
+    }
+    items.push(item);
+  }
+
   function perform(): void {
-    const item = current;
-    if (!item?.action || item.action.blockedReason) return;
+    const action = currentAction;
+    if (!action || action.blockedReason) return;
     if (!player.alive || player.busy) return;
+
+    if (action.eatHeld) {
+      if (!action.meal || !isHeldFood(player.heldKind)) return;
+      const food = player.heldKind;
+      if (!player.beginHeldMeal(EAT_ACTION_SECONDS)) return;
+      needs.feed(action.meal.hunger, action.meal.thirst);
+      audio.playMeal(food === "coconutHalf" ? "drink" : "eat");
+      hide();
+      return;
+    }
+
+    const item = current;
+    if (!item) return;
     player.faceToward(item.mesh.position.x, item.mesh.position.z);
-    if (!player.beginMeal(item.mesh, EAT_ACTION_SECONDS)) return;
-    if (item.action.meal) needs.feed(item.action.meal.hunger, item.action.meal.thirst);
-    audio.playMeal(item.kind === "coconutHalf" ? "drink" : "eat");
-    const i = items.indexOf(item);
-    if (i >= 0) items.splice(i, 1);
-    hide();
+
+    if (action.pickup) {
+      const started = player.pickup(item.mesh, action.pickup);
+      if (!started) return;
+      if (started.dropped) dropToWorld(started.dropped);
+      audio.playPickup();
+      const i = items.indexOf(item);
+      if (i >= 0) items.splice(i, 1);
+      hide();
+      return;
+    }
+
+    if (action.cut) {
+      if (!player.beginCut(CUT_SECONDS, () => {
+        item.cut = true;
+        item.name = "Cut pineapple";
+      })) return;
+      hide();
+      return;
+    }
+
+    if (action.crack) {
+      if (
+        !player.beginBreak(item.mesh, BREAK_SECONDS, () => {
+          const i = items.indexOf(item);
+          if (i >= 0) items.splice(i, 1);
+          spawn("coconutHalf", item.cellX, item.cellZ, { dx: 0.18, dz: 0.08 });
+          spawn("coconutHalf", item.cellX, item.cellZ, { dx: -0.16, dz: 0.12, yaw: 1.3 });
+        })
+      ) {
+        return;
+      }
+      audio.playPickup();
+      hide();
+    }
   }
 
   btn.addEventListener("click", (e) => {
@@ -172,32 +326,86 @@ export function createInteract(
   window.addEventListener("keydown", (e) => {
     if (e.code !== "Space" && e.key !== " ") return;
     if (e.repeat) return;
-    if (!current?.action || current.action.blockedReason) return;
+    if (!actionEnabled(currentAction ?? undefined)) return;
     e.preventDefault();
     perform();
   });
 
+  function hotkey(e: KeyboardEvent): "hands" | PocketSlot | "drop" | null {
+    if (e.repeat || e.metaKey || e.ctrlKey || e.altKey) return null;
+    if (e.code === "Digit1" || e.code === "Numpad1") return "left";
+    if (e.code === "Digit2" || e.code === "Numpad2") return "right";
+    if (e.code === "Digit0" || e.code === "Numpad0") return "hands";
+    if (e.code === "KeyG") return "drop";
+    return null;
+  }
+
+  window.addEventListener("keydown", (e) => {
+    const action = hotkey(e);
+    if (!action) return;
+    if (!player.alive || player.busy) return;
+    e.preventDefault();
+    if (action === "drop") {
+      const dropped = player.dropHeld();
+      if (dropped) {
+        dropToWorld(dropped);
+        audio.playPickup();
+      }
+      return;
+    }
+    if (action === "hands") {
+      player.stowHeld();
+      return;
+    }
+    player.swapPocket(action);
+  });
+
+  gearEl?.addEventListener("click", (e) => {
+    const target = e.target;
+    if (!(target instanceof Element)) return;
+    const slotBtn = target.closest("[data-slot]");
+    if (!(slotBtn instanceof HTMLElement)) return;
+    const slot = slotBtn.dataset.slot;
+    e.preventDefault();
+    if (!player.alive || player.busy) return;
+    if (slot === "hands") {
+      player.stowHeld();
+      return;
+    }
+    if (slot === "left" || slot === "right") player.swapPocket(slot as PocketSlot);
+  });
+
   return {
     update: (cellX, cellZ, alive, busy) => {
+      updateGear(alive);
       if (!alive || busy) {
         hide();
         return;
       }
-      const next = nearestItem(items, cellX, cellZ);
-      current = next;
-      if (!next) {
+      const next = nearestItem(items, cellX, cellZ, player.heldKind);
+      const worldAction = next ? resolveAction(next, player.heldKind) : undefined;
+      const eatHeld = heldMealAction(player.heldKind);
+      const preferWorld = Boolean(next && actionEnabled(worldAction));
+      if (preferWorld && next && worldAction) {
+        current = next;
+        currentAction = worldAction;
+      } else if (eatHeld) {
+        current = null;
+        currentAction = eatHeld;
+      } else if (next && worldAction) {
+        current = next;
+        currentAction = worldAction;
+      } else {
         panel.hidden = true;
+        current = null;
+        currentAction = null;
         return;
       }
       panel.hidden = false;
-      nameEl.textContent = next.name;
-      if (!next.action) {
-        btn.hidden = true;
-        return;
-      }
+      nameEl.textContent = current ? current.name : slotLabel(player.heldKind);
       btn.hidden = false;
-      btn.textContent = next.action.label;
-      btn.disabled = Boolean(next.action.blockedReason);
+      btn.textContent = currentAction.label;
+      btn.disabled = Boolean(currentAction.blockedReason);
     },
   };
 }
