@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import {
+  BREAK_SECONDS,
   CUT_SECONDS,
   EAT_ACTION_SECONDS,
   EAT_COCONUT_HUNGER,
@@ -13,7 +14,7 @@ import {
 import type { MealKind } from "./audio";
 import type { Needs } from "./needs";
 import type { ModelKind } from "./models";
-import type { GridPlayer, HeldKind } from "./player";
+import type { GridPlayer, HeldKind, PocketSlot } from "./player";
 
 export type WorldKind = ModelKind | "lilypad";
 
@@ -24,6 +25,7 @@ export type WorldItemAction = {
   pickup?: HeldKind;
   needsHeld?: HeldKind;
   cut?: boolean;
+  crack?: boolean;
 };
 
 export type WorldItem = {
@@ -33,6 +35,7 @@ export type WorldItem = {
   cellZ: number;
   mesh: THREE.Object3D;
   action?: WorldItemAction;
+  cut?: boolean;
 };
 
 const NAMES: Record<WorldKind, string> = {
@@ -75,6 +78,11 @@ const NAMES: Record<WorldKind, string> = {
   lilypad: "Lily pad",
 };
 
+const HELD_NAME: Record<HeldKind, string> = {
+  knife: "Knife",
+  hammer: "Hammer",
+};
+
 const ACTIONS: Partial<Record<WorldKind, WorldItemAction>> = {
   coconutHalf: {
     label: "Eat / drink",
@@ -85,21 +93,31 @@ const ACTIONS: Partial<Record<WorldKind, WorldItemAction>> = {
     meal: { hunger: EAT_FRUIT_HUNGER, thirst: EAT_FRUIT_THIRST },
   },
   coconut: {
-    label: "Open (needs hammer / knife)",
-    blockedReason: "needs hammer / knife",
+    label: "Break (needs a hammer)",
+    blockedReason: "needs a hammer",
+    needsHeld: "hammer",
   },
   pineapple: {
     label: "Peel (needs a knife)",
     blockedReason: "needs a knife",
     needsHeld: "knife",
-    cut: true,
-    meal: { hunger: EAT_PINEAPPLE_HUNGER, thirst: EAT_PINEAPPLE_THIRST },
   },
   knife: {
     label: "Pick up",
     pickup: "knife",
   },
+  hammer: {
+    label: "Pick up",
+    pickup: "hammer",
+  },
 };
+
+export type SpawnFn = (
+  kind: ModelKind,
+  x: number,
+  z: number,
+  extra?: { yaw?: number; dx?: number; dz?: number },
+) => WorldItem | null;
 
 export function makeWorldItem(
   kind: WorldKind,
@@ -118,19 +136,18 @@ export function makeWorldItem(
 }
 
 function resolveAction(item: WorldItem, held: HeldKind | null): WorldItemAction | undefined {
-  const action = item.action;
-  if (!action) return undefined;
-  if (action.needsHeld) {
-    if (held === action.needsHeld) {
-      return {
-        ...action,
-        label: "Cut / eat",
-        blockedReason: undefined,
-      };
+  if (item.kind === "pineapple") {
+    if (item.cut) {
+      return { label: "Eat", meal: { hunger: EAT_PINEAPPLE_HUNGER, thirst: EAT_PINEAPPLE_THIRST } };
     }
-    return action;
+    if (held === "knife") return { label: "Cut", cut: true, needsHeld: "knife" };
+    return ACTIONS.pineapple;
   }
-  return action;
+  if (item.kind === "coconut") {
+    if (held === "hammer") return { label: "Break", crack: true, needsHeld: "hammer" };
+    return ACTIONS.coconut;
+  }
+  return item.action;
 }
 
 function actionEnabled(action: WorldItemAction | undefined): boolean {
@@ -139,6 +156,10 @@ function actionEnabled(action: WorldItemAction | undefined): boolean {
 
 function chebyshev(ax: number, az: number, bx: number, bz: number): number {
   return Math.max(Math.abs(ax - bx), Math.abs(az - bz));
+}
+
+function slotLabel(kind: HeldKind | null): string {
+  return kind ? HELD_NAME[kind] : "Empty";
 }
 
 export function nearestItem(
@@ -174,6 +195,7 @@ export function createInteract(
   needs: Needs,
   player: GridPlayer,
   audio: { playMeal: (kind: MealKind) => void; playPickup: () => void },
+  spawn: SpawnFn,
 ): { update: (cellX: number, cellZ: number, alive: boolean, busy: boolean) => void } {
   const panelEl = document.getElementById("interact");
   const nameEl = document.getElementById("interact-name");
@@ -183,8 +205,10 @@ export function createInteract(
   }
   const panel = panelEl;
   const btn = btnEl;
-  const handsEl = document.getElementById("hands");
-  const handsItem = document.getElementById("hands-item");
+  const gearEl = document.getElementById("gear");
+  const handsItem = document.getElementById("gear-hands-item");
+  const leftItem = document.getElementById("gear-left-item");
+  const rightItem = document.getElementById("gear-right-item");
 
   let current: WorldItem | null = null;
 
@@ -193,18 +217,20 @@ export function createInteract(
     panel.hidden = true;
   }
 
-  function updateHands(alive: boolean): void {
-    if (!handsEl || !handsItem) return;
-    if (!alive || !player.heldKind) {
-      handsEl.hidden = true;
+  function updateGear(alive: boolean): void {
+    if (!gearEl || !handsItem || !leftItem || !rightItem) return;
+    if (!alive) {
+      gearEl.hidden = true;
       return;
     }
-    handsEl.hidden = false;
-    handsItem.textContent = player.heldKind === "knife" ? "Knife" : player.heldKind;
+    gearEl.hidden = false;
+    handsItem.textContent = slotLabel(player.heldKind);
+    leftItem.textContent = slotLabel(player.pocket("left"));
+    rightItem.textContent = slotLabel(player.pocket("right"));
   }
 
-  function dropReturnedKnife(mesh: THREE.Object3D): void {
-    items.push(makeWorldItem("knife", player.cellX, player.cellZ, mesh));
+  function dropToWorld(dropped: { mesh: THREE.Object3D; kind: HeldKind }): void {
+    items.push(makeWorldItem(dropped.kind, player.cellX, player.cellZ, dropped.mesh));
   }
 
   function perform(): void {
@@ -215,10 +241,10 @@ export function createInteract(
     if (!player.alive || player.busy) return;
     player.faceToward(item.mesh.position.x, item.mesh.position.z);
 
-    if (action.pickup === "knife") {
-      const started = player.beginPickup(item.mesh, PICKUP_SECONDS);
+    if (action.pickup) {
+      const started = player.beginPickup(item.mesh, action.pickup, PICKUP_SECONDS);
       if (!started) return;
-      if (started.dropped) dropReturnedKnife(started.dropped);
+      if (started.dropped) dropToWorld(started.dropped);
       audio.playPickup();
       const i = items.indexOf(item);
       if (i >= 0) items.splice(i, 1);
@@ -226,18 +252,44 @@ export function createInteract(
       return;
     }
 
-    if (action.cut && action.meal) {
-      if (!player.beginCut(item.mesh, CUT_SECONDS)) return;
-      needs.feed(action.meal.hunger, action.meal.thirst);
-      audio.playMeal("eat");
-      const i = items.indexOf(item);
-      if (i >= 0) items.splice(i, 1);
+    if (action.cut) {
+      if (!player.beginCut(CUT_SECONDS, () => {
+        item.cut = true;
+        item.name = "Cut pineapple";
+      })) return;
+      hide();
+      return;
+    }
+
+    if (action.crack) {
+      if (
+        !player.beginBreak(item.mesh, BREAK_SECONDS, () => {
+          const i = items.indexOf(item);
+          if (i >= 0) items.splice(i, 1);
+          spawn("coconutHalf", item.cellX, item.cellZ, { dx: 0.18, dz: 0.08 });
+          spawn("coconutHalf", item.cellX, item.cellZ, { dx: -0.16, dz: 0.12, yaw: 1.3 });
+        })
+      ) {
+        return;
+      }
+      audio.playPickup();
       hide();
       return;
     }
 
     if (action.meal) {
-      if (!player.beginMeal(item.mesh, EAT_ACTION_SECONDS)) return;
+      if (item.kind === "pineapple") {
+        const hadKnife = player.heldKind === "knife";
+        if (player.heldKind && !player.stowHeld()) {
+          const dropped = player.dropHeld();
+          if (dropped) dropToWorld(dropped);
+        }
+        const restorePocket =
+          hadKnife && (player.pocket("left") === "knife" || player.pocket("right") === "knife");
+        if (!player.beginMeal(item.mesh, EAT_ACTION_SECONDS, { pineapple: true, restorePocket })) return;
+      } else if (!player.beginMeal(item.mesh, EAT_ACTION_SECONDS)) {
+        return;
+      }
       needs.feed(action.meal.hunger, action.meal.thirst);
       audio.playMeal(item.kind === "coconutHalf" ? "drink" : "eat");
       const i = items.indexOf(item);
@@ -260,9 +312,20 @@ export function createInteract(
     perform();
   });
 
+  gearEl?.addEventListener("click", (e) => {
+    const target = e.target;
+    if (!(target instanceof Element)) return;
+    const slotBtn = target.closest("[data-slot]");
+    if (!(slotBtn instanceof HTMLElement)) return;
+    const slot = slotBtn.dataset.slot;
+    if (slot !== "left" && slot !== "right") return;
+    e.preventDefault();
+    player.swapPocket(slot as PocketSlot);
+  });
+
   return {
     update: (cellX, cellZ, alive, busy) => {
-      updateHands(alive);
+      updateGear(alive);
       if (!alive || busy) {
         hide();
         return;

@@ -31,34 +31,57 @@ canvas {
   pointer-events: none;
 }
 
-#hands {
+#gear {
   position: fixed;
   left: 16px;
   bottom: 16px;
   z-index: 3;
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
-  gap: 4px;
-  padding: 8px 14px;
+  align-items: stretch;
+  gap: 6px;
+  padding: 8px 10px;
   border-radius: 8px;
   background: rgba(8, 24, 32, 0.55);
   color: #f4f7f2;
   font-size: 14px;
   letter-spacing: 0.01em;
-  pointer-events: none;
+  pointer-events: auto;
 }
 
-#hands[hidden] {
+#gear[hidden] {
   display: none;
 }
 
-#hands-label {
-  opacity: 0.7;
-  font-size: 12px;
+.gear-slot {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  margin: 0;
+  padding: 4px 6px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
 }
 
-#hands-item {
+button.gear-slot {
+  cursor: pointer;
+}
+
+button.gear-slot:hover {
+  background: rgba(244, 247, 242, 0.12);
+}
+
+.gear-label {
+  opacity: 0.7;
+  font-size: 11px;
+}
+
+.gear-item {
   font-weight: 600;
 }
 
@@ -266,7 +289,7 @@ canvas {
 body.dead #hud-world,
 body.dead #hud-needs,
 body.dead #hint,
-body.dead #hands,
+body.dead #gear,
 body.dead #interact {
   display: none;
 }
