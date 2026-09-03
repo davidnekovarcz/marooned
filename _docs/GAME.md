@@ -388,6 +388,8 @@ Pick the engine **after** a vertical slice checklist (below), not before. This d
 
 ## 9. Roadmap: MVP vs commercial v1 vs later
 
+Execution checklist (done vs remaining): [`../TODOs.md`](../TODOs.md).
+
 ### 9.1 MVP (fun + demo-able)
 
 Goal: prove the fantasy in a week-of-playtest sense, not a store launch.
