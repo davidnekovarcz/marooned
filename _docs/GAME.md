@@ -302,7 +302,7 @@ If a parent asks “why is this better than scrolling”: because the child is m
 
 ## 7. Monetization (hybrid — not pay-to-win)
 
-Investor / agency one-pager (costs, store sequence): [`LEAN_CANVAS.md`](LEAN_CANVAS.md).
+Investor / agency one-pager (honest Steam percentiles, staged ask, store sequence): [`LEAN_CANVAS.md`](LEAN_CANVAS.md).
 
 **Do not ship pay-to-win.** It fights the kids/education story, Steam reviews, and streamers. Selling hunger-skips, better loot, or a finished house would also kill the game described in the pitch.
 
