@@ -250,7 +250,12 @@ Re-fetch: `python3 scripts/fetch-kenney-assets.py`
 | Stylized Nature MegaKit | Yes |
 | Fantasy Props MegaKit | Yes |
 | Universal Animation Library 1 + 2 | Yes |
+| Farm Animal Pack | Yes — `quaternius/farm-animals/` (OGA zip; FBX+OBJ) |
+| Ultimate Animated Animal Pack | Yes — `quaternius/ultimate-animated-animals/glTF/` |
+| Animated Fish Pack | Yes — `quaternius/animated-fish/` (OGA zip; FBX+OBJ) |
 | Survival / Pirate / Food / Home Interior | **Incomplete** (Google Drive rate-limited). Use Kenney Survival / Pirate / Food / Furniture instead. |
+
+In-game fauna this slice: **pig, sheep, llama** (farm), **fox, deer** (ultimate), **pond fish** (Fish1–3). The farm pack has no goat or chicken.
 
 ### Poly Haven
 
@@ -258,7 +263,7 @@ Re-fetch: `python3 scripts/fetch-kenney-assets.py`
 
 ### Mixamo / Freesound
 
-Not downloaded.
+Mixamo not downloaded. Freesound not downloaded (login). Seagull / bird / pig / splash one-shots are original procedural audio.
 
 Repo size is large (~0.7 GB vendor). Do not duplicate packs into `web/public`.
 

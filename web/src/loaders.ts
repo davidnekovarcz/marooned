@@ -29,6 +29,13 @@ export async function loadGlb(url: string): Promise<THREE.Object3D> {
   return prepareTemplate(gltf.scene);
 }
 
+export async function loadGltfFile(
+  url: string,
+): Promise<{ root: THREE.Object3D; animations: THREE.AnimationClip[] }> {
+  const gltf = await gltfLoader.loadAsync(url);
+  return { root: prepareTemplate(gltf.scene), animations: gltf.animations };
+}
+
 export async function loadFbx(url: string): Promise<THREE.Group> {
   return fbxLoader.loadAsync(url);
 }

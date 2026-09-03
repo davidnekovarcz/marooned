@@ -168,6 +168,9 @@ License reminder: Kenney and Quaternius free packs are **CC0** (commercial OK, c
 | Kenney **Animated Characters Protagonists** | Extra cast | https://kenney.nl/assets/animated-characters-protagonists |
 | Quaternius **Universal Animation Library** | Walk/run/emotes, retarget to Unity/Godot | https://quaternius.com/packs/universalanimationlibrary.html |
 | Quaternius **UAL 2** | Farming, fishing, parkour — later | https://quaternius.com/packs/universalanimationlibrary2.html |
+| Quaternius **Farm Animal Pack** | Pig, sheep, llama, cow, horse (no goat/chicken) | https://quaternius.com/packs/farmanimal.html |
+| Quaternius **Ultimate Animated Animal Pack** | 12 forest animals, idle/walk/attack/death | https://quaternius.com/packs/ultimateanimatedanimals.html |
+| Quaternius **Animated Fish Pack** | 7 aquatic species, swim loops | https://quaternius.com/packs/animatedfish.html |
 | Mixamo | Auto-rig + mocap (commercial OK; not CC0; don’t resell raw files) | https://www.mixamo.com |
 
 **Sky, lighting, audio**

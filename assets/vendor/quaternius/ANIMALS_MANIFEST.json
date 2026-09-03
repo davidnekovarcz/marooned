@@ -1,0 +1,30 @@
+{
+  "pulled": "2026-09-02",
+  "license": "CC0",
+  "packs": [
+    {
+      "id": "farm-animals",
+      "page": "https://quaternius.com/packs/farmanimal.html",
+      "source": "https://opengameart.org/sites/default/files/Farm%20Animals%20by%20%40Quaternius.zip",
+      "dir": "farm-animals/",
+      "kept": ["FBX", "OBJ", "License.txt"],
+      "notes": "Pig, sheep, llama used in-game. Pack has no goat or chicken."
+    },
+    {
+      "id": "ultimate-animated-animals",
+      "page": "https://quaternius.com/packs/ultimateanimatedanimals.html",
+      "source": "https://drive.google.com/drive/folders/1uJ3N5HfB7jKTseJUNQr3N4YaN0UuEtHk",
+      "dir": "ultimate-animated-animals/",
+      "kept": ["glTF"],
+      "notes": "12 animals with Idle/Walk/Attack/Death. Fox and deer used as living decor."
+    },
+    {
+      "id": "animated-fish",
+      "page": "https://quaternius.com/packs/animatedfish.html",
+      "source": "https://opengameart.org/sites/default/files/Animated%20Fish%20Pack%20by%20%40Quaternius.zip",
+      "dir": "animated-fish/",
+      "kept": ["FBX", "OBJ", "License.txt"],
+      "notes": "Pond uses Fish1/Fish2/Fish3 swim loops. Shark/whale/dolphin kept in vendor for a later hunt slice."
+    }
+  ]
+}
