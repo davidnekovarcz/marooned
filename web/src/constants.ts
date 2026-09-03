@@ -21,7 +21,7 @@ export const CAMERA_OFFSET = { x: -18, y: 24, z: -18 } as const;
 export const ZOOM_CELLS_IN = 10;
 /** Horizontal span ≈ half the island (radius cells). */
 export const ZOOM_CELLS_OUT = ISLAND_RADIUS;
-export const ZOOM_CELLS_START = 24;
+export const ZOOM_CELLS_START = 16;
 export const ZOOM_CELLS_PER_SEC = 28;
 /** Night fog pulls near/far in by this factor (1 = day distance). */
 export const FOG_NIGHT_SCALE = 0.4;

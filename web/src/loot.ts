@@ -36,13 +36,13 @@ type Spec = {
 };
 
 const FRUIT: Spec[] = [
-  { kind: "coconut", count: 4, sites: ["palm"], rots: true },
-  { kind: "coconutHalf", count: 1, sites: ["palm"], rots: true },
-  { kind: "banana", count: 3, sites: ["palm"], rots: true },
-  { kind: "orange", count: 3, sites: ["grove"], rots: true },
-  { kind: "lemon", count: 2, sites: ["grove"], rots: true },
-  { kind: "pineapple", count: 2, sites: ["grove"], rots: true },
-  { kind: "watermelon", count: 2, sites: ["grove"], rots: true },
+  { kind: "coconut", count: 8, sites: ["palm"], rots: true },
+  { kind: "coconutHalf", count: 2, sites: ["palm"], rots: true },
+  { kind: "banana", count: 5, sites: ["palm"], rots: true },
+  { kind: "orange", count: 4, sites: ["grove"], rots: true },
+  { kind: "lemon", count: 3, sites: ["grove"], rots: true },
+  { kind: "pineapple", count: 3, sites: ["grove"], rots: true },
+  { kind: "watermelon", count: 3, sites: ["grove"], rots: true },
 ];
 
 const TOOLS: Spec[] = [
@@ -127,20 +127,30 @@ export function createLoot(
     for (const inst of instances) {
       if (inst.cell && inst.state !== "waiting") occupied.add(keyOf(inst.cell));
     }
+    for (const it of items) {
+      occupied.add(`${it.cellX},${it.cellZ}`);
+    }
   };
 
   const pickCell = (spec: Spec, avoid: Cell | null): Cell | null => {
     const cells = pool(sites, spec.sites);
     if (!cells.length) return null;
     occupiedByLoot();
-    for (let n = 0; n < 48; n++) {
-      const cell = cells[Math.floor(rng() * cells.length)];
-      if (!cell) continue;
-      if (avoid && cell.x === avoid.x && cell.z === avoid.z) continue;
-      if (occupied.has(keyOf(cell))) continue;
-      return cell;
-    }
-    return cells.find((c) => !occupied.has(keyOf(c)) && (!avoid || c.x !== avoid.x || c.z !== avoid.z)) ?? null;
+    const tryPick = (strict: boolean): Cell | null => {
+      for (let n = 0; n < 64; n++) {
+        const cell = cells[Math.floor(rng() * cells.length)];
+        if (!cell) continue;
+        if (avoid && cell.x === avoid.x && cell.z === avoid.z) continue;
+        if (strict && occupied.has(keyOf(cell))) continue;
+        return cell;
+      }
+      return (
+        cells.find(
+          (c) => (!avoid || c.x !== avoid.x || c.z !== avoid.z) && (!strict || !occupied.has(keyOf(c))),
+        ) ?? null
+      );
+    };
+    return tryPick(true) ?? tryPick(false);
   };
 
   const place = (inst: Instance, cell: Cell): boolean => {
@@ -191,6 +201,20 @@ export function createLoot(
       trySpawn(inst);
     }
   }
+
+  const placed = instances.filter((it) => it.state !== "waiting").length;
+  console.info("[loot]", {
+    sites: {
+      palm: sites.palm.length,
+      grove: sites.grove.length,
+      wreck: sites.wreck.length,
+      boat: sites.boat.length,
+      hut: sites.hut.length,
+      forest: sites.forest.length,
+    },
+    placed,
+    kinds: instances.map((it) => `${it.spec.kind}:${it.state}:${it.cell ? `${it.cell.x},${it.cell.z}` : "-"}`),
+  });
 
   return {
     update: (dt: number) => {
