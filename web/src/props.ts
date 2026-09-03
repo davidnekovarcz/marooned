@@ -21,7 +21,7 @@ import {
 } from "./island";
 import { makeWorldItem, type WorldItem } from "./interact";
 import { loadGlb, loadObj } from "./loaders";
-import { LILY_URL, MODEL_URLS, type ModelKind } from "./models";
+import { LILY_URL, MODEL_URLS, TORCH_URL, type ModelKind } from "./models";
 import { mulberry32 } from "./rng";
 
 const PLUS: [number, number][] = [
@@ -43,24 +43,44 @@ const NEAR: [number, number][] = [
   [-1, -1],
 ];
 
-const HEIGHT: Partial<Record<ModelKind | "lilypad", number>> = {
+type PlaceKind = ModelKind | "lilypad" | "torch";
+
+const HEIGHT: Partial<Record<PlaceKind, number>> = {
   palm: 3.6,
   palmBend: 3.3,
   palmShort: 2.6,
+  palmSimple: 3.1,
   piratePalm: 3.4,
+  piratePalmStraight: 3.5,
   oak: 3.1,
   pine: 3.3,
   bush: 0.85,
+  bushSmall: 0.55,
+  bushDetailed: 0.78,
+  flowerYellow: 0.28,
+  flowerPurple: 0.28,
+  flowerRed: 0.26,
+  grassTuft: 0.22,
+  grassLarge: 0.34,
+  grassPatch: 0.1,
+  mushroomTan: 0.22,
+  mushroomRed: 0.24,
+  natureLog: 0.42,
+  logLarge: 0.55,
+  campfireLogs: 0.38,
+  campfireStones: 0.32,
   rockSmall: 0.55,
   rockLarge: 1.15,
   stump: 0.7,
   sandRock: 0.9,
   wreck: 4.2,
   crate: 0.7,
+  crateBottles: 0.72,
   barrel: 0.85,
   chest: 0.7,
   rowBoat: 1.4,
   mastRopes: 1.6,
+  flag: 1.7,
   hammer: 0.7,
   axe: 0.85,
   shovel: 0.9,
@@ -70,6 +90,8 @@ const HEIGHT: Partial<Record<ModelKind | "lilypad", number>> = {
   campfire: 0.55,
   fishStand: 1.4,
   log: 0.45,
+  bedroll: 0.18,
+  bucket: 0.38,
   fishingBoat: 2.2,
   coconut: 0.33,
   coconutHalf: 0.16,
@@ -84,14 +106,20 @@ const HEIGHT: Partial<Record<ModelKind | "lilypad", number>> = {
 };
 
 /** Kenney food/tools are often not Y-up — scale by longest edge so a knife is not boat-sized. */
-const LONGEST: Partial<Record<ModelKind | "lilypad", number>> = {
+const LONGEST: Partial<Record<PlaceKind, number>> = {
   knife: 0.28,
   coconutHalf: 0.34,
   pineapple: 0.62,
   orange: 0.14,
+  banana: 0.2,
+  lemon: 0.12,
+  watermelon: 0.28,
   hammer: 0.4,
   axe: 0.5,
   shovel: 0.55,
+  bottle: 0.16,
+  tinder: 0.22,
+  torch: 0.4,
 };
 
 export type AudioAnchor = { id: string; position: THREE.Vector3 };
@@ -179,7 +207,7 @@ export async function scatterProps(
   blocked: Uint8Array,
 ): Promise<ScatterResult> {
   const rng = mulberry32(`${SEED}-props`);
-  const templates: Partial<Record<ModelKind | "lilypad", THREE.Object3D>> = {};
+  const templates: Partial<Record<PlaceKind, THREE.Object3D>> = {};
 
   await Promise.all(
     (Object.keys(MODEL_URLS) as ModelKind[]).map(async (kind) => {
@@ -187,6 +215,7 @@ export async function scatterProps(
     }),
   );
   templates.lilypad = await loadObj(LILY_URL);
+  templates.torch = await loadObj(TORCH_URL, 0x6a4a32);
 
   const grass: [number, number][] = [];
   const land: [number, number][] = [];
@@ -208,7 +237,7 @@ export async function scatterProps(
   const items: WorldItem[] = [];
 
   const add = (
-    kind: ModelKind | "lilypad",
+    kind: PlaceKind,
     x: number,
     z: number,
     yaw: number,
@@ -247,7 +276,12 @@ export async function scatterProps(
     add("wreck", wreck.x, wreck.z, 0.4, { tiltZ: 0.28 });
     add("crate", wreck.x + 2, wreck.z + 1, rng() * 6);
     add("barrel", wreck.x - 2, wreck.z, rng() * 6);
+    add("barrel", wreck.x + 1, wreck.z + 2, rng() * 6);
     add("chest", wreck.x + 1, wreck.z - 1, 1.1);
+    add("crateBottles", wreck.x + 3, wreck.z + 1, rng() * 4);
+    add("bottle", wreck.x + 2, wreck.z, rng() * 6);
+    add("bottle", wreck.x - 1, wreck.z - 2, rng() * 6);
+    add("flag", wreck.x - 2, wreck.z + 1, 0.2);
     add("hammer", wreck.x + 2, wreck.z - 1, rng() * 6);
     add("axe", wreck.x - 1, wreck.z + 2, rng() * 6);
     add("knife", wreck.x + 3, wreck.z, 0.3);
@@ -283,6 +317,10 @@ export async function scatterProps(
     add("tentHalf", hut.x + 2, hut.z - 1, -0.4);
     add("campfire", hut.x - 2, hut.z + 1, rng() * 2);
     add("log", hut.x - 1, hut.z + 2, rng() * 3);
+    add("bedroll", hut.x + 1, hut.z - 1, rng() * 3);
+    add("bucket", hut.x - 1, hut.z + 1, rng() * 4);
+    add("tinder", hut.x + 1, hut.z + 1, rng() * 2);
+    add("torch", hut.x - 1, hut.z - 1, 0.4);
     add("bow", hut.x + 1, hut.z + 2, 0.7);
     add("arrow", hut.x + 2, hut.z + 2, 1.2);
     add("shovel", hut.x - 2, hut.z - 1, rng() * 4);
@@ -313,6 +351,16 @@ export async function scatterProps(
       add(rng() < 0.35 ? "coconutHalf" : "coconut", x, z, rng() * 6);
       put += 1;
     }
+    if (rng() < 0.4) {
+      for (const [dx, dz] of NEAR) {
+        const x = px + dx;
+        const z = pz + dz;
+        if (!inBounds(x, z) || !isLand(biomes[cellIndex(x, z)] as Biome)) continue;
+        if (blocked[cellIndex(x, z)]) continue;
+        add("banana", x, z, rng() * 6);
+        break;
+      }
+    }
   };
 
   const tryPlace = (
@@ -337,7 +385,7 @@ export async function scatterProps(
         if (!canBlock(biomes, blocked, x, z)) continue;
         blocked[i] = 1;
       } else {
-        if (!inBounds(x, z) || !isLand(biomes[i] as Biome) || blocked[i]) continue;
+        if (!inBounds(x, z) || !isLand(biomes[i] as Biome)) continue;
       }
       add(kind, x, z, rng() * Math.PI * 2);
       after?.(x, z);
@@ -365,7 +413,9 @@ export async function scatterProps(
     placeCoconuts,
   );
   tryPlace("palmShort", sand, 8, () => true, "cell", placeCoconuts);
+  tryPlace("palmSimple", sand, 6, () => true, "cell", placeCoconuts);
   tryPlace("piratePalm", sand, 6, () => true, "cell", placeCoconuts);
+  tryPlace("piratePalmStraight", sand, 5, () => true, "cell", placeCoconuts);
   tryPlace("oak", grass, 18, () => true, "cell");
   tryPlace(
     "pine",
@@ -379,9 +429,38 @@ export async function scatterProps(
   tryPlace("rockSmall", land, 28, () => true, "cell");
   tryPlace("sandRock", sand, 10, () => true, "cell");
   tryPlace("bush", grass, 48, () => true, "none");
+  tryPlace("bushSmall", grass, 28, () => true, "none");
+  tryPlace("bushDetailed", grass, 22, () => true, "none");
+  tryPlace("flowerYellow", grass, 40, () => true, "none");
+  tryPlace("flowerPurple", grass, 32, () => true, "none");
+  tryPlace("flowerRed", grass, 18, () => true, "none");
+  tryPlace("grassTuft", grass, 80, () => true, "none");
+  tryPlace("grassLarge", grass, 44, () => true, "none");
+  tryPlace("grassPatch", grass, 26, () => true, "none");
+  tryPlace(
+    "mushroomTan",
+    grass,
+    12,
+    (x, z) => cellCenterDist(x, z) <= 42,
+    "none",
+  );
+  tryPlace(
+    "mushroomRed",
+    grass,
+    8,
+    (x, z) => cellCenterDist(x, z) <= 42,
+    "none",
+  );
   tryPlace("log", grass, 8, () => true, "none");
+  tryPlace("natureLog", grass, 10, () => true, "none");
+  tryPlace("logLarge", grass, 5, () => true, "none");
+  tryPlace("campfireLogs", sand, 4, () => true, "none");
+  tryPlace("campfireStones", sand, 3, () => true, "none");
   tryPlace("pineapple", grass, 6, () => true, "none");
   tryPlace("orange", grass, 8, () => true, "none");
+  tryPlace("banana", sand, 6, () => true, "none");
+  tryPlace("lemon", grass, 5, () => true, "none");
+  tryPlace("watermelon", grass, 4, () => true, "none");
   tryPlace("hammer", land, 3, () => true, "none");
   tryPlace("shovel", land, 3, () => true, "none");
 

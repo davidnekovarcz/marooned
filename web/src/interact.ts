@@ -15,7 +15,7 @@ import type { Needs } from "./needs";
 import type { ModelKind } from "./models";
 import { isHeldFood, type GridPlayer, type HeldKind, type PocketSlot } from "./player";
 
-export type WorldKind = ModelKind | "lilypad";
+export type WorldKind = ModelKind | "lilypad" | "torch";
 
 export type WorldItemAction = {
   label: string;
@@ -42,20 +42,39 @@ const NAMES: Record<WorldKind, string> = {
   palm: "Palm",
   palmBend: "Palm",
   palmShort: "Palm",
+  palmSimple: "Palm",
   oak: "Oak",
   pine: "Pine",
   bush: "Bush",
+  bushSmall: "Bush",
+  bushDetailed: "Bush",
+  flowerYellow: "Flowers",
+  flowerPurple: "Flowers",
+  flowerRed: "Flowers",
+  grassTuft: "Grass",
+  grassLarge: "Grass",
+  grassPatch: "Grass",
+  mushroomTan: "Mushroom",
+  mushroomRed: "Mushroom",
+  natureLog: "Log",
+  logLarge: "Log",
+  campfireLogs: "Fire pit",
+  campfireStones: "Fire pit",
   rockSmall: "Rock",
   rockLarge: "Rock",
   stump: "Stump",
   wreck: "Shipwreck",
   piratePalm: "Palm",
+  piratePalmStraight: "Palm",
   crate: "Crate",
+  crateBottles: "Bottles",
   barrel: "Barrel",
   chest: "Chest",
   rowBoat: "Rowboat",
   mastRopes: "Mast",
   sandRock: "Rock",
+  bottle: "Bottle",
+  flag: "Flag",
   hammer: "Hammer",
   axe: "Axe",
   shovel: "Shovel",
@@ -65,54 +84,73 @@ const NAMES: Record<WorldKind, string> = {
   campfire: "Campfire",
   fishStand: "Fishing stand",
   log: "Log",
+  bedroll: "Bedroll",
+  bucket: "Bucket",
+  tinder: "Tinder box",
   fishingBoat: "Fishing boat",
   coconut: "Coconut",
   coconutHalf: "Open coconut",
   knife: "Knife",
   pineapple: "Pineapple",
   orange: "Orange",
+  banana: "Banana",
+  lemon: "Lemon",
+  watermelon: "Watermelon",
   fish: "Fish",
   bow: "Bow",
   arrow: "Arrow",
   bridge: "Bridge",
   lilypad: "Lily pad",
+  torch: "Torch",
 };
 
 const HELD_NAME: Record<HeldKind, string> = {
   knife: "Knife",
   hammer: "Hammer",
+  torch: "Torch",
+  tinder: "Tinder box",
   coconutHalf: "Open coconut",
   orange: "Orange",
   pineapple: "Pineapple",
+  banana: "Banana",
+  lemon: "Lemon",
+  watermelon: "Watermelon",
 };
 
-const HELD_MEAL: Record<"coconutHalf" | "orange" | "pineapple", WorldItemAction> = {
+const fruitEat: WorldItemAction = {
+  label: "Eat",
+  eatHeld: true,
+  meal: { hunger: EAT_FRUIT_HUNGER, thirst: EAT_FRUIT_THIRST },
+};
+
+const HELD_MEAL: Record<
+  "coconutHalf" | "orange" | "pineapple" | "banana" | "lemon" | "watermelon",
+  WorldItemAction
+> = {
   coconutHalf: {
     label: "Eat / drink",
     eatHeld: true,
     meal: { hunger: EAT_COCONUT_HUNGER, thirst: EAT_COCONUT_THIRST },
   },
-  orange: {
-    label: "Eat",
-    eatHeld: true,
-    meal: { hunger: EAT_FRUIT_HUNGER, thirst: EAT_FRUIT_THIRST },
-  },
+  orange: fruitEat,
   pineapple: {
     label: "Eat",
     eatHeld: true,
     meal: { hunger: EAT_PINEAPPLE_HUNGER, thirst: EAT_PINEAPPLE_THIRST },
   },
+  banana: fruitEat,
+  lemon: fruitEat,
+  watermelon: fruitEat,
 };
 
+const PICKUP: WorldItemAction = { label: "Pick up" };
+
 const ACTIONS: Partial<Record<WorldKind, WorldItemAction>> = {
-  coconutHalf: {
-    label: "Pick up",
-    pickup: "coconutHalf",
-  },
-  orange: {
-    label: "Pick up",
-    pickup: "orange",
-  },
+  coconutHalf: { ...PICKUP, pickup: "coconutHalf" },
+  orange: { ...PICKUP, pickup: "orange" },
+  banana: { ...PICKUP, pickup: "banana" },
+  lemon: { ...PICKUP, pickup: "lemon" },
+  watermelon: { ...PICKUP, pickup: "watermelon" },
   coconut: {
     label: "Break (needs a hammer)",
     blockedReason: "needs a hammer",
@@ -123,14 +161,10 @@ const ACTIONS: Partial<Record<WorldKind, WorldItemAction>> = {
     blockedReason: "needs a knife",
     needsHeld: "knife",
   },
-  knife: {
-    label: "Pick up",
-    pickup: "knife",
-  },
-  hammer: {
-    label: "Pick up",
-    pickup: "hammer",
-  },
+  knife: { ...PICKUP, pickup: "knife" },
+  hammer: { ...PICKUP, pickup: "hammer" },
+  torch: { ...PICKUP, pickup: "torch" },
+  tinder: { ...PICKUP, pickup: "tinder" },
 };
 
 export type SpawnFn = (

@@ -14,6 +14,7 @@ import { buildOcean } from "./ocean";
 import { GridPlayer } from "./player";
 import { loadPlayerModel } from "./playerModel";
 import { scatterProps } from "./props";
+import { spawnWildlife } from "./wildlife";
 
 const blocked = new Uint8Array(GRID * GRID);
 const biomes = buildBiomes();
@@ -46,6 +47,7 @@ async function start(): Promise<void> {
   blocked[spawn.z * GRID + spawn.x] = 1;
 
   const scattered = await scatterProps(scene, biomes, blocked);
+  const wildlife = await spawnWildlife(scene, biomes, blocked);
   blocked[spawn.z * GRID + spawn.x] = 0;
 
   if (DEBUG_GRID) scene.add(buildGridOverlay(biomes, blocked));
@@ -84,6 +86,7 @@ async function start(): Promise<void> {
     zoom.update(dt);
     player.canSprint = needs.canSprint;
     player.update(dt);
+    wildlife.update(dt);
     needs.tick(player.gait, dt, isDaytime(day.t));
     day.update(dt);
     applyDayNight(scene, lights, day.t);

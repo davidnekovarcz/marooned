@@ -2,7 +2,7 @@ import path from "node:path";
 import { defineConfig } from "vite";
 
 export default defineConfig({
-  assetsInclude: ["**/*.obj", "**/*.mtl", "**/*.ogg", "**/*.fbx"],
+  assetsInclude: ["**/*.obj", "**/*.mtl", "**/*.ogg", "**/*.fbx", "**/*.gltf"],
   build: {
     target: "es2022",
   },

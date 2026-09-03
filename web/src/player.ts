@@ -24,24 +24,47 @@ const DIRS: Record<string, { x: number; z: number }> = {
 const SHIFT = new Set(["ShiftLeft", "ShiftRight"]);
 const PICK_AT = 0.32;
 
-export type HeldKind = "knife" | "hammer" | "coconutHalf" | "orange" | "pineapple";
+export type HeldKind =
+  | "knife"
+  | "hammer"
+  | "torch"
+  | "tinder"
+  | "coconutHalf"
+  | "orange"
+  | "pineapple"
+  | "banana"
+  | "lemon"
+  | "watermelon";
 export type PocketSlot = "left" | "right";
 type LockKind = "meal" | "cut" | "break";
 type PocketItem = { kind: HeldKind; mesh: THREE.Object3D };
 
 const FOOD_HOLD = { rot: new THREE.Euler(0.4, 0.2, 0.5) };
 const PINEAPPLE_HOLD = { rot: new THREE.Euler(0.35, 0.15, 0.45) };
-const TOOL_HOLD: Record<"knife" | "hammer", { length: number; rot: THREE.Euler }> = {
+const TOOL_HOLD: Record<"knife" | "hammer" | "torch", { length: number; rot: THREE.Euler }> = {
   knife: { length: 0.28, rot: new THREE.Euler(0.2, 0.9, 1.2) },
   hammer: { length: 0.36, rot: new THREE.Euler(0.15, 0.7, 1.05) },
+  torch: { length: 0.38, rot: new THREE.Euler(0.12, 0.65, 1.1) },
 };
 
-export function isHeldFood(kind: HeldKind | null): kind is "coconutHalf" | "orange" | "pineapple" {
-  return kind === "coconutHalf" || kind === "orange" || kind === "pineapple";
+const HELD_FOOD = new Set<HeldKind>([
+  "coconutHalf",
+  "orange",
+  "pineapple",
+  "banana",
+  "lemon",
+  "watermelon",
+]);
+
+export function isHeldFood(
+  kind: HeldKind | null,
+): kind is "coconutHalf" | "orange" | "pineapple" | "banana" | "lemon" | "watermelon" {
+  return kind !== null && HELD_FOOD.has(kind);
 }
 
 function poseFor(kind: HeldKind): { length: number | null; rot: THREE.Euler } {
-  if (kind === "knife" || kind === "hammer") return TOOL_HOLD[kind];
+  if (kind === "knife" || kind === "hammer" || kind === "torch") return TOOL_HOLD[kind];
+  if (kind === "tinder") return { length: 0.16, rot: FOOD_HOLD.rot };
   if (kind === "pineapple") return { length: null, rot: PINEAPPLE_HOLD.rot };
   return { length: null, rot: FOOD_HOLD.rot };
 }

@@ -42,6 +42,85 @@ function makePondBed(ctx: AudioContext): AudioBuffer {
   return buffer;
 }
 
+function makeSeagullBuffer(ctx: AudioContext, variant: number): AudioBuffer {
+  const seconds = 0.55;
+  const rate = ctx.sampleRate;
+  const n = Math.floor(rate * seconds);
+  const buffer = ctx.createBuffer(1, n, rate);
+  const data = buffer.getChannelData(0);
+  const f0 = 820 + variant * 90;
+  let phase = 0;
+  for (let i = 0; i < n; i++) {
+    const t = i / rate;
+    const u = t / seconds;
+    const env = Math.sin(u * Math.PI) ** 1.1 * Math.exp(-u * 1.4);
+    const freq = f0 + 180 * Math.sin(t * Math.PI * 2 * 6.5);
+    phase += freq / rate;
+    data[i] = Math.sin(phase * Math.PI * 2) * env * 0.28;
+  }
+  return buffer;
+}
+
+function makeBirdBuffer(ctx: AudioContext, variant: number): AudioBuffer {
+  const seconds = 0.38;
+  const rate = ctx.sampleRate;
+  const n = Math.floor(rate * seconds);
+  const buffer = ctx.createBuffer(1, n, rate);
+  const data = buffer.getChannelData(0);
+  const notes = [1480, 1760, 1320].map((f) => f * (0.94 + variant * 0.05));
+  let phase = 0;
+  for (let i = 0; i < n; i++) {
+    const t = i / rate;
+    const hop = Math.min(2, Math.floor(t / 0.11));
+    const freq = notes[hop] ?? notes[0]!;
+    const local = (t - hop * 0.11) / 0.1;
+    const env = local >= 0 && local <= 1 ? Math.sin(local * Math.PI) ** 1.3 : 0;
+    phase += freq / rate;
+    data[i] = Math.sin(phase * Math.PI * 2) * env * 0.22;
+  }
+  return buffer;
+}
+
+function makeOinkBuffer(ctx: AudioContext, variant: number): AudioBuffer {
+  const seconds = 0.32;
+  const rate = ctx.sampleRate;
+  const n = Math.floor(rate * seconds);
+  const buffer = ctx.createBuffer(1, n, rate);
+  const data = buffer.getChannelData(0);
+  const f0 = 180 + variant * 28;
+  let phase = 0;
+  let prev = 0;
+  for (let i = 0; i < n; i++) {
+    const t = i / rate;
+    const u = t / seconds;
+    const env = Math.sin(u * Math.PI) ** 1.05;
+    const freq = f0 - u * 70;
+    phase += freq / rate;
+    const white = Math.random() * 2 - 1;
+    prev = prev * 0.86 + white * 0.14;
+    data[i] = (Math.sin(phase * Math.PI * 2) * 0.55 + prev * 0.45) * env * 0.34;
+  }
+  return buffer;
+}
+
+function makeSplashBuffer(ctx: AudioContext): AudioBuffer {
+  const seconds = 0.45;
+  const rate = ctx.sampleRate;
+  const n = Math.floor(rate * seconds);
+  const buffer = ctx.createBuffer(1, n, rate);
+  const data = buffer.getChannelData(0);
+  let prev = 0;
+  for (let i = 0; i < n; i++) {
+    const t = i / rate;
+    const u = t / seconds;
+    const white = Math.random() * 2 - 1;
+    prev = prev * 0.72 + white * 0.28;
+    const env = Math.exp(-u * 7) * Math.sin(Math.min(1, u * 18) * Math.PI * 0.5);
+    data[i] = prev * env * 0.4;
+  }
+  return buffer;
+}
+
 function makeFrogBuffer(ctx: AudioContext, variant: number): AudioBuffer {
   const seconds = 0.72;
   const rate = ctx.sampleRate;
@@ -248,6 +327,10 @@ export function setupIslandAudio(
     const waves = makeWaveBuffer(ctx);
     const pondBed = makePondBed(ctx);
     const frogs = [0, 1, 2, 3].map((v) => makeFrogBuffer(ctx, v));
+    const seagulls = [0, 1, 2].map((v) => makeSeagullBuffer(ctx, v));
+    const birds = [0, 1, 2, 3].map((v) => makeBirdBuffer(ctx, v));
+    const oinks = [0, 1].map((v) => makeOinkBuffer(ctx, v));
+    const splash = makeSplashBuffer(ctx);
     drinkBuf = makeDrinkBuffer(ctx, EAT_ACTION_SECONDS);
     chewBuf = makeChewBuffer(ctx, EAT_ACTION_SECONDS);
     rustleBuf = cloths[0] ?? null;
@@ -268,15 +351,20 @@ export function setupIslandAudio(
       const source = a.position.clone();
       if (a.id === "wreck") {
         track(attachRandomOneShots(listener, creaks, source, 0.55, [2.5, 8], LANDMARK_HEAR), source);
+        track(attachRandomOneShots(listener, seagulls, source, 0.28, [6, 16], LANDMARK_HEAR), source);
       } else if (a.id === "hut") {
         track(attachRandomOneShots(listener, cloths, source, 0.42, [3.5, 11], LANDMARK_HEAR), source);
+        track(attachRandomOneShots(listener, birds, source, 0.22, [5, 14], LANDMARK_HEAR), source);
+        track(attachRandomOneShots(listener, oinks, source, 0.26, [8, 18], LANDMARK_HEAR), source);
       } else if (a.id === "boat") {
         track(attachRandomOneShots(listener, chops, source, 0.32, [4, 12], LANDMARK_HEAR), source);
+        track(attachRandomOneShots(listener, seagulls, source, 0.2, [9, 20], LANDMARK_HEAR), source);
       } else if (a.id === "pond") {
         const bed = attachLoop(listener, pondBed, source, 0.22, LANDMARK_HEAR);
         track(bed, source);
         bed.play();
         track(attachRandomOneShots(listener, frogs, source, 0.48, [1.2, 3.6], LANDMARK_HEAR), source);
+        track(attachRandomOneShots(listener, [splash], source, 0.3, [7, 16], LANDMARK_HEAR), source);
       }
     }
 
