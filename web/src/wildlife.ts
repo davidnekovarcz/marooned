@@ -87,6 +87,25 @@ function paintFish(root: THREE.Object3D, color: number): void {
   });
 }
 
+function fixGltfMaterials(root: THREE.Object3D): void {
+  root.traverse((obj) => {
+    const mesh = obj as THREE.Mesh;
+    if (!mesh.isMesh) return;
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
+    mesh.frustumCulled = false;
+    const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+    for (const mat of materials) {
+      mat.transparent = false;
+      mat.opacity = 1;
+      mat.side = THREE.FrontSide;
+      mat.depthWrite = true;
+      mat.depthTest = true;
+      if ('visible' in mat) (mat as any).visible = true;
+    }
+  });
+}
+
 async function templateFromFbx(url: string, spec: SizeSpec): Promise<Template> {
   const fbx = await loadFbx(url);
   prepareTemplate(fbx);
@@ -188,6 +207,8 @@ export async function spawnWildlife(
     templateFromFbx(FISH_URLS.fish2, { ...ANIMAL_SIZE.fish2, layFlat: true }),
     templateFromFbx(FISH_URLS.fish3, { ...ANIMAL_SIZE.fish3, layFlat: true }),
   ]);
+  fixGltfMaterials(fox.root);
+  fixGltfMaterials(deer.root);
   paintFish(fish1.root, 0xc45a3a);
   paintFish(fish2.root, 0x3a6ec8);
   paintFish(fish3.root, 0xe07020);
