@@ -9,8 +9,10 @@ export type SizeSpec = {
   meters: number;
   /** Floor on the chosen axis — small props (orange, knife) read bigger than life. */
   min?: number;
-  /** Lie a tall-thin mesh on the ground (banana, some tools). */
+  /** Lie a tall-thin mesh on the ground (banana). */
   layFlat?: boolean;
+  /** Plant a flat mesh upright in the ground (knife). */
+  standUp?: boolean;
 };
 
 const _box = new THREE.Box3();
@@ -36,13 +38,23 @@ export function fitToSpec(obj: THREE.Object3D, spec: SizeSpec): void {
   const target = Math.max(spec.meters, spec.min ?? 0);
   obj.scale.multiplyScalar(target / current);
   obj.updateMatrixWorld(true);
-  if (spec.layFlat) layFlatIfUpright(obj);
+  if (spec.standUp) standUpIfFlat(obj);
+  else if (spec.layFlat) layFlatIfUpright(obj);
 }
 
 export function layFlatIfUpright(obj: THREE.Object3D): void {
   const size = measureSize(obj);
   if (size.y <= Math.max(size.x, size.z) * 1.12) return;
   obj.rotation.x = -Math.PI / 2;
+  obj.updateMatrixWorld(true);
+}
+
+export function standUpIfFlat(obj: THREE.Object3D): void {
+  const size = measureSize(obj);
+  const horiz = Math.max(size.x, size.z);
+  if (size.y >= horiz * 0.55) return;
+  if (size.x >= size.z) obj.rotation.z += Math.PI / 2;
+  else obj.rotation.x += Math.PI / 2;
   obj.updateMatrixWorld(true);
 }
 
@@ -108,7 +120,7 @@ export const PROP_SIZE: Record<string, SizeSpec> = {
   fishingBoat: { axis: "height", meters: 2.2 },
   coconut: { axis: "longest", meters: 0.22, min: 0.4 },
   coconutHalf: { axis: "longest", meters: 0.18, min: 0.48 },
-  knife: { axis: "longest", meters: 0.22, min: 0.58, layFlat: true },
+  knife: { axis: "longest", meters: 0.22, min: 0.58, standUp: true },
   pineapple: { axis: "longest", meters: 0.28, min: 0.55 },
   orange: { axis: "longest", meters: 0.085, min: 0.36 },
   banana: { axis: "longest", meters: 0.18, min: 0.7, layFlat: true },

@@ -33,16 +33,20 @@ type Spec = {
   count: number;
   sites: SiteKey[];
   rots: boolean;
+  /** First `nearCount` pieces spawn near this landmark so the opening beach has food. */
+  near?: SiteKey;
+  nearCount?: number;
+  nearRadius?: number;
 };
 
 const FRUIT: Spec[] = [
-  { kind: "coconut", count: 8, sites: ["palm"], rots: true },
-  { kind: "coconutHalf", count: 2, sites: ["palm"], rots: true },
-  { kind: "banana", count: 5, sites: ["palm"], rots: true },
-  { kind: "orange", count: 4, sites: ["grove"], rots: true },
-  { kind: "lemon", count: 3, sites: ["grove"], rots: true },
-  { kind: "pineapple", count: 3, sites: ["grove"], rots: true },
-  { kind: "watermelon", count: 3, sites: ["grove"], rots: true },
+  { kind: "coconut", count: 8, sites: ["palm"], rots: true, near: "wreck", nearCount: 3, nearRadius: 26 },
+  { kind: "coconutHalf", count: 2, sites: ["palm"], rots: true, near: "wreck", nearCount: 1, nearRadius: 26 },
+  { kind: "banana", count: 5, sites: ["palm"], rots: true, near: "wreck", nearCount: 2, nearRadius: 26 },
+  { kind: "orange", count: 4, sites: ["grove"], rots: true, near: "hut", nearCount: 2, nearRadius: 22 },
+  { kind: "lemon", count: 3, sites: ["grove"], rots: true, near: "hut", nearCount: 1, nearRadius: 22 },
+  { kind: "pineapple", count: 3, sites: ["grove"], rots: true, near: "hut", nearCount: 1, nearRadius: 22 },
+  { kind: "watermelon", count: 3, sites: ["grove"], rots: true, near: "hut", nearCount: 1, nearRadius: 22 },
 ];
 
 const TOOLS: Spec[] = [
@@ -55,14 +59,28 @@ const TOOLS: Spec[] = [
 
 type Instance = {
   spec: Spec;
+  index: number;
   cell: Cell | null;
   state: "fresh" | "rotten" | "waiting";
   age: number;
   item: WorldItem | null;
+  /** After the first pickup/rot, respawn anywhere — not back at the starter cluster. */
+  wander: boolean;
 };
 
 function keyOf(cell: Cell): string {
   return `${cell.x},${cell.z}`;
+}
+
+function centroid(cells: Cell[]): Cell | null {
+  if (!cells.length) return null;
+  let x = 0;
+  let z = 0;
+  for (const cell of cells) {
+    x += cell.x;
+    z += cell.z;
+  }
+  return { x: x / cells.length, z: z / cells.length };
 }
 
 function displayName(kind: LootKind, rotten: boolean): string {
@@ -132,10 +150,23 @@ export function createLoot(
     }
   };
 
-  const pickCell = (spec: Spec, avoid: Cell | null): Cell | null => {
-    const cells = pool(sites, spec.sites);
+  const pickCell = (inst: Instance): Cell | null => {
+    let cells = pool(sites, inst.spec.sites);
+    if (
+      !inst.wander &&
+      inst.spec.near &&
+      inst.index < (inst.spec.nearCount ?? 0)
+    ) {
+      const origin = centroid(sites[inst.spec.near]);
+      const radius = inst.spec.nearRadius ?? 24;
+      if (origin) {
+        const close = cells.filter((c) => Math.hypot(c.x - origin.x, c.z - origin.z) <= radius);
+        if (close.length) cells = close;
+      }
+    }
     if (!cells.length) return null;
     occupiedByLoot();
+    const avoid = inst.cell;
     const tryPick = (strict: boolean): Cell | null => {
       for (let n = 0; n < 64; n++) {
         const cell = cells[Math.floor(rng() * cells.length)];
@@ -175,7 +206,7 @@ export function createLoot(
     inst.item = null;
     inst.state = "waiting";
     inst.age = startWait ? 0 : LOOT_RESPAWN_SECONDS;
-    inst.cell = null;
+    inst.wander = true;
   };
 
   const rotItem = (inst: Instance): void => {
@@ -189,14 +220,22 @@ export function createLoot(
   };
 
   const trySpawn = (inst: Instance): void => {
-    const cell = pickCell(inst.spec, inst.cell);
+    const cell = pickCell(inst);
     if (!cell) return;
-    if (place(inst, cell)) return;
+    place(inst, cell);
   };
 
   for (const spec of [...FRUIT, ...TOOLS]) {
     for (let n = 0; n < spec.count; n++) {
-      const inst: Instance = { spec, cell: null, state: "waiting", age: LOOT_RESPAWN_SECONDS, item: null };
+      const inst: Instance = {
+        spec,
+        index: n,
+        cell: null,
+        state: "waiting",
+        age: LOOT_RESPAWN_SECONDS,
+        item: null,
+        wander: false,
+      };
       instances.push(inst);
       trySpawn(inst);
     }
@@ -236,7 +275,7 @@ export function createLoot(
       inst.item = null;
       inst.state = "waiting";
       inst.age = 0;
-      inst.cell = inst.cell;
+      inst.wander = true;
     },
   };
 }
