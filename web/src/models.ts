@@ -10,8 +10,6 @@ import palmSimpleUrl from "../../assets/vendor/kenney/nature-kit/Models/GLTF for
 import flowerYellowUrl from "../../assets/vendor/kenney/nature-kit/Models/GLTF format/flower_yellowA.glb?url";
 import flowerPurpleUrl from "../../assets/vendor/kenney/nature-kit/Models/GLTF format/flower_purpleA.glb?url";
 import flowerRedUrl from "../../assets/vendor/kenney/nature-kit/Models/GLTF format/flower_redA.glb?url";
-import grassTuftUrl from "../../assets/vendor/kenney/nature-kit/Models/GLTF format/grass.glb?url";
-import grassLargeUrl from "../../assets/vendor/kenney/nature-kit/Models/GLTF format/grass_large.glb?url";
 import mushroomTanUrl from "../../assets/vendor/kenney/nature-kit/Models/GLTF format/mushroom_tan.glb?url";
 import mushroomRedUrl from "../../assets/vendor/kenney/nature-kit/Models/GLTF format/mushroom_red.glb?url";
 import natureLogUrl from "../../assets/vendor/kenney/nature-kit/Models/GLTF format/log.glb?url";
@@ -47,7 +45,6 @@ import logLargeUrl from "../../assets/vendor/kenney/survival-kit/Models/GLB form
 import bedrollUrl from "../../assets/vendor/kenney/survival-kit/Models/GLB format/bedroll.glb?url";
 import bucketUrl from "../../assets/vendor/kenney/survival-kit/Models/GLB format/bucket.glb?url";
 import tinderUrl from "../../assets/vendor/kenney/survival-kit/Models/GLB format/box.glb?url";
-import grassPatchUrl from "../../assets/vendor/kenney/survival-kit/Models/GLB format/patch-grass.glb?url";
 
 import fishingBoatUrl from "../../assets/vendor/kenney/watercraft-kit/Models/GLB format/boat-fishing-small.glb?url";
 
@@ -104,8 +101,6 @@ export const MODEL_URLS = {
   flowerYellow: flowerYellowUrl,
   flowerPurple: flowerPurpleUrl,
   flowerRed: flowerRedUrl,
-  grassTuft: grassTuftUrl,
-  grassLarge: grassLargeUrl,
   mushroomTan: mushroomTanUrl,
   mushroomRed: mushroomRedUrl,
   natureLog: natureLogUrl,
@@ -139,7 +134,6 @@ export const MODEL_URLS = {
   bedroll: bedrollUrl,
   bucket: bucketUrl,
   tinder: tinderUrl,
-  grassPatch: grassPatchUrl,
   fishingBoat: fishingBoatUrl,
   coconut: coconutUrl,
   coconutHalf: coconutHalfUrl,

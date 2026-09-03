@@ -1,8 +1,8 @@
 import * as THREE from "three";
 import { clone as cloneSkinned } from "three/addons/utils/SkeletonUtils.js";
-import { Biome, CELL, GRID, GROUND_Y, SEED, WATER_Y } from "./constants";
+import { Biome, CELL, GRID, GROUND_Y, POND_RADIUS, POND_X, POND_Z, SEED, WATER_Y } from "./constants";
 import { canEnter } from "./gridOverlay";
-import { cellIndex, inBounds, isInlandWater, isLand } from "./island";
+import { cellIndex, inBounds, isLand } from "./island";
 import { loadFbx, loadGltfFile, prepareTemplate } from "./loaders";
 import { ANIMAL_URLS, FISH_URLS, WILD_URLS } from "./models";
 import { mulberry32 } from "./rng";
@@ -52,6 +52,10 @@ function makeInPlace(clip: THREE.AnimationClip): THREE.AnimationClip {
   return copy;
 }
 
+function inPondCell(x: number, z: number): boolean {
+  return Math.hypot(x + 0.5 - POND_X, z + 0.5 - POND_Z) <= POND_RADIUS + 0.6;
+}
+
 function scaleToHeight(obj: THREE.Object3D, height: number): void {
   obj.updateMatrixWorld(true);
   const box = new THREE.Box3().setFromObject(obj);
@@ -73,6 +77,30 @@ function plant(obj: THREE.Object3D, y: number): void {
   obj.updateMatrixWorld(true);
   const box = new THREE.Box3().setFromObject(obj);
   obj.position.y += y - box.min.y;
+}
+
+function plantCenter(obj: THREE.Object3D, y: number): void {
+  obj.updateMatrixWorld(true);
+  const box = new THREE.Box3().setFromObject(obj);
+  const mid = (box.min.y + box.max.y) / 2;
+  obj.position.y += y - mid;
+}
+
+function paintFish(root: THREE.Object3D, color: number): void {
+  root.traverse((obj) => {
+    const mesh = obj as THREE.Mesh;
+    if (!mesh.isMesh) return;
+    mesh.castShadow = true;
+    mesh.receiveShadow = false;
+    mesh.frustumCulled = false;
+    mesh.renderOrder = 3;
+    mesh.material = new THREE.MeshLambertMaterial({
+      color,
+      side: THREE.DoubleSide,
+      transparent: false,
+      opacity: 1,
+    });
+  });
 }
 
 function layIfUpright(obj: THREE.Object3D): void {
@@ -100,8 +128,12 @@ async function templateFromGltf(url: string, height: number): Promise<Template> 
 
 function spawn(template: Template, x: number, z: number, y: number, aquatic: boolean): Critter {
   const root = cloneSkinned(template.root);
+  root.traverse((obj) => {
+    obj.frustumCulled = false;
+  });
   root.position.set(x * CELL + CELL / 2, 0, z * CELL + CELL / 2);
-  plant(root, y);
+  if (aquatic) plantCenter(root, y);
+  else plant(root, y);
   const mixer = new THREE.AnimationMixer(root);
   const idleSrc =
     pickClip(template.clips, /Idle(?!_Hit|_2_Head)/i, /Idle/i, /Swim/i) ??
@@ -111,7 +143,8 @@ function spawn(template: Template, x: number, z: number, y: number, aquatic: boo
     : pickClip(template.clips, /Walk/i);
   const idle = mixer.clipAction(makeInPlace(idleSrc));
   idle.play();
-  const walk = walkSrc && walkSrc !== idleSrc ? mixer.clipAction(makeInPlace(walkSrc)) : idle;
+  const walk =
+    walkSrc && walkSrc !== idleSrc ? mixer.clipAction(makeInPlace(walkSrc)) : idle;
   if (walk !== idle) {
     walk.play();
     walk.setEffectiveWeight(0);
@@ -167,7 +200,7 @@ export async function spawnWildlife(
     for (let x = 0; x < GRID; x++) {
       const b = biomes[cellIndex(x, z)] as Biome;
       if (b === Biome.Grass && canEnter(biomes, blocked, x, z)) grass.push([x, z]);
-      if (isInlandWater(x, z, biomes)) pond.push([x, z]);
+      if (b === Biome.Water && inPondCell(x, z)) pond.push([x, z]);
     }
   }
 
@@ -177,13 +210,19 @@ export async function spawnWildlife(
     templateFromFbx(ANIMAL_URLS.llama, 0.78, false),
     templateFromGltf(WILD_URLS.fox, 0.42),
     templateFromGltf(WILD_URLS.deer, 0.85),
-    templateFromFbx(FISH_URLS.fish1, 0.32, true),
-    templateFromFbx(FISH_URLS.fish2, 0.28, true),
-    templateFromFbx(FISH_URLS.fish3, 0.26, true),
+    templateFromFbx(FISH_URLS.fish1, 0.85, true),
+    templateFromFbx(FISH_URLS.fish2, 0.75, true),
+    templateFromFbx(FISH_URLS.fish3, 0.7, true),
   ]);
   layIfUpright(fish1.root);
   layIfUpright(fish2.root);
   layIfUpright(fish3.root);
+  scaleToLongest(fish1.root, 0.85);
+  scaleToLongest(fish2.root, 0.75);
+  scaleToLongest(fish3.root, 0.7);
+  paintFish(fish1.root, 0xc45a3a);
+  paintFish(fish2.root, 0x3a6ec8);
+  paintFish(fish3.root, 0xe07020);
 
   const critters: Critter[] = [];
   const placeLand = (template: Template, count: number) => {
@@ -197,9 +236,9 @@ export async function spawnWildlife(
   };
   const placeFish = (template: Template, count: number) => {
     for (let n = 0; n < count; n++) {
-      const cell = pickCell(rng, pond, (x, z) => isInlandWater(x, z, biomes));
+      const cell = pickCell(rng, pond, (x, z) => inPondCell(x, z));
       if (!cell) continue;
-      const critter = spawn(template, cell[0], cell[1], WATER_Y + 0.12, true);
+      const critter = spawn(template, cell[0], cell[1], WATER_Y + 0.28, true);
       group.add(critter.root);
       critters.push(critter);
     }
@@ -210,15 +249,15 @@ export async function spawnWildlife(
   placeLand(llama, 1);
   placeLand(fox, 2);
   placeLand(deer, 1);
-  placeFish(fish1, 2);
-  placeFish(fish2, 2);
-  placeFish(fish3, 1);
+  placeFish(fish1, 3);
+  placeFish(fish2, 3);
+  placeFish(fish3, 2);
 
   scene.add(group);
 
   const landOk = (x: number, z: number) =>
     inBounds(x, z) && canEnter(biomes, blocked, x, z) && isLand(biomes[cellIndex(x, z)] as Biome);
-  const waterOk = (x: number, z: number) => isInlandWater(x, z, biomes);
+  const waterOk = (x: number, z: number) => inPondCell(x, z);
 
   return {
     update: (dt: number) => {
@@ -250,7 +289,14 @@ export async function spawnWildlife(
         critter.from.copy(critter.root.position);
         const y = critter.root.position.y;
         critter.to.set(nx * CELL + CELL / 2, y, nz * CELL + CELL / 2);
-        critter.root.lookAt(critter.to.x, y, critter.to.z);
+        if (critter.aquatic) {
+          critter.root.rotation.y = Math.atan2(
+            critter.to.x - critter.root.position.x,
+            critter.to.z - critter.root.position.z,
+          );
+        } else {
+          critter.root.lookAt(critter.to.x, y, critter.to.z);
+        }
         critter.t = 0;
         critter.moving = true;
         setWalk(critter, true);

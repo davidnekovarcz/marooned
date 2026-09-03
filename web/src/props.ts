@@ -60,9 +60,6 @@ const HEIGHT: Partial<Record<PlaceKind, number>> = {
   flowerYellow: 0.28,
   flowerPurple: 0.28,
   flowerRed: 0.26,
-  grassTuft: 0.22,
-  grassLarge: 0.34,
-  grassPatch: 0.1,
   mushroomTan: 0.22,
   mushroomRed: 0.24,
   natureLog: 0.42,
@@ -434,9 +431,6 @@ export async function scatterProps(
   tryPlace("flowerYellow", grass, 40, () => true, "none");
   tryPlace("flowerPurple", grass, 32, () => true, "none");
   tryPlace("flowerRed", grass, 18, () => true, "none");
-  tryPlace("grassTuft", grass, 80, () => true, "none");
-  tryPlace("grassLarge", grass, 44, () => true, "none");
-  tryPlace("grassPatch", grass, 26, () => true, "none");
   tryPlace(
     "mushroomTan",
     grass,
