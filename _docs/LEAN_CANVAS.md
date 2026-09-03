@@ -6,7 +6,7 @@
 **Audience:** investors (marketing capital) and marketing agencies (discoverability)  
 **Posture:** Steam-first premium. One purchase, no pay-to-win.
 
-Design: [`GAME.md`](GAME.md). Competitors: [`COMPETITORS.md`](COMPETITORS.md). Execution list: [`../TODOs.md`](../TODOs.md). Stack: [`STACK.md`](STACK.md).
+Design: [`GAME.md`](GAME.md). Competitors: [`COMPETITORS.md`](COMPETITORS.md). Execution list: [`../TODOs.md`](../TODOs.md). Stack: [`STACK.md`](STACK.md). Investor one-pager (Steam percentiles, staged ask): [`LEAN_CANVAS2.md`](LEAN_CANVAS2.md).
 
 Numbers below are **ranges and assumptions**, not promises. Raft proves the *fantasy* can sell at scale; it is not our forecast.
 

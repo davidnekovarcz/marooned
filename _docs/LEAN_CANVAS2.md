@@ -8,7 +8,7 @@
 
 ![Marooned — low-poly island, wreck, camp, two survivors](images/marooned-hero.png)
 
-Design: [`GAME.md`](GAME.md). Competitors: [`COMPETITORS.md`](COMPETITORS.md). Execution: [`../TODOs.md`](../TODOs.md). Stack: [`STACK.md`](STACK.md).
+Design: [`GAME.md`](GAME.md). Competitors: [`COMPETITORS.md`](COMPETITORS.md). Execution: [`../TODOs.md`](../TODOs.md). Stack: [`STACK.md`](STACK.md). Short lean-canvas draft: [`LEAN_CANVAS.md`](LEAN_CANVAS.md).
 
 ---
 

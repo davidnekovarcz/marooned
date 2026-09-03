@@ -1,7 +1,9 @@
 # TODOs
 
 Living checklist toward a paid store launch (Steam first).
-Design: [`_docs/GAME.md`](_docs/GAME.md). Stack: [`_docs/STACK.md`](_docs/STACK.md).
+Design: [`_docs/GAME.md`](_docs/GAME.md). Stack: [`_docs/STACK.md`](_docs/STACK.md). MVP: [`_docs/MVP.md`](_docs/MVP.md). Investor one-pager: [`_docs/LEAN_CANVAS2.md`](_docs/LEAN_CANVAS2.md). Short canvas: [`_docs/LEAN_CANVAS.md`](_docs/LEAN_CANVAS.md).
+
+Prototype HUD currently shows thirst, hunger, temperature, **energy**, and **health**. Design v1 meters in [`_docs/GAME.md`](_docs/GAME.md) §3.1 are thirst, hunger, temperature, and **wetness** (still TODO). Energy/health are prototype extras, not a replacement for wetness.
 
 ## TODOs:
 

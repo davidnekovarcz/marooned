@@ -1,8 +1,10 @@
 # Marooned MVP — agent playbook
 
-This file is **instructions for the coding agent** (and a checklist for a human). It is not the design bible — that is [`GAME.md`](GAME.md). Stack rationale: [`STACK.md`](STACK.md).
+This file is **instructions for the coding agent** (and a checklist for a human). It is not the design bible — that is [`GAME.md`](GAME.md). Stack rationale: [`STACK.md`](STACK.md). Remaining work: [`../TODOs.md`](../TODOs.md). Investor one-pager: [`LEAN_CANVAS2.md`](LEAN_CANVAS2.md). Short canvas: [`LEAN_CANVAS.md`](LEAN_CANVAS.md).
 
-**Do this slice before HUD, inventory, crafting, multiplayer, or Godot.**
+**Steps A+B are done** (walkable island + coconut; HUD and inventory have since landed). Do not re-run this as current work.
+
+**Do this slice before HUD, inventory, crafting, multiplayer, or Godot.** (HUD/inventory: done. Crafting, multiplayer, Godot: not yet.)
 
 ### Git (how we land work)
 
@@ -131,7 +133,7 @@ Sky: simple hemi + directional light. Optional later: `assets/vendor/polyhaven/v
 
 ## 4. How to build it (agent steps)
 
-Work on **`main`**. App root: **`web/`**. Vendor assets stay in `assets/vendor/` (do not copy megabytes into `web/public`; alias them).
+App root: **`web/`**. Land `web/` on a **feature branch + PR** (see Git table above — do not develop the playable slice on `main`). Vendor assets stay in `assets/vendor/` (do not copy megabytes into `web/public`; alias them).
 
 ### 4.1 Scaffold
 
@@ -232,7 +234,7 @@ This is a **web app**. Before calling Step A done:
 
 ## 6. Vendor inventory (what we actually downloaded)
 
-Pulled **2026-09-01** into `assets/vendor/`. Licenses: [`assets/THIRD_PARTY.md`](assets/THIRD_PARTY.md).
+Pulled **2026-09-01** into `assets/vendor/`. Licenses: [`../assets/THIRD_PARTY.md`](../assets/THIRD_PARTY.md).
 
 ### Kenney (complete CC0 zips from kenney.nl)
 
@@ -264,4 +266,4 @@ Repo size is large (~0.7 GB vendor). Do not duplicate packs into `web/public`.
 
 ## 7. After this MVP
 
-Only then: HUD bars from GAME.md §3.1, loot tables, lean-to, weather. Engine revisit (Godot) is allowed once Step A+B are real and we care about a dedicated server — not before.
+Steps A+B are done. Next: remaining items in [`../TODOs.md`](../TODOs.md) (wetness, rain, fire, loot, lean-to). Engine revisit (Godot) is allowed once we care about a dedicated server — not before.
