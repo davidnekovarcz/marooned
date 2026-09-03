@@ -1,7 +1,7 @@
 # Island Survival Game — Competitive Landscape
 
 **Working title:** Marooned / Island Survivor  
-**Status:** Pre-prototype  
+**Status:** Playable Three.js prototype (not a store build)  
 **Research date:** 2026-09-02
 
 > **Note:** The naming discussion is intentionally omitted from this document. The current working title can remain **Marooned** internally.

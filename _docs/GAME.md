@@ -3,7 +3,7 @@
 Code-name: **Marooned**  
 Working title: Island Survivor  
 Document type: pitch (as-is) + design & business response  
-Status: pre-prototype — engine not locked
+Status: playable Three.js prototype (not a store build) — product engine path in [`STACK.md`](STACK.md)
 
 This file has two layers on purpose.
 
@@ -302,6 +302,8 @@ If a parent asks “why is this better than scrolling”: because the child is m
 
 ## 7. Monetization (hybrid — not pay-to-win)
 
+Investor / agency one-pager (honest Steam percentiles, staged ask, store sequence): [`LEAN_CANVAS2.md`](LEAN_CANVAS2.md). Short lean-canvas draft: [`LEAN_CANVAS.md`](LEAN_CANVAS.md).
+
 **Do not ship pay-to-win.** It fights the kids/education story, Steam reviews, and streamers. Selling hunger-skips, better loot, or a finished house would also kill the game described in the pitch.
 
 The original fork (P2W vs subscription-for-kids) is resolved as a **hybrid of premium + free demo + optional Academy**, not as P2W.
@@ -370,12 +372,12 @@ The renderer is not the expensive part. **A dedicated server plus persistence** 
 
 ### 8.2 Recommendation (not a mandate)
 
-- **Prototype / vertical slice:** **Godot 4 or Unity** — a real 3D low-poly island, needs HUD, two loot tables, one house piece. Not Three.js unless the *only* goal is a viral web demo.
+- **Prototype / vertical slice:** **Three.js** in `web/` (already walking — [`MVP.md`](MVP.md), [`../TODOs.md`](../TODOs.md)). Godot 4 or Unity remains the likely *product* path — see [`STACK.md`](STACK.md).
 - **Three.js:** best for a **marketing web teaser**. Weak as the long-term Steam + iOS + Android product without a rewrite.
 - **Unity:** strongest store + Asset Store path if you already know C# and want mobile later.
 - **Godot:** zero license fee, good 2.5D/3D, Steam + mobile + web; slightly more DIY for polish and mobile stores.
 
-Pick the engine **after** a vertical slice checklist (below), not before. This document does not lock the stack.
+Pick the **product** engine after the vertical slice checklist (below). This document does not lock the Steam stack; see [`STACK.md`](STACK.md).
 
 ### 8.3 What any stack must budget for
 
@@ -387,6 +389,8 @@ Pick the engine **after** a vertical slice checklist (below), not before. This d
 ---
 
 ## 9. Roadmap: MVP vs commercial v1 vs later
+
+Execution checklist (done vs remaining): [`../TODOs.md`](../TODOs.md).
 
 ### 9.1 MVP (fun + demo-able)
 
@@ -425,9 +429,9 @@ Goal: prove the fantasy in a week-of-playtest sense, not a store launch.
 
 ## 10. Open questions
 
-These are not blockers for this design; they are the next decisions when a prototype exists.
+These are not blockers for this design; they are the next decisions. The Three.js prototype already exists.
 
-1. **Engine:** Unity vs Godot for the vertical slice? (Three.js only if the first artifact is a web trailer-island.) See [`STACK.md`](STACK.md) for a practical recommendation (Godot 4.6 + Three.js teaser).
+1. **Engine:** Unity vs Godot for the Steam product? (MVP slice is already Three.js in `web/`.) See [`STACK.md`](STACK.md) for a practical recommendation (Godot 4.6 + Three.js teaser).
 2. **Indoor stash:** confirm “closed house is private, open world is contested.”
 3. **Death:** pass-out and wake on the beach with a penalty vs permadeath vs “ghost walk back to corpse.” MVP should not be permadeath.
 4. **Population:** one global island vs several shards (EU/US, or overflow when >40).
@@ -441,4 +445,4 @@ These are not blockers for this design; they are the next decisions when a proto
 
 **Marooned** is a low-poly island survival game: DayZ body and loot logic, *Islanders* look, shared world, **no PvP** at launch. You start with nothing. You loot places that make sense. You race other players to wrecks. You spend real time and rare parts on a house. Education is flavor and an optional Academy pack, not a gate. Money comes from a **Steam buy**, a **free web/demo tease**, later **mobile premium**, and **cosmetics / Academy** — not pay-to-win.
 
-Next physical step: follow [`MVP.md`](MVP.md) (walkable Three.js island first). Godot remains the likely Steam product later — see [`STACK.md`](STACK.md). Docs stay on `main`; assets then game each land via their own feature branch.
+Next physical step: remaining items in [`../TODOs.md`](../TODOs.md) (wetness, rain, fire). The walkable island in [`MVP.md`](MVP.md) is done. Godot remains the likely Steam product later — see [`STACK.md`](STACK.md). Docs stay on `main`; assets then game each land via their own feature branch.

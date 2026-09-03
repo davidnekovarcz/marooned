@@ -209,7 +209,7 @@ You still make (or shader) **ocean**, **rain**, **wet clothes**, **day/night**, 
 - Unity: FBX is still the most boring-reliable path; Mixamo “FBX for Unity” exists.
 - Godot 4: import glTF, extract materials, turn off accidental metalness on Kenney colors.
 - Three.js: `GLTFLoader` + `DRACOLoader` if compressed; Mixamo FBX → Blender/gltf-transform → `.glb`.
-- Keep a `THIRD_PARTY_LICENSES.md` even for CC0 (Mixamo + any CC-BY Freesound).
+- Keep [`../assets/THIRD_PARTY.md`](../assets/THIRD_PARTY.md) even for CC0 (Mixamo + any CC-BY Freesound).
 
 ---
 
@@ -277,9 +277,9 @@ Kenney [Asset Forge](https://kenney.nl/tools/asset-forge) covers one-off meshes 
 | **Web teaser** | **Three.js** + the same glTF | Marketing, not the save-game |
 | **Switch to Unity if** | You want a paid water/weather pack, official consoles, or you fall in love with Terrain + Asset Store | Art can migrate; gameplay scripts cannot |
 
-Do not start in Three.js “and port later.” That is the rewrite [`GAME.md`](GAME.md) already warned about.
+Do not productize in Three.js and port later. That is the rewrite [`GAME.md`](GAME.md) already warned about. The MVP in `web/` is intentional (this environment can run it today); it is not the Steam ship.
 
-**First playable slice (locked in [`MVP.md`](MVP.md)):** Three.js + Vite in `web/`, Kenney glTF already in `assets/vendor/`, 100×100 rounded island, grid walking. Godot 4.6 stays the likely Steam product after that slice exists.
+**MVP slice (locked in [`MVP.md`](MVP.md), done):** Three.js + Vite in `web/`, Kenney glTF already in `assets/vendor/`, 100×100 rounded island, grid walking. Remaining work: [`../TODOs.md`](../TODOs.md). Godot 4.6 stays the likely Steam product.
 
 ---
 
