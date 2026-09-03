@@ -1,12 +1,13 @@
 import "./style.css";
 import * as THREE from "three";
-import { DEFAULT_APPEARANCE } from "./appearance";
+import { consumeAutostart, saveCharacter, markAutostart } from "./appearance";
 import { setupIslandAudio } from "./audio";
 import { applyZoomFog, CameraZoom, offsetForZoom } from "./cameraZoom";
+import { showCharacterSelect } from "./characterSelect";
 import { CAMERA_OFFSET, CENTER, DAY_START, DEBUG_GRID, GRID, HUD_BLINK } from "./constants";
 import { applyDayNight, createDayLights, DayClock, isDaytime } from "./dayNight";
 import { buildGridOverlay } from "./gridOverlay";
-import { createHud, showDeathScreen } from "./hud";
+import { createHud, formatDeathMessage, showDeathScreen } from "./hud";
 import { createInteract } from "./interact";
 import { buildBiomes, buildCoastField, buildIslandMesh, findSpawn } from "./island";
 import { createLoot } from "./loot";
@@ -44,17 +45,39 @@ scene.add(ocean.mesh);
 scene.add(buildIslandMesh(biomes));
 
 async function start(): Promise<void> {
-  const spawn = findSpawn(biomes);
-  blocked[spawn.z * GRID + spawn.x] = 1;
+  const worldP = (async () => {
+    const spawn = findSpawn(biomes);
+    blocked[spawn.z * GRID + spawn.x] = 1;
+    const scattered = await scatterProps(scene, biomes, blocked);
+    const loot = createLoot(scattered.lootSites, scattered.items, scattered.spawn);
+    const wildlife = await spawnWildlife(scene, biomes, blocked);
+    blocked[spawn.z * GRID + spawn.x] = 0;
+    if (DEBUG_GRID) scene.add(buildGridOverlay(biomes, blocked));
+    return { spawn, scattered, loot, wildlife };
+  })();
 
-  const scattered = await scatterProps(scene, biomes, blocked);
-  const loot = createLoot(scattered.lootSites, scattered.items, scattered.spawn);
-  const wildlife = await spawnWildlife(scene, biomes, blocked);
-  blocked[spawn.z * GRID + spawn.x] = 0;
+  const previewClock = new THREE.Clock();
+  let previewing = true;
+  const preview = () => {
+    if (!previewing) return;
+    ocean.update(previewClock.getElapsedTime());
+    applyDayNight(scene, lights, DAY_START);
+    camera.lookAt(CENTER, 1.1, CENTER);
+    renderer.render(scene, camera);
+    requestAnimationFrame(preview);
+  };
+  preview();
 
-  if (DEBUG_GRID) scene.add(buildGridOverlay(biomes, blocked));
+  const autostart = consumeAutostart();
+  if (autostart) {
+    const overlay = document.getElementById("character");
+    if (overlay) overlay.hidden = true;
+  }
+  const character = autostart ?? (await showCharacterSelect("start"));
+  saveCharacter(character);
 
-  const visual = await loadPlayerModel(DEFAULT_APPEARANCE);
+  const { spawn, scattered, loot, wildlife } = await worldP;
+  const visual = await loadPlayerModel(character);
   const player = new GridPlayer(biomes, blocked, spawn, visual);
   scene.add(player.mesh);
 
@@ -66,6 +89,8 @@ async function start(): Promise<void> {
   hud.update({ sky: isDaytime(day.t) ? "sun" : "moon", clock: day.clockLabel(), ...needs.snapshot() });
 
   const zoom = new CameraZoom();
+  previewing = false;
+  document.body.classList.remove("gate");
 
   window.addEventListener("resize", () => {
     camera.aspect = window.innerWidth / window.innerHeight;
@@ -111,7 +136,12 @@ async function start(): Promise<void> {
       player.alive = false;
       interact.update(player.cellX, player.cellZ, false, false);
       applyHealthLook(0);
-      showDeathScreen(day.survivedGameHours());
+      showDeathScreen();
+      void showCharacterSelect("death", formatDeathMessage(day.survivedGameHours())).then((next) => {
+        saveCharacter(next);
+        markAutostart();
+        window.location.reload();
+      });
       return;
     }
     requestAnimationFrame(frame);

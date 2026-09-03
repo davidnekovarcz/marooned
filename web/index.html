@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Marooned — island walk</title>
   </head>
-  <body>
+  <body class="gate">
     <div id="hud-world" aria-hidden="true">
       <div id="hud-weather" data-sky="sun"></div>
       <time id="hud-clock">08:00</time>
@@ -30,9 +30,41 @@
       <div id="interact-name"></div>
       <button type="button" id="interact-action" hidden></button>
     </div>
+    <div id="character">
+      <div class="character-card">
+        <p id="character-death" hidden></p>
+        <h1 id="character-title">Marooned</h1>
+        <p class="character-lead">Who washes up?</p>
+        <label class="character-field">
+          <span>Name</span>
+          <span class="character-name-row">
+            <input id="character-name" type="text" maxlength="24" autocomplete="nickname" />
+            <button type="button" id="character-name-roll" title="Another name">↻</button>
+          </span>
+        </label>
+        <div class="character-field">
+          <span>Look</span>
+          <div id="character-gender" class="character-toggle">
+            <button type="button" data-gender="male">Male</button>
+            <button type="button" data-gender="female">Female</button>
+          </div>
+        </div>
+        <div class="character-field">
+          <span>Skin</span>
+          <div id="character-skin" class="swatches"></div>
+        </div>
+        <div class="character-field">
+          <span>Clothes</span>
+          <div id="character-clothes" class="swatches"></div>
+        </div>
+        <div class="character-actions">
+          <button type="button" id="character-play">Play</button>
+          <button type="button" id="character-random">Random</button>
+        </div>
+      </div>
+    </div>
     <div id="death" hidden>
       <p id="death-message"></p>
-      <button type="button" id="death-retry">Retry</button>
     </div>
     <script type="module" src="/src/main.ts"></script>
   </body>
