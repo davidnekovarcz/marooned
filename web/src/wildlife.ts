@@ -197,10 +197,8 @@ export async function spawnWildlife(
     }
   }
 
-  const [pig, sheep, llama, fox, deer, fish1, fish2, fish3] = await Promise.all([
+  const [pig, fox, deer, fish1, fish2, fish3] = await Promise.all([
     templateFromFbx(ANIMAL_URLS.pig, ANIMAL_SIZE.pig),
-    templateFromFbx(ANIMAL_URLS.sheep, ANIMAL_SIZE.sheep),
-    templateFromFbx(ANIMAL_URLS.llama, ANIMAL_SIZE.llama),
     templateFromGltf(WILD_URLS.fox, ANIMAL_SIZE.fox),
     templateFromGltf(WILD_URLS.deer, ANIMAL_SIZE.deer),
     templateFromFbx(FISH_URLS.fish1, { ...ANIMAL_SIZE.fish1, layFlat: true }),
@@ -234,8 +232,7 @@ export async function spawnWildlife(
   };
 
   placeLand(pig, 3);
-  placeLand(sheep, 2);
-  placeLand(llama, 1);
+  // Sheep/llama FBX cast shadows but meshes invisible — skip spawn; assets kept in models/scale.
   placeLand(fox, 2);
   placeLand(deer, 1);
   placeFish(fish1, 3);
