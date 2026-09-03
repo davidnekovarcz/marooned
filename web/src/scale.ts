@@ -74,14 +74,14 @@ export function fitAndPlant(obj: THREE.Object3D, spec: SizeSpec, y: number = GRO
  * mesh is measured and scaled to these metres (with a readability floor for loot).
  */
 export const PROP_SIZE: Record<string, SizeSpec> = {
-  palm: { axis: "height", meters: 9.2 },
-  palmBend: { axis: "height", meters: 8.4 },
-  palmShort: { axis: "height", meters: 6.2 },
-  palmSimple: { axis: "height", meters: 8.0 },
-  piratePalm: { axis: "height", meters: 8.6 },
-  piratePalmStraight: { axis: "height", meters: 9.0 },
-  oak: { axis: "height", meters: 8.2 },
-  pine: { axis: "height", meters: 9.6 },
+  palm: { axis: "height", meters: 6.9 },
+  palmBend: { axis: "height", meters: 6.3 },
+  palmShort: { axis: "height", meters: 4.7 },
+  palmSimple: { axis: "height", meters: 6.0 },
+  piratePalm: { axis: "height", meters: 6.5 },
+  piratePalmStraight: { axis: "height", meters: 6.8 },
+  oak: { axis: "height", meters: 6.1 },
+  pine: { axis: "height", meters: 7.2 },
   bush: { axis: "height", meters: 0.95 },
   bushSmall: { axis: "height", meters: 0.62 },
   bushDetailed: { axis: "height", meters: 0.88 },

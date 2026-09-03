@@ -15,7 +15,8 @@ function nearSkin(hsl: { h: number; s: number; l: number }, gender: Appearance["
   if (gender === "male") {
     return hueDelta(hsl.h, 0.045) < 0.07 && hsl.l > 0.48;
   }
-  return hueDelta(hsl.h, 0.015) < 0.08 && hsl.l > 0.16 && hsl.l < 0.58;
+  // Female body is mid brick-red. Dark hair (#220f0f, #61150d) shares the hue — keep it.
+  return hueDelta(hsl.h, 0.015) < 0.05 && hsl.s > 0.28 && hsl.l > 0.3 && hsl.l < 0.52;
 }
 
 function nearClothes(hsl: { h: number; s: number; l: number }): boolean {

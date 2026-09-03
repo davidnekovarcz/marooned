@@ -35,15 +35,13 @@ const PLUS: [number, number][] = [
   [0, -1],
 ];
 
+/** Chebyshev distance 2, southwest of the trunk (camera looks from -X/-Z). Empty ring = no loot. */
 const NEAR: [number, number][] = [
-  [1, 0],
-  [-1, 0],
-  [0, 1],
-  [0, -1],
-  [1, 1],
-  [1, -1],
-  [-1, 1],
-  [-1, -1],
+  [-2, 0],
+  [-2, -1],
+  [-2, -2],
+  [-1, -2],
+  [0, -2],
 ];
 
 type PlaceKind = ModelKind | "lilypad" | "torch";
@@ -372,15 +370,12 @@ export async function scatterProps(
   tryPlace("oak", grass, 6, (x, z) => !inForest(x, z), "cell", collectGrove);
   tryPlace("pine", grass, 14, (x, z) => inForest(x, z), "cell", collectGrove);
   tryPlace("stump", grass, 8, () => true, "cell");
-  tryPlace("rockLarge", land, 12, () => true, "plus");
-  tryPlace("rockSmall", land, 28, () => true, "cell");
+  tryPlace("rockLarge", land, 12, (x, z) => !inForest(x, z), "plus");
+  tryPlace("rockSmall", land, 28, (x, z) => !inForest(x, z), "cell");
   tryPlace("sandRock", sand, 10, () => true, "cell");
   tryPlace("bush", grass, 48, () => true, "none");
   tryPlace("bushSmall", grass, 28, () => true, "none");
   tryPlace("bushDetailed", grass, 22, () => true, "none");
-  tryPlace("flowerYellow", grass, 40, () => true, "none");
-  tryPlace("flowerPurple", grass, 32, () => true, "none");
-  tryPlace("flowerRed", grass, 18, () => true, "none");
   tryPlace(
     "mushroomTan",
     grass,
