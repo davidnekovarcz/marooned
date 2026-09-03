@@ -9,6 +9,7 @@ import { buildGridOverlay } from "./gridOverlay";
 import { createHud, showDeathScreen } from "./hud";
 import { createInteract } from "./interact";
 import { buildBiomes, buildCoastField, buildIslandMesh, findSpawn } from "./island";
+import { createLoot } from "./loot";
 import { Needs } from "./needs";
 import { buildOcean } from "./ocean";
 import { GridPlayer } from "./player";
@@ -47,6 +48,7 @@ async function start(): Promise<void> {
   blocked[spawn.z * GRID + spawn.x] = 1;
 
   const scattered = await scatterProps(scene, biomes, blocked);
+  const loot = createLoot(scattered.lootSites, scattered.items, scattered.spawn);
   const wildlife = await spawnWildlife(scene, biomes, blocked);
   blocked[spawn.z * GRID + spawn.x] = 0;
 
@@ -59,7 +61,7 @@ async function start(): Promise<void> {
   const islandAudio = setupIslandAudio(scene, player, scattered.audioAnchors, coast);
   const hud = createHud();
   const needs = new Needs();
-  const interact = createInteract(scattered.items, needs, player, islandAudio, scattered.spawn);
+  const interact = createInteract(scattered.items, needs, player, islandAudio, scattered.spawn, loot.onRemoved);
   const day = new DayClock();
   hud.update({ sky: isDaytime(day.t) ? "sun" : "moon", clock: day.clockLabel(), ...needs.snapshot() });
 
@@ -87,6 +89,7 @@ async function start(): Promise<void> {
     player.canSprint = needs.canSprint;
     player.update(dt);
     wildlife.update(dt);
+    loot.update(dt);
     needs.tick(player.gait, dt, isDaytime(day.t));
     day.update(dt);
     applyDayNight(scene, lights, day.t);

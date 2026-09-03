@@ -111,6 +111,18 @@ export const EAT_PINEAPPLE_THIRST = EAT_FRUIT_THIRST;
 /** Extra cooling while swimming inland water. */
 export const TEMP_SWIM_COOL = 1 / 35;
 
+/** Fresh fruit sits this many island-hours before it rots. */
+export const LOOT_FRESH_HOURS = 4;
+/** Rotten fruit stays visible this many island-hours, then despawns. */
+export const LOOT_ROTTEN_HOURS = 3;
+/** Empty fruit/tool slot waits this many island-hours before spawning elsewhere. */
+export const LOOT_RESPAWN_HOURS = 2;
+export const LOOT_FRESH_SECONDS = (LOOT_FRESH_HOURS / 24) * DAY_SECONDS;
+export const LOOT_ROTTEN_SECONDS = (LOOT_ROTTEN_HOURS / 24) * DAY_SECONDS;
+export const LOOT_RESPAWN_SECONDS = (LOOT_RESPAWN_HOURS / 24) * DAY_SECONDS;
+/** Tools wait a bit longer than fruit after being taken. */
+export const TOOL_RESPAWN_SECONDS = (3 / 24) * DAY_SECONDS;
+
 export const POND_X = 58;
 export const POND_Z = 82;
 export const POND_RADIUS = 4.6;
