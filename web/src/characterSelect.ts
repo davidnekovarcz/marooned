@@ -76,7 +76,12 @@ export function showCharacterSelect(): Promise<Character> {
   };
 
   titleEl.textContent = t("character.title");
-  if (leadEl instanceof HTMLElement) leadEl.hidden = false;
+  if (leadEl instanceof HTMLElement) {
+    leadEl.textContent = t("character.lead");
+    leadEl.hidden = false;
+  }
+  playBtn.textContent = t("character.play");
+  randomBtn.textContent = t("character.random");
 
   paint();
   overlay.hidden = false;

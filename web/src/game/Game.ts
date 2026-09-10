@@ -12,9 +12,9 @@ import { buildOcean } from "@/web/src/ocean";
 import { GridPlayer } from "@/web/src/actor/player";
 import { loadPlayerModel } from "@/web/src/playerModel";
 import { scatterProps } from "@/web/src/props";
-import { actionEnabled, nearestItem, resolveHeldMeal, resolveWorldAction } from "@/web/src/sim/actions";
-import { createLoot } from "@/web/src/sim/loot";
-import { applyPocketCommand, performAction } from "@/web/src/sim/useItem";
+import { Actions, type ResolvedAction } from "@/web/src/sim/actions";
+import { Loot } from "@/web/src/sim/loot";
+import { Interactor } from "@/web/src/sim/useItem";
 import {
   useInventoryStore,
   useNeedsStore,
@@ -25,8 +25,7 @@ import {
 } from "@/web/src/stores/game";
 import { mountUi } from "@/web/src/view/mount";
 import { spawnWildlife } from "@/web/src/wildlife";
-import { itemSnapshot, type Item } from "@/web/src/world/item";
-import type { ResolvedAction } from "@/web/src/sim/actions";
+import { Item } from "@/web/src/world/item";
 
 export class Game {
   static async start(): Promise<void> {
@@ -75,7 +74,7 @@ export class Game {
 
     const worldP = (async () => {
       const scattered = await scatterProps(scene, biomes, blocked);
-      const loot = createLoot(scattered.lootSites, scattered.items, scattered.spawn);
+      const loot = new Loot(scattered.lootSites, scattered.items, scattered.spawn);
       const wildlife = await spawnWildlife(scene, biomes, blocked);
       blocked[spawn.z * GRID + spawn.x] = 0;
       if (DEBUG_GRID) scene.add(buildGridOverlay(biomes, blocked));
@@ -95,6 +94,16 @@ export class Game {
     const needs = new Needs();
     const day = new DayClock();
     const zoom = new CameraZoom();
+    const actions = new Actions();
+    const interactor = new Interactor(
+      scattered.items,
+      needs,
+      player,
+      islandAudio,
+      scattered.spawn,
+      actions,
+      (item) => loot.onRemoved(item),
+    );
     const session = useSessionStore();
     const needsStore = useNeedsStore();
     const playerStore = usePlayerStore();
@@ -154,12 +163,13 @@ export class Game {
         currentItem = null;
         currentAction = null;
         ui.actionId = null;
+        ui.actionBlocked = undefined;
         ui.nearbyItemId = null;
         ui.promptKind = null;
       } else {
-        const heldMeal = resolveHeldMeal(player.heldKind, player.heldMesh);
-        const next = nearestItem(scattered.items, player.cellX, player.cellZ, player.heldKind);
-        const worldAction = next ? resolveWorldAction(next, player.heldKind) : undefined;
+        const heldMeal = actions.heldMeal(player.heldKind, player.heldMesh);
+        const next = actions.nearest(scattered.items, player.cellX, player.cellZ, player.heldKind);
+        const worldAction = next ? actions.world(next, player.heldKind) : undefined;
         if (heldMeal) {
           currentItem = null;
           currentAction = heldMeal;
@@ -183,16 +193,17 @@ export class Game {
           currentItem = null;
           currentAction = null;
           ui.actionId = null;
+          ui.actionBlocked = undefined;
           ui.nearbyItemId = null;
           ui.promptKind = null;
         }
       }
 
       const pocket = input.consumePocket() ?? ui.consumePocket();
-      if (pocket) applyPocketCommand(pocket, scattered.items, player, islandAudio);
+      if (pocket) interactor.pocket(pocket);
       const wantInteract = input.consumeInteract() || ui.consumeInteract();
-      if (wantInteract && currentAction && actionEnabled(currentAction)) {
-        if (performAction(currentAction, currentItem, scattered.items, needs, player, islandAudio, scattered.spawn, loot.onRemoved)) {
+      if (wantInteract && currentAction && actions.enabled(currentAction)) {
+        if (interactor.perform(currentAction, currentItem)) {
           currentItem = null;
           currentAction = null;
           ui.actionId = null;
@@ -248,7 +259,7 @@ export class Game {
       busy: ctx.player.busy,
     });
     inventoryStore.$patch(ctx.player.inventory.snapshot());
-    worldStore.$patch({ items: ctx.items.map(itemSnapshot) });
+    worldStore.$patch({ items: ctx.items.map((item) => item.snapshot()) });
     void ui;
   }
 }

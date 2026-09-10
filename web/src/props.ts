@@ -22,7 +22,7 @@ import {
 } from "@/web/src/island";
 import { loadGlb, loadObj } from "@/web/src/loaders";
 import type { Cell, LootSites } from "@/web/src/sim/loot";
-import { makeWorldItem, type Item } from "@/web/src/world/item";
+import { Item } from "@/web/src/world/item";
 import { LILY_URL, MODEL_URLS, TOMATO_URL, TORCH_URL, type ModelKind } from "@/web/src/models";
 import { mulberry32 } from "@/web/src/rng";
 import { fitAndPlant, plantOnGround, specFor } from "@/web/src/scale";
@@ -223,7 +223,7 @@ export async function scatterProps(
     if (extra?.tiltZ) clone.rotation.z += extra.tiltZ;
     if (extra?.tiltX || extra?.tiltZ) sitOnGround(clone);
     group.add(clone);
-    items.push(makeWorldItem(kind, x, z, clone));
+    items.push(new Item(kind, x, z, clone));
     return clone;
   };
 

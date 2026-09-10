@@ -5,17 +5,6 @@ import type { WorldKind } from "@/web/src/world/kinds";
 
 export type { WorldKind } from "@/web/src/world/kinds";
 
-export type Item = {
-  id: string;
-  kind: WorldKind;
-  cellX: number;
-  cellZ: number;
-  mesh: Object3D;
-  prep?: FoodPrep;
-  freshness?: Freshness;
-  loot?: boolean;
-};
-
 /** Serializable slice — never includes a mesh. */
 export type ItemSnapshot = {
   id: string;
@@ -35,41 +24,42 @@ export type SpawnFn = (
 
 let nextId = 1;
 
-export function makeItemId(): string {
-  const id = `item-${nextId}`;
-  nextId += 1;
-  return id;
-}
+export class Item {
+  readonly id: string;
+  loot = false;
 
-export function applyFoodState(item: Item, prep?: FoodPrep, freshness?: Freshness): void {
-  if (!isFoodKind(item.kind)) return;
-  item.prep = prep ?? item.prep ?? defaultPrep(item.kind);
-  item.freshness = freshness ?? item.freshness ?? "fresh";
-  writeFoodState(item.mesh, item.prep, item.freshness);
+  constructor(
+    public kind: WorldKind,
+    public cellX: number,
+    public cellZ: number,
+    public mesh: Object3D,
+    public prep?: FoodPrep,
+    public freshness?: Freshness,
+  ) {
+    this.id = `item-${nextId}`;
+    nextId += 1;
+    if (isFoodKind(kind)) this.applyFoodState();
+  }
+
+  applyFoodState(prep?: FoodPrep, freshness?: Freshness): void {
+    if (!isFoodKind(this.kind)) return;
+    this.prep = prep ?? this.prep ?? defaultPrep(this.kind);
+    this.freshness = freshness ?? this.freshness ?? "fresh";
+    writeFoodState(this.mesh, this.prep, this.freshness);
+  }
+
+  snapshot(): ItemSnapshot {
+    return {
+      id: this.id,
+      kind: this.kind,
+      cellX: this.cellX,
+      cellZ: this.cellZ,
+      prep: this.prep,
+      freshness: this.freshness,
+    };
+  }
 }
 
 export function makeWorldItem(kind: WorldKind, cellX: number, cellZ: number, mesh: Object3D): Item {
-  const item: Item = {
-    id: makeItemId(),
-    kind,
-    cellX,
-    cellZ,
-    mesh,
-  };
-  if (isFoodKind(kind)) applyFoodState(item);
-  return item;
+  return new Item(kind, cellX, cellZ, mesh);
 }
-
-export function itemSnapshot(item: Item): ItemSnapshot {
-  return {
-    id: item.id,
-    kind: item.kind,
-    cellX: item.cellX,
-    cellZ: item.cellZ,
-    prep: item.prep,
-    freshness: item.freshness,
-  };
-}
-
-/** @deprecated Use Item. Kept so call sites can migrate in one pass. */
-export type WorldItem = Item;
