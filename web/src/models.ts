@@ -87,6 +87,8 @@ import cloth1Url from "../../assets/vendor/kenney/rpg-audio/Audio/cloth1.ogg?url
 import cloth2Url from "../../assets/vendor/kenney/rpg-audio/Audio/cloth2.ogg?url";
 import cloth3Url from "../../assets/vendor/kenney/rpg-audio/Audio/cloth3.ogg?url";
 import chopUrl from "../../assets/vendor/kenney/rpg-audio/Audio/chop.ogg?url";
+import eat01Url from "../../assets/vendor/opengameart/80-cc0-creature-sfx/eat_01.ogg?url";
+import eat04Url from "../../assets/vendor/opengameart/80-cc0-creature-sfx/eat_04.ogg?url";
 
 export const MODEL_URLS = {
   palm: palmUrl,
@@ -181,6 +183,7 @@ export const SOUND_URLS = {
   creaks: [creak1Url, creak2Url, creak3Url],
   cloths: [cloth1Url, cloth2Url, cloth3Url],
   chops: [chopUrl],
+  eats: [eat01Url, eat04Url],
 } as const;
 
 export type ModelKind = keyof typeof MODEL_URLS;

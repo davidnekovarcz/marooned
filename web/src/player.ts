@@ -138,6 +138,7 @@ export class GridPlayer {
   private pocketGroup = new THREE.Group();
   private onCutDone: (() => void) | null = null;
   private onCrack: (() => void) | null = null;
+  private onMealEnd: (() => void) | null = null;
 
   constructor(
     private biomes: Uint8Array,
@@ -223,7 +224,7 @@ export class GridPlayer {
   }
 
   /** Eat whatever food is already in the hands. */
-  beginHeldMeal(seconds: number): boolean {
+  beginHeldMeal(seconds: number, onEnd?: () => void): boolean {
     if (!this.alive || this.busy || !this.tool || !isHeldFood(this.heldKind)) return false;
     this.stopMoving();
     this.busy = true;
@@ -232,6 +233,7 @@ export class GridPlayer {
     this.lockSeconds = seconds;
     this.meal = this.tool;
     this.grabbed = true;
+    this.onMealEnd = onEnd ?? null;
     this.tool.visible = true;
     this.gait = this.inWater() ? "swim" : "idle";
     this.visual.setGait(this.gait);
@@ -280,6 +282,9 @@ export class GridPlayer {
       }
       this.meal?.removeFromParent();
       this.meal = null;
+      const ended = this.onMealEnd;
+      this.onMealEnd = null;
+      ended?.();
     }
     if (lock === "cut" && finished) this.onCutDone?.();
     if (this.tool) this.tool.visible = true;
@@ -381,7 +386,11 @@ export class GridPlayer {
 
     if (this.busy) {
       this.lockT += dt;
-      this.visual.setCrouch(crouchEnvelope(this.lockT, this.lockSeconds));
+      if (this.lock === "meal") {
+        this.visual.setCrouch(0);
+      } else {
+        this.visual.setCrouch(crouchEnvelope(this.lockT, this.lockSeconds));
+      }
       this.onLockTick();
       this.visual.applyPose();
       this.gait = water ? "swim" : "idle";

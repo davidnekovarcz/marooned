@@ -258,7 +258,7 @@ export function createInteract(
   items: WorldItem[],
   needs: Needs,
   player: GridPlayer,
-  audio: { playMeal: (kind: MealKind) => void; playPickup: () => void },
+  audio: { playMeal: (kind: MealKind) => void; stopMeal: () => void; playPickup: () => void },
   spawn: SpawnFn,
   onRemoved?: (item: WorldItem) => void,
 ): { update: (cellX: number, cellZ: number, alive: boolean, busy: boolean) => void } {
@@ -313,7 +313,7 @@ export function createInteract(
     if (action.eatHeld) {
       if (!action.meal || !isHeldFood(player.heldKind)) return;
       const food = player.heldKind;
-      if (!player.beginHeldMeal(EAT_ACTION_SECONDS)) return;
+      if (!player.beginHeldMeal(EAT_ACTION_SECONDS, () => audio.stopMeal())) return;
       needs.feed(action.meal.hunger, action.meal.thirst);
       audio.playMeal(food === "coconutHalf" ? "drink" : "eat");
       hide();
