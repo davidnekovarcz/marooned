@@ -117,7 +117,7 @@ export const TEMP_SWIM_COOL = 1 / 35;
 /** Fresh fruit sits this many island-hours before it rots. */
 export const LOOT_FRESH_HOURS = 4;
 /** Rotten fruit stays visible this many island-hours, then despawns. */
-export const LOOT_ROTTEN_HOURS = 3;
+export const LOOT_ROTTEN_HOURS = 1;
 /** Empty fruit/tool slot waits this many island-hours before spawning elsewhere. */
 export const LOOT_RESPAWN_HOURS = 2;
 /** Don't respawn fruit within this many cells of the player. */

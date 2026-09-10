@@ -17,6 +17,8 @@ export type Freshness = "fresh" | "rotten";
 
 export type LootSites = {
   palm: Cell[];
+  /** Cells beside palms planted on grass (not beach / pond sand). */
+  inlandPalm: Cell[];
   grove: Cell[];
   wreck: Cell[];
   boat: Cell[];
@@ -46,8 +48,8 @@ type FoodSpec = {
   cap: number;
   sites: SiteKey[];
   rots: boolean;
-  /** Starter coconut half: spawn once near wreck, never respawn as wild loot. */
-  starter?: boolean;
+  /** First spawn under the nearest inland palm to the wreck; later spawns are random. */
+  nearWreck?: boolean;
 };
 
 type ToolSpec = {
@@ -57,7 +59,7 @@ type ToolSpec = {
 };
 
 const FOOD: FoodSpec[] = [
-  { kind: "coconut", cap: 2, sites: ["palm"], rots: false },
+  { kind: "coconut", cap: 10, sites: ["palm"], rots: false },
   { kind: "banana", cap: 2, sites: ["palm"], rots: true },
   { kind: "orange", cap: 2, sites: ["palm"], rots: true },
   { kind: "lemon", cap: 2, sites: ["palm"], rots: true },
@@ -66,7 +68,7 @@ const FOOD: FoodSpec[] = [
   { kind: "tomato", cap: 2, sites: ["bush"], rots: true },
   { kind: "mushroomTan", cap: 2, sites: ["forest"], rots: true },
   { kind: "mushroomRed", cap: 2, sites: ["forest"], rots: true },
-  { kind: "coconutHalf", cap: 1, sites: ["palm"], rots: true, starter: true },
+  { kind: "coconutHalf", cap: 2, sites: ["palm"], rots: true, nearWreck: true },
 ];
 
 const TOOLS: ToolSpec[] = [
@@ -168,12 +170,15 @@ export function createLoot(
     lives.filter((live) => live.kind === kind && live.state === "fresh" && live.item).length;
 
   const pickCell = (live: Live, nearWreck: boolean, awayFromPlayer: boolean): Cell | null => {
-    let cells = pool(sites, live.sites);
+    let cells =
+      nearWreck && sites.inlandPalm.length ? sites.inlandPalm : pool(sites, live.sites);
     if (nearWreck) {
-      const origin = centroid(sites.wreck);
-      if (origin) {
-        const close = cells.filter((c) => Math.hypot(c.x - origin.x, c.z - origin.z) <= 26);
-        if (close.length) cells = close;
+      const wreckAt = centroid(sites.wreck);
+      if (wreckAt && cells.length) {
+        cells = [...cells].sort(
+          (a, b) =>
+            Math.hypot(a.x - wreckAt.x, a.z - wreckAt.z) - Math.hypot(b.x - wreckAt.x, b.z - wreckAt.z),
+        );
       }
     }
     if (!cells.length) return null;
@@ -191,6 +196,7 @@ export function createLoot(
       return true;
     };
     const tryPick = (strict: boolean): Cell | null => {
+      if (nearWreck) return cells.find((c) => ok(c, strict)) ?? null;
       for (let n = 0; n < 96; n++) {
         const cell = cells[Math.floor(rng() * cells.length)];
         if (!cell) continue;
@@ -261,7 +267,7 @@ export function createLoot(
 
   const spawnReplacement = (kind: LootKind): void => {
     const spec = FOOD.find((it) => it.kind === kind);
-    if (!spec || spec.starter) return;
+    if (!spec) return;
     if (freshCount(kind) >= spec.cap) return;
     const live: Live = {
       kind,
@@ -278,20 +284,23 @@ export function createLoot(
   };
 
   for (const spec of FOOD) {
-    const n = spec.starter ? 1 : spec.cap;
+    const n = spec.cap;
     for (let i = 0; i < n; i++) {
       const live: Live = {
         kind: spec.kind,
         sites: spec.sites,
         rots: spec.rots,
-        respawn: !spec.starter,
+        respawn: true,
         cell: null,
         state: "waiting",
         age: 0,
         item: null,
       };
       lives.push(live);
-      trySpawn(live, { stagger: !spec.starter, nearWreck: spec.starter, ignoreCap: spec.starter });
+      trySpawn(live, {
+        stagger: spec.kind !== "coconutHalf" || i > 0,
+        nearWreck: Boolean(spec.nearWreck) && i === 0,
+      });
     }
   }
 
@@ -316,6 +325,7 @@ export function createLoot(
   console.info("[loot]", {
     sites: {
       palm: sites.palm.length,
+      inlandPalm: sites.inlandPalm.length,
       grove: sites.grove.length,
       wreck: sites.wreck.length,
       boat: sites.boat.length,

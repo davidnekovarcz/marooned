@@ -193,7 +193,16 @@ export async function scatterProps(
   group.name = "props";
   const audioAnchors: AudioAnchor[] = [];
   const items: WorldItem[] = [];
-  const lootSites: LootSites = { palm: [], grove: [], wreck: [], boat: [], hut: [], forest: [], bush: [] };
+  const lootSites: LootSites = {
+    palm: [],
+    inlandPalm: [],
+    grove: [],
+    wreck: [],
+    boat: [],
+    hut: [],
+    forest: [],
+    bush: [],
+  };
 
   const add = (
     kind: PlaceKind,
@@ -291,7 +300,11 @@ export async function scatterProps(
   audioAnchors.push({ id: "pond", position: worldPos(POND_X, POND_Z) });
 
   const collectPalm = (px: number, pz: number) => {
-    lootSites.palm.push(...collectNearTree(biomes, blocked, px, pz));
+    const near = collectNearTree(biomes, blocked, px, pz);
+    lootSites.palm.push(...near);
+    if (biomes[cellIndex(px, pz)] !== Biome.Grass) return;
+    const grassNear = near.filter((cell) => biomes[cellIndex(cell.x, cell.z)] === Biome.Grass);
+    lootSites.inlandPalm.push(...(grassNear.length ? grassNear : near));
   };
   const collectGrove = (px: number, pz: number) => {
     lootSites.grove.push(...collectNearTree(biomes, blocked, px, pz));
@@ -409,6 +422,7 @@ export async function scatterProps(
     }
   }
   lootSites.palm = uniqueCells(lootSites.palm);
+  lootSites.inlandPalm = uniqueCells(lootSites.inlandPalm);
   lootSites.grove = uniqueCells(lootSites.grove);
   lootSites.wreck = uniqueCells(lootSites.wreck);
   lootSites.boat = uniqueCells(lootSites.boat);
