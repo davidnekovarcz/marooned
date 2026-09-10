@@ -1,6 +1,6 @@
 # Blender v3.6.0 OBJ File: 'StandardOBJ.blend'
 # www.blender.org
-mtllib Torch_Metal.mtl
+mtllib TorchMetal.mtl
 o Torch_Metal_Plane.008
 v 0.046203 0.010844 0.235090
 v 0.035944 0.018905 0.236849
