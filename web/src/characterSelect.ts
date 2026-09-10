@@ -30,9 +30,8 @@ function swatches(root: HTMLElement, tones: readonly number[], current: number, 
   }
 }
 
-export function showCharacterSelect(mode: "start" | "death", deathMessage = ""): Promise<Character> {
+export function showCharacterSelect(): Promise<Character> {
   const overlay = document.getElementById("character");
-  const deathEl = document.getElementById("character-death");
   const titleEl = document.getElementById("character-title");
   const leadEl = document.querySelector(".character-lead");
   const nameEl = document.getElementById("character-name");
@@ -44,7 +43,6 @@ export function showCharacterSelect(mode: "start" | "death", deathMessage = ""):
   const randomBtn = document.getElementById("character-random");
   if (
     !overlay ||
-    !deathEl ||
     !titleEl ||
     !(nameEl instanceof HTMLInputElement) ||
     !nameRoll ||
@@ -76,15 +74,8 @@ export function showCharacterSelect(mode: "start" | "death", deathMessage = ""):
     });
   };
 
-  titleEl.textContent = mode === "death" ? "Wash up again?" : "Marooned";
-  if (leadEl instanceof HTMLElement) leadEl.hidden = mode === "death";
-  if (mode === "death" && deathMessage) {
-    deathEl.hidden = false;
-    deathEl.textContent = deathMessage;
-  } else {
-    deathEl.hidden = true;
-    deathEl.textContent = "";
-  }
+  titleEl.textContent = "Marooned";
+  if (leadEl instanceof HTMLElement) leadEl.hidden = false;
 
   paint();
   overlay.hidden = false;

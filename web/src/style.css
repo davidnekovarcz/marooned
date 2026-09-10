@@ -315,10 +315,6 @@ body.dead #interact {
   display: none;
 }
 
-body.dead #character {
-  background: #000;
-}
-
 .character-card {
   width: min(26rem, 100%);
   display: flex;
@@ -328,15 +324,6 @@ body.dead #character {
   border-radius: 14px;
   background: rgba(8, 24, 32, 0.88);
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
-}
-
-#character-death {
-  margin: 0;
-  font-size: 16px;
-  font-weight: 600;
-  line-height: 1.45;
-  letter-spacing: 0.02em;
-  color: #e8c4b0;
 }
 
 #character-title {
@@ -469,7 +456,7 @@ body.dead #character {
 #death {
   position: fixed;
   inset: 0;
-  z-index: 10;
+  z-index: 14;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -483,4 +470,30 @@ body.dead #character {
 
 #death[hidden] {
   display: none;
+}
+
+#death-message {
+  margin: 0;
+  max-width: 28rem;
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1.5;
+  letter-spacing: 0.02em;
+}
+
+#death-respawn {
+  padding: 10px 22px;
+  border: 2px solid rgba(244, 247, 242, 0.82);
+  border-radius: 8px;
+  background: rgba(244, 247, 242, 0.14);
+  color: inherit;
+  font: inherit;
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+}
+
+#death-respawn:hover {
+  background: rgba(244, 247, 242, 0.22);
 }

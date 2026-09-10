@@ -73,7 +73,7 @@ async function start(): Promise<void> {
     const overlay = document.getElementById("character");
     if (overlay) overlay.hidden = true;
   }
-  const character = autostart ?? (await showCharacterSelect("start"));
+  const character = autostart ?? (await showCharacterSelect());
   saveCharacter(character);
 
   const { spawn, scattered, loot, wildlife } = await worldP;
@@ -136,8 +136,8 @@ async function start(): Promise<void> {
       player.alive = false;
       interact.update(player.cellX, player.cellZ, false, false);
       applyHealthLook(0);
-      showDeathScreen();
-      void showCharacterSelect("death", formatDeathMessage(day.survivedGameHours())).then((next) => {
+      void showDeathScreen(formatDeathMessage(day.survivedGameHours())).then(async () => {
+        const next = await showCharacterSelect();
         saveCharacter(next);
         markAutostart();
         window.location.reload();
