@@ -17,6 +17,19 @@ canvas {
   height: 100%;
 }
 
+#ui {
+  position: fixed;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+}
+
+#gear,
+#interact,
+#death {
+  pointer-events: auto;
+}
+
 #hint {
   position: fixed;
   left: 16px;

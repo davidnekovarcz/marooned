@@ -20,9 +20,9 @@ import {
   isLand,
   nearestCell,
 } from "@/web/src/island";
-import { makeWorldItem, type WorldItem } from "@/web/src/interact";
 import { loadGlb, loadObj } from "@/web/src/loaders";
-import type { Cell, LootSites } from "@/web/src/loot";
+import type { Cell, LootSites } from "@/web/src/sim/loot";
+import { makeWorldItem, type Item } from "@/web/src/world/item";
 import { LILY_URL, MODEL_URLS, TOMATO_URL, TORCH_URL, type ModelKind } from "@/web/src/models";
 import { mulberry32 } from "@/web/src/rng";
 import { fitAndPlant, plantOnGround, specFor } from "@/web/src/scale";
@@ -51,14 +51,14 @@ export type AudioAnchor = { id: string; position: THREE.Vector3 };
 export type ScatterResult = {
   group: THREE.Group;
   audioAnchors: AudioAnchor[];
-  items: WorldItem[];
+  items: Item[];
   lootSites: LootSites;
   spawn: (
     kind: ModelKind | "torch" | "tomato",
     x: number,
     z: number,
     extra?: { yaw?: number; dx?: number; dz?: number },
-  ) => WorldItem | null;
+  ) => Item | null;
 };
 
 function sitOnGround(obj: THREE.Object3D): void {
@@ -192,7 +192,7 @@ export async function scatterProps(
   const group = new THREE.Group();
   group.name = "props";
   const audioAnchors: AudioAnchor[] = [];
-  const items: WorldItem[] = [];
+  const items: Item[] = [];
   const lootSites: LootSites = {
     palm: [],
     inlandPalm: [],
@@ -445,7 +445,7 @@ export async function scatterProps(
     x: number,
     z: number,
     extra?: { yaw?: number; dx?: number; dz?: number },
-  ): WorldItem | null => {
+  ): Item | null => {
     const mesh = add(kind, x, z, extra?.yaw ?? rng() * 6, {
       dx: extra?.dx,
       dz: extra?.dz,

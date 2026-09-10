@@ -6,30 +6,7 @@
     <title>Marooned — island walk</title>
   </head>
   <body class="gate">
-    <div id="hud-world" aria-hidden="true">
-      <div id="hud-weather" data-sky="sun"></div>
-      <time id="hud-clock">08:00</time>
-    </div>
-    <div id="hud-needs" aria-hidden="true"></div>
-    <div id="hint">Click or press a key to hear the island. WASD walk. SHIFT run. Space interact. 1 / 2 pockets. 0 empty hands. G drop.</div>
-    <div id="gear">
-      <button type="button" class="gear-slot" data-slot="hands">
-        <span class="gear-label">Hands (0)</span>
-        <span class="gear-item" id="gear-hands-item">Empty</span>
-      </button>
-      <button type="button" class="gear-slot" data-slot="left">
-        <span class="gear-label">Left pocket (1)</span>
-        <span class="gear-item" id="gear-left-item">Empty</span>
-      </button>
-      <button type="button" class="gear-slot" data-slot="right">
-        <span class="gear-label">Right pocket (2)</span>
-        <span class="gear-item" id="gear-right-item">Empty</span>
-      </button>
-    </div>
-    <div id="interact" hidden>
-      <div id="interact-name"></div>
-      <button type="button" id="interact-action" hidden></button>
-    </div>
+    <div id="ui"></div>
     <div id="character" hidden>
       <div class="character-card">
         <h1 id="character-title">Marooned</h1>
@@ -61,10 +38,6 @@
           <button type="button" id="character-random">Random character</button>
         </div>
       </div>
-    </div>
-    <div id="death" hidden>
-      <p id="death-message"></p>
-      <button type="button" id="death-respawn">Respawn</button>
     </div>
     <script type="module" src="/src/main.ts"></script>
   </body>

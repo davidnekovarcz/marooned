@@ -7,17 +7,16 @@ import {
   SEED,
   TOOL_RESPAWN_SECONDS,
 } from "@/web/src/constants";
-import { defaultPrep, formatFoodName, isFoodKind, writeFoodState } from "@/web/src/food";
-import type { SpawnFn, WorldItem } from "@/web/src/interact";
+import { isFoodKind, type FoodKind } from "@/web/src/food";
 import type { ModelKind } from "@/web/src/models";
 import { mulberry32 } from "@/web/src/rng";
+import { applyFoodState, type Item, type SpawnFn } from "@/web/src/world/item";
+import type { ToolKind } from "@/web/src/world/kinds";
 
 export type Cell = { x: number; z: number };
-export type Freshness = "fresh" | "rotten";
 
 export type LootSites = {
   palm: Cell[];
-  /** Cells beside palms planted on grass (not beach / pond sand). */
   inlandPalm: Cell[];
   grove: Cell[];
   wreck: Cell[];
@@ -27,28 +26,15 @@ export type LootSites = {
   bush: Cell[];
 };
 
-export type FruitKind =
-  | "coconut"
-  | "coconutHalf"
-  | "banana"
-  | "orange"
-  | "lemon"
-  | "pineapple"
-  | "watermelon"
-  | "tomato"
-  | "mushroomTan"
-  | "mushroomRed";
-export type ToolKind = "knife" | "hammer" | "axe" | "shovel" | "torch";
-export type LootKind = FruitKind | ToolKind;
+export type LootKind = FoodKind | ToolKind;
 
 type SiteKey = keyof LootSites;
 
 type FoodSpec = {
-  kind: FruitKind;
+  kind: FoodKind;
   cap: number;
   sites: SiteKey[];
   rots: boolean;
-  /** First spawn under the nearest inland palm to the wreck; later spawns are random. */
   nearWreck?: boolean;
 };
 
@@ -79,6 +65,7 @@ const TOOLS: ToolSpec[] = [
   { kind: "torch", count: 1, sites: ["hut", "boat"] },
 ];
 
+/** Timers only — freshness/prep live on Item. */
 type Live = {
   kind: LootKind;
   sites: SiteKey[];
@@ -87,7 +74,7 @@ type Live = {
   cell: Cell | null;
   state: "fresh" | "rotten" | "waiting";
   age: number;
-  item: WorldItem | null;
+  item: Item | null;
 };
 
 function keyOf(cell: Cell): string {
@@ -129,30 +116,12 @@ function pool(sites: LootSites, keys: SiteKey[]): Cell[] {
   return out;
 }
 
-function nameLoot(kind: LootKind, rotten: boolean): string {
-  if (isFoodKind(kind)) {
-    return formatFoodName(kind, defaultPrep(kind), rotten ? "rotten" : "fresh");
-  }
-  const names: Record<ToolKind, string> = {
-    knife: "Knife",
-    hammer: "Hammer",
-    axe: "Axe",
-    shovel: "Shovel",
-    torch: "Torch",
-  };
-  return names[kind];
-}
-
 export type LootSystem = {
   update: (dt: number, playerX?: number, playerZ?: number) => void;
-  onRemoved: (item: WorldItem) => void;
+  onRemoved: (item: Item) => void;
 };
 
-export function createLoot(
-  sites: LootSites,
-  items: WorldItem[],
-  spawn: SpawnFn,
-): LootSystem {
+export function createLoot(sites: LootSites, items: Item[], spawn: SpawnFn): LootSystem {
   const rng = mulberry32(`${SEED}-loot`);
   const lives: Live[] = [];
   let playerAt: Cell | null = null;
@@ -170,8 +139,7 @@ export function createLoot(
     lives.filter((live) => live.kind === kind && live.state === "fresh" && live.item).length;
 
   const pickCell = (live: Live, nearWreck: boolean, awayFromPlayer: boolean): Cell | null => {
-    let cells =
-      nearWreck && sites.inlandPalm.length ? sites.inlandPalm : pool(sites, live.sites);
+    let cells = nearWreck && sites.inlandPalm.length ? sites.inlandPalm : pool(sites, live.sites);
     if (nearWreck) {
       const wreckAt = centroid(sites.wreck);
       if (wreckAt && cells.length) {
@@ -208,19 +176,7 @@ export function createLoot(
     return tryPick(true) ?? tryPick(false);
   };
 
-  const decorateFood = (item: WorldItem, kind: LootKind, rotten: boolean): void => {
-    if (!isFoodKind(kind)) return;
-    const prep = defaultPrep(kind);
-    const freshness = rotten ? "rotten" : "fresh";
-    item.prep = prep;
-    item.freshness = freshness;
-    item.loot = true;
-    item.name = formatFoodName(kind, prep, freshness);
-    writeFoodState(item.mesh, prep, freshness);
-    if (rotten) item.action = { label: "Rotten", blockedReason: "too rotten to eat" };
-  };
-
-  const place = (live: Live, cell: Cell, stagger: boolean, nearWreck: boolean): boolean => {
+  const place = (live: Live, cell: Cell, stagger: boolean): boolean => {
     const item = spawn(live.kind as ModelKind, cell.x, cell.z, { yaw: rng() * Math.PI * 2 });
     if (!item) return false;
     live.cell = cell;
@@ -228,9 +184,7 @@ export function createLoot(
     live.state = "fresh";
     live.age = stagger ? rng() * LOOT_FRESH_SECONDS : 0;
     item.loot = true;
-    item.name = nameLoot(live.kind, false);
-    decorateFood(item, live.kind, false);
-    void nearWreck;
+    if (isFoodKind(live.kind)) applyFoodState(item);
     return true;
   };
 
@@ -242,7 +196,7 @@ export function createLoot(
     if (food && !opts?.ignoreCap && freshCount(live.kind) >= food.cap) return false;
     const cell = pickCell(live, Boolean(opts?.nearWreck), Boolean(opts?.awayFromPlayer));
     if (!cell) return false;
-    return place(live, cell, Boolean(opts?.stagger), Boolean(opts?.nearWreck));
+    return place(live, cell, Boolean(opts?.stagger));
   };
 
   const despawn = (live: Live): void => {
@@ -260,8 +214,7 @@ export function createLoot(
     if (!live.item) return;
     live.state = "rotten";
     live.age = 0;
-    live.item.freshness = "rotten";
-    decorateFood(live.item, live.kind, true);
+    applyFoodState(live.item, live.item.prep, "rotten");
     tintRotten(live.item.mesh);
   };
 
@@ -284,8 +237,7 @@ export function createLoot(
   };
 
   for (const spec of FOOD) {
-    const n = spec.cap;
-    for (let i = 0; i < n; i++) {
+    for (let i = 0; i < spec.cap; i++) {
       const live: Live = {
         kind: spec.kind,
         sites: spec.sites,
@@ -321,7 +273,6 @@ export function createLoot(
     }
   }
 
-  const placed = lives.filter((it) => it.state !== "waiting").length;
   console.info("[loot]", {
     sites: {
       palm: sites.palm.length,
@@ -333,7 +284,7 @@ export function createLoot(
       forest: sites.forest.length,
       bush: sites.bush.length,
     },
-    placed,
+    placed: lives.filter((it) => it.state !== "waiting").length,
     kinds: lives.map((it) => `${it.kind}:${it.state}:${it.cell ? `${it.cell.x},${it.cell.z}` : "-"}`),
   });
 
@@ -361,7 +312,7 @@ export function createLoot(
         }
       }
     },
-    onRemoved: (item: WorldItem) => {
+    onRemoved: (item: Item) => {
       const live = lives.find((it) => it.item === item);
       if (!live) return;
       live.item = null;

@@ -11,39 +11,13 @@ import {
   ZOOM_CELLS_START,
 } from "@/web/src/constants";
 import { sunElevation } from "@/web/src/dayNight";
-
-function isZoomIn(e: KeyboardEvent): boolean {
-  return e.key === "+" || e.key === "=" || e.code === "NumpadAdd";
-}
-
-function isZoomOut(e: KeyboardEvent): boolean {
-  return e.key === "-" || e.key === "_" || e.code === "NumpadSubtract";
-}
-
 export class CameraZoom {
   cells = ZOOM_CELLS_START;
-  private dir = 0;
 
-  constructor() {
-    window.addEventListener("keydown", (e) => {
-      if (isZoomIn(e)) {
-        e.preventDefault();
-        this.dir = -1;
-      } else if (isZoomOut(e)) {
-        e.preventDefault();
-        this.dir = 1;
-      }
-    });
-    window.addEventListener("keyup", (e) => {
-      if (isZoomIn(e) && this.dir < 0) this.dir = 0;
-      if (isZoomOut(e) && this.dir > 0) this.dir = 0;
-    });
-  }
-
-  update(dt: number): void {
-    if (this.dir === 0) return;
+  update(dt: number, dir = 0): void {
+    if (dir === 0) return;
     this.cells = THREE.MathUtils.clamp(
-      this.cells + this.dir * ZOOM_CELLS_PER_SEC * dt,
+      this.cells + dir * ZOOM_CELLS_PER_SEC * dt,
       ZOOM_CELLS_IN,
       ZOOM_CELLS_OUT,
     );

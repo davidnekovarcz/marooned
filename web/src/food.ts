@@ -18,19 +18,6 @@ export const FOOD_KINDS = [
 
 export type FoodKind = (typeof FOOD_KINDS)[number];
 
-const NOUN: Record<FoodKind, string> = {
-  coconut: "Coconut",
-  coconutHalf: "Coconut",
-  orange: "Orange",
-  pineapple: "Pineapple",
-  banana: "Banana",
-  lemon: "Lemon",
-  watermelon: "Melon",
-  tomato: "Tomato",
-  mushroomTan: "Tan mushroom",
-  mushroomRed: "Red mushroom",
-};
-
 export function isFoodKind(kind: string | null | undefined): kind is FoodKind {
   return kind !== null && kind !== undefined && (FOOD_KINDS as readonly string[]).includes(kind);
 }
@@ -57,36 +44,33 @@ export function writeFoodState(mesh: Object3D, prep: FoodPrep, freshness: Freshn
   mesh.userData.foodFreshness = freshness;
 }
 
-export function formatFoodName(kind: FoodKind, prep: FoodPrep, freshness: Freshness = "fresh"): string {
-  const noun = NOUN[kind];
-  if (freshness === "rotten") {
-    if (prep === "half") return `${noun} (half) [rotten]`;
-    if (prep === "peeled") return `${noun} (peeled) [rotten]`;
-    if (prep === "sliced") return `${noun} (sliced) [rotten]`;
-    return `${noun} [rotten]`;
-  }
-  if (kind === "mushroomRed") return `${noun} [poisonous]`;
-  if (kind === "coconut") {
-    if (prep === "whole") return `${noun}`;
-    if (prep === "hole") return `${noun} (with drinking hole)`;
-    if (prep === "drunk") return `${noun}`;
-    if (prep === "half") return `${noun} (half)`;
-  }
-  if (kind === "coconutHalf") return `${noun} (half)`;
-  if (kind === "pineapple") {
-    if (prep === "whole") return `${noun}`;
-    if (prep === "peeled") return `${noun} (peeled)`;
-  }
-  if (kind === "watermelon") {
-    if (prep === "whole") return `${noun}`;
-    if (prep === "sliced") return `${noun} (sliced)`;
-  }
-  return `${noun}`;
-}
+export type ItemLabelParts = {
+  nounKey: string;
+  prepKey?: string;
+  stateKey?: string;
+};
 
-export function heldFoodLabel(kind: string | null, mesh: Object3D | null): string {
-  if (!isFoodKind(kind)) return kind ?? "Empty";
-  const prep = readFoodPrep(mesh) ?? defaultPrep(kind);
-  const freshness = readFoodFreshness(mesh) ?? "fresh";
-  return formatFoodName(kind, prep, freshness);
+/** Locale keys for a food/tool/prop label. View composes `t(nounKey)` plus optional tags. */
+export function itemLabelParts(
+  kind: string,
+  prep?: FoodPrep,
+  freshness: Freshness = "fresh",
+): ItemLabelParts {
+  const nounKey = `item.${kind}`;
+  if (freshness === "rotten") {
+    if (prep === "half") return { nounKey, prepKey: "food.prep.half", stateKey: "food.state.rotten" };
+    if (prep === "peeled") return { nounKey, prepKey: "food.prep.peeled", stateKey: "food.state.rotten" };
+    if (prep === "sliced") return { nounKey, prepKey: "food.prep.sliced", stateKey: "food.state.rotten" };
+    return { nounKey, stateKey: "food.state.rotten" };
+  }
+  if (kind === "mushroomRed") return { nounKey, stateKey: "food.state.poisonous" };
+  if (kind === "coconut") {
+    if (prep === "hole") return { nounKey, prepKey: "food.prep.hole" };
+    if (prep === "half") return { nounKey, prepKey: "food.prep.half" };
+    return { nounKey };
+  }
+  if (kind === "coconutHalf") return { nounKey, prepKey: "food.prep.half" };
+  if (kind === "pineapple" && prep === "peeled") return { nounKey, prepKey: "food.prep.peeled" };
+  if (kind === "watermelon" && prep === "sliced") return { nounKey, prepKey: "food.prep.sliced" };
+  return { nounKey };
 }
