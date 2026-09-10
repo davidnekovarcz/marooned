@@ -1,9 +1,8 @@
 import "./style.css";
 import * as THREE from "three";
-import { consumeAutostart, saveCharacter, markAutostart } from "./appearance";
+import { randomCharacter, saveCharacter } from "./appearance";
 import { setupIslandAudio } from "./audio";
 import { applyZoomFog, CameraZoom, offsetForZoom } from "./cameraZoom";
-import { showCharacterSelect } from "./characterSelect";
 import { CAMERA_OFFSET, CENTER, DAY_START, DEBUG_GRID, GRID, HUD_BLINK } from "./constants";
 import { applyDayNight, createDayLights, DayClock, isDaytime } from "./dayNight";
 import { buildGridOverlay } from "./gridOverlay";
@@ -68,12 +67,8 @@ async function start(): Promise<void> {
   };
   preview();
 
-  const autostart = consumeAutostart();
-  if (autostart) {
-    const overlay = document.getElementById("character");
-    if (overlay) overlay.hidden = true;
-  }
-  const character = autostart ?? (await showCharacterSelect());
+  // Character select UI is parked for now — always wash up as a random survivor.
+  const character = randomCharacter();
   saveCharacter(character);
 
   const { spawn, scattered, loot, wildlife } = await worldP;
@@ -136,10 +131,7 @@ async function start(): Promise<void> {
       player.alive = false;
       interact.update(player.cellX, player.cellZ, false, false);
       applyHealthLook(0);
-      void showDeathScreen(formatDeathMessage(day.survivedGameHours())).then(async () => {
-        const next = await showCharacterSelect();
-        saveCharacter(next);
-        markAutostart();
+      void showDeathScreen(formatDeathMessage(day.survivedGameHours())).then(() => {
         window.location.reload();
       });
       return;
