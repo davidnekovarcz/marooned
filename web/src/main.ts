@@ -44,35 +44,24 @@ scene.add(ocean.mesh);
 scene.add(buildIslandMesh(biomes));
 
 async function start(): Promise<void> {
+  // Character select UI is parked for now — always wash up as a random survivor.
+  const character = randomCharacter();
+  saveCharacter(character);
+
+  const spawn = findSpawn(biomes);
+  blocked[spawn.z * GRID + spawn.x] = 1;
+
   const worldP = (async () => {
-    const spawn = findSpawn(biomes);
-    blocked[spawn.z * GRID + spawn.x] = 1;
     const scattered = await scatterProps(scene, biomes, blocked);
     const loot = createLoot(scattered.lootSites, scattered.items, scattered.spawn);
     const wildlife = await spawnWildlife(scene, biomes, blocked);
     blocked[spawn.z * GRID + spawn.x] = 0;
     if (DEBUG_GRID) scene.add(buildGridOverlay(biomes, blocked));
-    return { spawn, scattered, loot, wildlife };
+    return { scattered, loot, wildlife };
   })();
+  const visualP = loadPlayerModel(character);
 
-  const previewClock = new THREE.Clock();
-  let previewing = true;
-  const preview = () => {
-    if (!previewing) return;
-    ocean.update(previewClock.getElapsedTime());
-    applyDayNight(scene, lights, DAY_START);
-    camera.lookAt(CENTER, 1.1, CENTER);
-    renderer.render(scene, camera);
-    requestAnimationFrame(preview);
-  };
-  preview();
-
-  // Character select UI is parked for now — always wash up as a random survivor.
-  const character = randomCharacter();
-  saveCharacter(character);
-
-  const { spawn, scattered, loot, wildlife } = await worldP;
-  const visual = await loadPlayerModel(character);
+  const [{ scattered, loot, wildlife }, visual] = await Promise.all([worldP, visualP]);
   const player = new GridPlayer(biomes, blocked, spawn, visual);
   scene.add(player.mesh);
 
@@ -84,7 +73,11 @@ async function start(): Promise<void> {
   hud.update({ sky: isDaytime(day.t) ? "sun" : "moon", clock: day.clockLabel(), ...needs.snapshot() });
 
   const zoom = new CameraZoom();
-  previewing = false;
+  const offset = offsetForZoom(camera, zoom.cells);
+  applyZoomFog(scene, camera, offset.length(), zoom.cells, day.t);
+  player.followCamera(camera, offset);
+  applyDayNight(scene, lights, day.t);
+  renderer.render(scene, camera);
   document.body.classList.remove("gate");
 
   window.addEventListener("resize", () => {
@@ -115,9 +108,9 @@ async function start(): Promise<void> {
     applyDayNight(scene, lights, day.t);
     ocean.update(clock.elapsedTime);
     islandAudio.update();
-    const offset = offsetForZoom(camera, zoom.cells);
-    applyZoomFog(scene, camera, offset.length(), zoom.cells, day.t);
-    player.followCamera(camera, offset);
+    const camOffset = offsetForZoom(camera, zoom.cells);
+    applyZoomFog(scene, camera, camOffset.length(), zoom.cells, day.t);
+    player.followCamera(camera, camOffset);
     interact.update(player.cellX, player.cellZ, player.alive, player.busy);
     hud.update({
       sky: isDaytime(day.t) ? "sun" : "moon",
