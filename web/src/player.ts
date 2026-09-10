@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import { CELL, GROUND_Y, STEP_SECONDS_RUN, STEP_SECONDS_SWIM, STEP_SECONDS_WALK } from "@/web/src/constants";
+import { isFoodKind } from "@/web/src/food";
 import { canEnter } from "@/web/src/gridOverlay";
 import { isInlandWater } from "@/web/src/island";
 import type { PlayerGait, PlayerVisual } from "@/web/src/playerModel";
@@ -26,12 +27,16 @@ export type HeldKind =
   | "shovel"
   | "torch"
   | "tinder"
+  | "coconut"
   | "coconutHalf"
   | "orange"
   | "pineapple"
   | "banana"
   | "lemon"
-  | "watermelon";
+  | "watermelon"
+  | "tomato"
+  | "mushroomTan"
+  | "mushroomRed";
 export type PocketSlot = "left" | "right";
 type LockKind = "meal" | "cut" | "break";
 type PocketItem = { kind: HeldKind; mesh: THREE.Object3D };
@@ -46,19 +51,8 @@ const TOOL_HOLD: Record<"knife" | "hammer" | "axe" | "shovel" | "torch", { lengt
   torch: { length: 0.38, rot: new THREE.Euler(0.12, 0.65, 1.1) },
 };
 
-const HELD_FOOD = new Set<HeldKind>([
-  "coconutHalf",
-  "orange",
-  "pineapple",
-  "banana",
-  "lemon",
-  "watermelon",
-]);
-
-export function isHeldFood(
-  kind: HeldKind | null,
-): kind is "coconutHalf" | "orange" | "pineapple" | "banana" | "lemon" | "watermelon" {
-  return kind !== null && HELD_FOOD.has(kind);
+export function isHeldFood(kind: HeldKind | null): boolean {
+  return kind !== null && isFoodKind(kind);
 }
 
 function poseFor(kind: HeldKind): { length: number | null; rot: THREE.Euler } {
@@ -140,6 +134,11 @@ export class GridPlayer {
   private onCutDone: (() => void) | null = null;
   private onCrack: (() => void) | null = null;
   private onMealEnd: (() => void) | null = null;
+  private mealKeep = false;
+
+  get heldMesh(): THREE.Object3D | null {
+    return this.tool;
+  }
 
   constructor(
     private biomes: Uint8Array,
@@ -180,9 +179,9 @@ export class GridPlayer {
     return this.pockets[slot]?.kind ?? null;
   }
 
-  /** Stow the held tool into the first empty pocket. */
+  /** Stow the held tool into the first empty pocket. Food never pockets. */
   stowHeld(): boolean {
-    if (!this.tool || !this.heldKind) return false;
+    if (!this.tool || !this.heldKind || isHeldFood(this.heldKind)) return false;
     const slot: PocketSlot | null = !this.pockets.left ? "left" : !this.pockets.right ? "right" : null;
     if (!slot) return false;
     this.hideInPocket(slot, { kind: this.heldKind, mesh: this.tool });
@@ -191,12 +190,13 @@ export class GridPlayer {
     return true;
   }
 
-  /** Swap the named pocket with whatever is in the hands. */
+  /** Swap the named pocket with whatever is in the hands. Food never goes into a pocket. */
   swapPocket(slot: PocketSlot): boolean {
     if (!this.alive || this.busy) return false;
     const pocket = this.pockets[slot];
     const hand: PocketItem | null = this.tool && this.heldKind ? { kind: this.heldKind, mesh: this.tool } : null;
     if (!pocket && !hand) return false;
+    if (hand && isHeldFood(hand.kind)) return false;
     if (pocket) {
       const hold = poseFor(pocket.kind);
       placeInGrip(this.visual.grip, pocket.mesh, hold.length, hold.rot);
@@ -215,17 +215,19 @@ export class GridPlayer {
     return this.detachToolToWorld();
   }
 
-  /** Instant — no crouch. Previous held item stows or drops. */
+  /** Instant — no crouch. Previous food always drops; tools stow if a pocket is free. */
   pickup(mesh: THREE.Object3D, kind: HeldKind): { dropped: { mesh: THREE.Object3D; kind: HeldKind } | null } | null {
     if (!this.alive || this.busy) return null;
     let dropped: { mesh: THREE.Object3D; kind: HeldKind } | null = null;
-    if (this.tool && this.heldKind && !this.stowHeld()) dropped = this.detachToolToWorld();
+    if (this.tool && this.heldKind) {
+      if (isHeldFood(this.heldKind) || !this.stowHeld()) dropped = this.detachToolToWorld();
+    }
     this.grabHeld(mesh, kind);
     return { dropped };
   }
 
-  /** Eat whatever food is already in the hands. */
-  beginHeldMeal(seconds: number, onEnd?: () => void): boolean {
+  /** Eat or drink whatever food is already in the hands. `keep` leaves the mesh after a drink. */
+  beginHeldMeal(seconds: number, onEnd?: () => void, keep = false): boolean {
     if (!this.alive || this.busy || !this.tool || !isHeldFood(this.heldKind)) return false;
     this.stopMoving();
     this.busy = true;
@@ -235,6 +237,7 @@ export class GridPlayer {
     this.meal = this.tool;
     this.grabbed = true;
     this.onMealEnd = onEnd ?? null;
+    this.mealKeep = keep;
     this.tool.visible = true;
     this.mealScale.copy(this.tool.scale);
     this.gait = this.inWater() ? "swim" : "idle";
@@ -278,11 +281,16 @@ export class GridPlayer {
     const finished = this.lockT >= this.lockSeconds;
     const lock = this.lock;
     if (lock === "meal") {
-      if (this.tool === this.meal) {
-        this.tool = null;
-        this.heldKind = null;
+      if (this.mealKeep && this.meal) {
+        this.meal.scale.copy(this.mealScale);
+        this.mealKeep = false;
+      } else {
+        if (this.tool === this.meal) {
+          this.tool = null;
+          this.heldKind = null;
+        }
+        this.meal?.removeFromParent();
       }
-      this.meal?.removeFromParent();
       this.meal = null;
       const ended = this.onMealEnd;
       this.onMealEnd = null;

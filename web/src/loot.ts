@@ -3,9 +3,11 @@ import {
   LOOT_FRESH_SECONDS,
   LOOT_RESPAWN_SECONDS,
   LOOT_ROTTEN_SECONDS,
+  LOOT_SPAWN_AWAY,
   SEED,
   TOOL_RESPAWN_SECONDS,
 } from "@/web/src/constants";
+import { defaultPrep, formatFoodName, isFoodKind, writeFoodState } from "@/web/src/food";
 import type { SpawnFn, WorldItem } from "@/web/src/interact";
 import type { ModelKind } from "@/web/src/models";
 import { mulberry32 } from "@/web/src/rng";
@@ -15,57 +17,77 @@ export type Freshness = "fresh" | "rotten";
 
 export type LootSites = {
   palm: Cell[];
+  /** Cells beside palms planted on grass (not beach / pond sand). */
+  inlandPalm: Cell[];
   grove: Cell[];
   wreck: Cell[];
   boat: Cell[];
   hut: Cell[];
   forest: Cell[];
+  bush: Cell[];
 };
 
-export type FruitKind = "coconut" | "coconutHalf" | "banana" | "orange" | "lemon" | "pineapple" | "watermelon";
+export type FruitKind =
+  | "coconut"
+  | "coconutHalf"
+  | "banana"
+  | "orange"
+  | "lemon"
+  | "pineapple"
+  | "watermelon"
+  | "tomato"
+  | "mushroomTan"
+  | "mushroomRed";
 export type ToolKind = "knife" | "hammer" | "axe" | "shovel" | "torch";
 export type LootKind = FruitKind | ToolKind;
 
 type SiteKey = keyof LootSites;
 
-type Spec = {
-  kind: LootKind;
-  count: number;
+type FoodSpec = {
+  kind: FruitKind;
+  cap: number;
   sites: SiteKey[];
   rots: boolean;
-  /** First `nearCount` pieces spawn near this landmark so the opening beach has food. */
-  near?: SiteKey;
-  nearCount?: number;
-  nearRadius?: number;
+  /** First spawn under the nearest inland palm to the wreck; later spawns are random. */
+  nearWreck?: boolean;
 };
 
-const FRUIT: Spec[] = [
-  { kind: "coconut", count: 8, sites: ["palm"], rots: true, near: "wreck", nearCount: 3, nearRadius: 26 },
-  { kind: "coconutHalf", count: 2, sites: ["palm"], rots: true, near: "wreck", nearCount: 1, nearRadius: 26 },
-  { kind: "banana", count: 5, sites: ["palm"], rots: true, near: "wreck", nearCount: 2, nearRadius: 26 },
-  { kind: "orange", count: 4, sites: ["grove"], rots: true, near: "hut", nearCount: 2, nearRadius: 22 },
-  { kind: "lemon", count: 3, sites: ["grove"], rots: true, near: "hut", nearCount: 1, nearRadius: 22 },
-  { kind: "pineapple", count: 3, sites: ["grove"], rots: true, near: "hut", nearCount: 1, nearRadius: 22 },
-  { kind: "watermelon", count: 3, sites: ["grove"], rots: true, near: "hut", nearCount: 1, nearRadius: 22 },
+type ToolSpec = {
+  kind: ToolKind;
+  count: number;
+  sites: SiteKey[];
+};
+
+const FOOD: FoodSpec[] = [
+  { kind: "coconut", cap: 10, sites: ["palm"], rots: false },
+  { kind: "banana", cap: 2, sites: ["palm"], rots: true },
+  { kind: "orange", cap: 2, sites: ["palm"], rots: true },
+  { kind: "lemon", cap: 2, sites: ["palm"], rots: true },
+  { kind: "pineapple", cap: 2, sites: ["palm"], rots: true },
+  { kind: "watermelon", cap: 2, sites: ["bush"], rots: true },
+  { kind: "tomato", cap: 2, sites: ["bush"], rots: true },
+  { kind: "mushroomTan", cap: 2, sites: ["forest"], rots: true },
+  { kind: "mushroomRed", cap: 2, sites: ["forest"], rots: true },
+  { kind: "coconutHalf", cap: 2, sites: ["palm"], rots: true, nearWreck: true },
 ];
 
-const TOOLS: Spec[] = [
-  { kind: "knife", count: 1, sites: ["wreck", "boat", "hut"], rots: false },
-  { kind: "hammer", count: 1, sites: ["wreck", "hut", "boat"], rots: false },
-  { kind: "shovel", count: 1, sites: ["hut", "wreck"], rots: false },
-  { kind: "axe", count: 1, sites: ["forest", "hut"], rots: false },
-  { kind: "torch", count: 1, sites: ["hut", "boat"], rots: false },
+const TOOLS: ToolSpec[] = [
+  { kind: "knife", count: 1, sites: ["wreck", "boat", "hut"] },
+  { kind: "hammer", count: 1, sites: ["wreck", "hut", "boat"] },
+  { kind: "shovel", count: 1, sites: ["hut", "wreck"] },
+  { kind: "axe", count: 1, sites: ["forest", "hut"] },
+  { kind: "torch", count: 1, sites: ["hut", "boat"] },
 ];
 
-type Instance = {
-  spec: Spec;
-  index: number;
+type Live = {
+  kind: LootKind;
+  sites: SiteKey[];
+  rots: boolean;
+  respawn: boolean;
   cell: Cell | null;
   state: "fresh" | "rotten" | "waiting";
   age: number;
   item: WorldItem | null;
-  /** After the first pickup/rot, respawn anywhere — not back at the starter cluster. */
-  wander: boolean;
 };
 
 function keyOf(cell: Cell): string {
@@ -81,25 +103,6 @@ function centroid(cells: Cell[]): Cell | null {
     z += cell.z;
   }
   return { x: x / cells.length, z: z / cells.length };
-}
-
-function displayName(kind: LootKind, rotten: boolean): string {
-  const names: Record<LootKind, string> = {
-    coconut: "Coconut",
-    coconutHalf: "Open coconut",
-    banana: "Banana",
-    orange: "Orange",
-    lemon: "Lemon",
-    pineapple: "Pineapple",
-    watermelon: "Watermelon",
-    knife: "Knife",
-    hammer: "Hammer",
-    axe: "Axe",
-    shovel: "Shovel",
-    torch: "Torch",
-  };
-  const name = names[kind];
-  return rotten ? `Rotten ${name.toLowerCase()}` : name;
 }
 
 function tintRotten(root: THREE.Object3D): void {
@@ -126,8 +129,22 @@ function pool(sites: LootSites, keys: SiteKey[]): Cell[] {
   return out;
 }
 
+function nameLoot(kind: LootKind, rotten: boolean): string {
+  if (isFoodKind(kind)) {
+    return formatFoodName(kind, defaultPrep(kind), rotten ? "rotten" : "fresh");
+  }
+  const names: Record<ToolKind, string> = {
+    knife: "Knife",
+    hammer: "Hammer",
+    axe: "Axe",
+    shovel: "Shovel",
+    torch: "Torch",
+  };
+  return names[kind];
+}
+
 export type LootSystem = {
-  update: (dt: number) => void;
+  update: (dt: number, playerX?: number, playerZ?: number) => void;
   onRemoved: (item: WorldItem) => void;
 };
 
@@ -137,145 +154,226 @@ export function createLoot(
   spawn: SpawnFn,
 ): LootSystem {
   const rng = mulberry32(`${SEED}-loot`);
-  const occupied = new Set<string>();
-  const instances: Instance[] = [];
+  const lives: Live[] = [];
+  let playerAt: Cell | null = null;
 
-  const occupiedByLoot = () => {
-    occupied.clear();
-    for (const inst of instances) {
-      if (inst.cell && inst.state !== "waiting") occupied.add(keyOf(inst.cell));
+  const occupiedKeys = (): Set<string> => {
+    const occupied = new Set<string>();
+    for (const live of lives) {
+      if (live.cell && live.state !== "waiting") occupied.add(keyOf(live.cell));
     }
-    for (const it of items) {
-      occupied.add(`${it.cellX},${it.cellZ}`);
-    }
+    for (const it of items) occupied.add(`${it.cellX},${it.cellZ}`);
+    return occupied;
   };
 
-  const pickCell = (inst: Instance): Cell | null => {
-    let cells = pool(sites, inst.spec.sites);
-    if (
-      !inst.wander &&
-      inst.spec.near &&
-      inst.index < (inst.spec.nearCount ?? 0)
-    ) {
-      const origin = centroid(sites[inst.spec.near]);
-      const radius = inst.spec.nearRadius ?? 24;
-      if (origin) {
-        const close = cells.filter((c) => Math.hypot(c.x - origin.x, c.z - origin.z) <= radius);
-        if (close.length) cells = close;
+  const freshCount = (kind: LootKind): number =>
+    lives.filter((live) => live.kind === kind && live.state === "fresh" && live.item).length;
+
+  const pickCell = (live: Live, nearWreck: boolean, awayFromPlayer: boolean): Cell | null => {
+    let cells =
+      nearWreck && sites.inlandPalm.length ? sites.inlandPalm : pool(sites, live.sites);
+    if (nearWreck) {
+      const wreckAt = centroid(sites.wreck);
+      if (wreckAt && cells.length) {
+        cells = [...cells].sort(
+          (a, b) =>
+            Math.hypot(a.x - wreckAt.x, a.z - wreckAt.z) - Math.hypot(b.x - wreckAt.x, b.z - wreckAt.z),
+        );
       }
     }
     if (!cells.length) return null;
-    occupiedByLoot();
-    const avoid = inst.cell;
+    const occupied = occupiedKeys();
+    const avoid = live.cell;
+    const origin = playerAt ?? (awayFromPlayer ? live.cell : null);
+    const far = (cell: Cell): boolean => {
+      if (!awayFromPlayer || !origin) return true;
+      return Math.hypot(cell.x - origin.x, cell.z - origin.z) >= LOOT_SPAWN_AWAY;
+    };
+    const ok = (cell: Cell, strict: boolean): boolean => {
+      if (avoid && cell.x === avoid.x && cell.z === avoid.z) return false;
+      if (strict && occupied.has(keyOf(cell))) return false;
+      if (!far(cell)) return false;
+      return true;
+    };
     const tryPick = (strict: boolean): Cell | null => {
-      for (let n = 0; n < 64; n++) {
+      if (nearWreck) return cells.find((c) => ok(c, strict)) ?? null;
+      for (let n = 0; n < 96; n++) {
         const cell = cells[Math.floor(rng() * cells.length)];
         if (!cell) continue;
-        if (avoid && cell.x === avoid.x && cell.z === avoid.z) continue;
-        if (strict && occupied.has(keyOf(cell))) continue;
+        if (!ok(cell, strict)) continue;
         return cell;
       }
-      return (
-        cells.find(
-          (c) => (!avoid || c.x !== avoid.x || c.z !== avoid.z) && (!strict || !occupied.has(keyOf(c))),
-        ) ?? null
-      );
+      return cells.find((c) => ok(c, strict)) ?? null;
     };
     return tryPick(true) ?? tryPick(false);
   };
 
-  const place = (inst: Instance, cell: Cell): boolean => {
-    const item = spawn(inst.spec.kind as ModelKind, cell.x, cell.z, { yaw: rng() * Math.PI * 2 });
-    if (!item) return false;
-    inst.cell = cell;
-    inst.item = item;
-    inst.state = "fresh";
-    inst.age = 0;
-    item.freshness = "fresh";
+  const decorateFood = (item: WorldItem, kind: LootKind, rotten: boolean): void => {
+    if (!isFoodKind(kind)) return;
+    const prep = defaultPrep(kind);
+    const freshness = rotten ? "rotten" : "fresh";
+    item.prep = prep;
+    item.freshness = freshness;
     item.loot = true;
-    item.name = displayName(inst.spec.kind, false);
+    item.name = formatFoodName(kind, prep, freshness);
+    writeFoodState(item.mesh, prep, freshness);
+    if (rotten) item.action = { label: "Rotten", blockedReason: "too rotten to eat" };
+  };
+
+  const place = (live: Live, cell: Cell, stagger: boolean, nearWreck: boolean): boolean => {
+    const item = spawn(live.kind as ModelKind, cell.x, cell.z, { yaw: rng() * Math.PI * 2 });
+    if (!item) return false;
+    live.cell = cell;
+    live.item = item;
+    live.state = "fresh";
+    live.age = stagger ? rng() * LOOT_FRESH_SECONDS : 0;
+    item.loot = true;
+    item.name = nameLoot(live.kind, false);
+    decorateFood(item, live.kind, false);
+    void nearWreck;
     return true;
   };
 
-  const despawn = (inst: Instance, startWait: boolean): void => {
-    if (inst.item) {
-      inst.item.mesh.removeFromParent();
-      const i = items.indexOf(inst.item);
+  const trySpawn = (
+    live: Live,
+    opts?: { stagger?: boolean; nearWreck?: boolean; ignoreCap?: boolean; awayFromPlayer?: boolean },
+  ): boolean => {
+    const food = FOOD.find((spec) => spec.kind === live.kind);
+    if (food && !opts?.ignoreCap && freshCount(live.kind) >= food.cap) return false;
+    const cell = pickCell(live, Boolean(opts?.nearWreck), Boolean(opts?.awayFromPlayer));
+    if (!cell) return false;
+    return place(live, cell, Boolean(opts?.stagger), Boolean(opts?.nearWreck));
+  };
+
+  const despawn = (live: Live): void => {
+    if (live.item) {
+      live.item.mesh.removeFromParent();
+      const i = items.indexOf(live.item);
       if (i >= 0) items.splice(i, 1);
     }
-    inst.item = null;
-    inst.state = "waiting";
-    inst.age = startWait ? 0 : LOOT_RESPAWN_SECONDS;
-    inst.wander = true;
+    live.item = null;
+    live.state = "waiting";
+    live.age = 0;
   };
 
-  const rotItem = (inst: Instance): void => {
-    if (!inst.item) return;
-    inst.state = "rotten";
-    inst.age = 0;
-    inst.item.freshness = "rotten";
-    inst.item.name = displayName(inst.spec.kind, true);
-    inst.item.action = { label: "Rotten", blockedReason: "too rotten to eat" };
-    tintRotten(inst.item.mesh);
+  const rotItem = (live: Live): void => {
+    if (!live.item) return;
+    live.state = "rotten";
+    live.age = 0;
+    live.item.freshness = "rotten";
+    decorateFood(live.item, live.kind, true);
+    tintRotten(live.item.mesh);
   };
 
-  const trySpawn = (inst: Instance): void => {
-    const cell = pickCell(inst);
-    if (!cell) return;
-    place(inst, cell);
+  const spawnReplacement = (kind: LootKind): void => {
+    const spec = FOOD.find((it) => it.kind === kind);
+    if (!spec) return;
+    if (freshCount(kind) >= spec.cap) return;
+    const live: Live = {
+      kind,
+      sites: spec.sites,
+      rots: spec.rots,
+      respawn: true,
+      cell: null,
+      state: "waiting",
+      age: 0,
+      item: null,
+    };
+    lives.push(live);
+    trySpawn(live, { stagger: false, awayFromPlayer: true });
   };
 
-  for (const spec of [...FRUIT, ...TOOLS]) {
-    for (let n = 0; n < spec.count; n++) {
-      const inst: Instance = {
-        spec,
-        index: n,
+  for (const spec of FOOD) {
+    const n = spec.cap;
+    for (let i = 0; i < n; i++) {
+      const live: Live = {
+        kind: spec.kind,
+        sites: spec.sites,
+        rots: spec.rots,
+        respawn: true,
         cell: null,
         state: "waiting",
-        age: LOOT_RESPAWN_SECONDS,
+        age: 0,
         item: null,
-        wander: false,
       };
-      instances.push(inst);
-      trySpawn(inst);
+      lives.push(live);
+      trySpawn(live, {
+        stagger: spec.kind !== "coconutHalf" || i > 0,
+        nearWreck: Boolean(spec.nearWreck) && i === 0,
+      });
     }
   }
 
-  const placed = instances.filter((it) => it.state !== "waiting").length;
+  for (const spec of TOOLS) {
+    for (let i = 0; i < spec.count; i++) {
+      const live: Live = {
+        kind: spec.kind,
+        sites: spec.sites,
+        rots: false,
+        respawn: true,
+        cell: null,
+        state: "waiting",
+        age: TOOL_RESPAWN_SECONDS,
+        item: null,
+      };
+      lives.push(live);
+      trySpawn(live, { ignoreCap: true });
+    }
+  }
+
+  const placed = lives.filter((it) => it.state !== "waiting").length;
   console.info("[loot]", {
     sites: {
       palm: sites.palm.length,
+      inlandPalm: sites.inlandPalm.length,
       grove: sites.grove.length,
       wreck: sites.wreck.length,
       boat: sites.boat.length,
       hut: sites.hut.length,
       forest: sites.forest.length,
+      bush: sites.bush.length,
     },
     placed,
-    kinds: instances.map((it) => `${it.spec.kind}:${it.state}:${it.cell ? `${it.cell.x},${it.cell.z}` : "-"}`),
+    kinds: lives.map((it) => `${it.kind}:${it.state}:${it.cell ? `${it.cell.x},${it.cell.z}` : "-"}`),
   });
 
   return {
-    update: (dt: number) => {
-      for (const inst of instances) {
-        inst.age += dt;
-        if (inst.state === "waiting") {
-          const wait = inst.spec.rots ? LOOT_RESPAWN_SECONDS : TOOL_RESPAWN_SECONDS;
-          if (inst.age >= wait) trySpawn(inst);
+    update: (dt: number, playerX?: number, playerZ?: number) => {
+      if (playerX !== undefined && playerZ !== undefined) playerAt = { x: playerX, z: playerZ };
+      for (const live of [...lives]) {
+        live.age += dt;
+        if (live.state === "waiting") {
+          if (!live.respawn) continue;
+          const tool = TOOLS.some((spec) => spec.kind === live.kind);
+          const wait = tool ? TOOL_RESPAWN_SECONDS : LOOT_RESPAWN_SECONDS;
+          if (live.age >= wait) trySpawn(live, { awayFromPlayer: !tool });
           continue;
         }
-        if (!inst.spec.rots) continue;
-        if (inst.state === "fresh" && inst.age >= LOOT_FRESH_SECONDS) rotItem(inst);
-        else if (inst.state === "rotten" && inst.age >= LOOT_ROTTEN_SECONDS) despawn(inst, true);
+        if (!live.rots) continue;
+        if (live.state === "fresh" && live.age >= LOOT_FRESH_SECONDS) {
+          rotItem(live);
+          spawnReplacement(live.kind);
+          live.respawn = false;
+        } else if (live.state === "rotten" && live.age >= LOOT_ROTTEN_SECONDS) {
+          despawn(live);
+          const i = lives.indexOf(live);
+          if (i >= 0) lives.splice(i, 1);
+        }
       }
     },
     onRemoved: (item: WorldItem) => {
-      const inst = instances.find((it) => it.item === item);
-      if (!inst) return;
-      inst.item = null;
-      inst.state = "waiting";
-      inst.age = 0;
-      inst.wander = true;
+      const live = lives.find((it) => it.item === item);
+      if (!live) return;
+      live.item = null;
+      live.state = "waiting";
+      live.age = 0;
+      if (!live.respawn) {
+        live.cell = null;
+        return;
+      }
+      const food = FOOD.find((spec) => spec.kind === live.kind);
+      if (food) trySpawn(live, { awayFromPlayer: true });
+      if (live.state === "waiting") live.cell = null;
     },
   };
 }

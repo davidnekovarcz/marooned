@@ -5,17 +5,27 @@ import {
   EAT_ACTION_SECONDS,
   EAT_COCONUT_HUNGER,
   EAT_COCONUT_THIRST,
+  EAT_DRINK_HOLE_HUNGER,
+  EAT_DRINK_HOLE_THIRST,
   EAT_FRUIT_HUNGER,
   EAT_FRUIT_THIRST,
-  EAT_PINEAPPLE_HUNGER,
-  EAT_PINEAPPLE_THIRST,
 } from "@/web/src/constants";
 import type { MealKind } from "@/web/src/audio";
+import {
+  defaultPrep,
+  formatFoodName,
+  heldFoodLabel,
+  isFoodKind,
+  readFoodFreshness,
+  readFoodPrep,
+  writeFoodState,
+  type FoodPrep,
+} from "@/web/src/food";
 import type { Needs } from "@/web/src/needs";
 import type { ModelKind } from "@/web/src/models";
 import { isHeldFood, type GridPlayer, type HeldKind, type PocketSlot } from "@/web/src/player";
 
-export type WorldKind = ModelKind | "lilypad" | "torch";
+export type WorldKind = ModelKind | "lilypad" | "torch" | "tomato";
 
 export type WorldItemAction = {
   label: string;
@@ -26,6 +36,9 @@ export type WorldItemAction = {
   cut?: boolean;
   crack?: boolean;
   eatHeld?: boolean;
+  drinkHeld?: boolean;
+  poison?: boolean;
+  keepHeld?: boolean;
 };
 
 export type WorldItem = {
@@ -36,6 +49,7 @@ export type WorldItem = {
   mesh: THREE.Object3D;
   action?: WorldItemAction;
   cut?: boolean;
+  prep?: FoodPrep;
   freshness?: "fresh" | "rotten";
   loot?: boolean;
 };
@@ -53,8 +67,8 @@ const NAMES: Record<WorldKind, string> = {
   flowerYellow: "Flowers",
   flowerPurple: "Flowers",
   flowerRed: "Flowers",
-  mushroomTan: "Mushroom",
-  mushroomRed: "Mushroom",
+  mushroomTan: "Tan mushroom",
+  mushroomRed: "Red mushroom",
   natureLog: "Log",
   logLarge: "Log",
   campfireLogs: "Fire pit",
@@ -88,13 +102,14 @@ const NAMES: Record<WorldKind, string> = {
   tinder: "Tinder box",
   fishingBoat: "Fishing boat",
   coconut: "Coconut",
-  coconutHalf: "Open coconut",
+  coconutHalf: "Coconut",
   knife: "Knife",
   pineapple: "Pineapple",
   orange: "Orange",
   banana: "Banana",
   lemon: "Lemon",
-  watermelon: "Watermelon",
+  watermelon: "Melon",
+  tomato: "Tomato",
   fish: "Fish",
   bow: "Bow",
   arrow: "Arrow",
@@ -110,12 +125,16 @@ const HELD_NAME: Record<HeldKind, string> = {
   shovel: "Shovel",
   torch: "Torch",
   tinder: "Tinder box",
-  coconutHalf: "Open coconut",
+  coconut: "Coconut",
+  coconutHalf: "Coconut",
   orange: "Orange",
   pineapple: "Pineapple",
   banana: "Banana",
   lemon: "Lemon",
-  watermelon: "Watermelon",
+  watermelon: "Melon",
+  tomato: "Tomato",
+  mushroomTan: "Tan mushroom",
+  mushroomRed: "Red mushroom",
 };
 
 const fruitEat: WorldItemAction = {
@@ -124,44 +143,19 @@ const fruitEat: WorldItemAction = {
   meal: { hunger: EAT_FRUIT_HUNGER, thirst: EAT_FRUIT_THIRST },
 };
 
-const HELD_MEAL: Record<
-  "coconutHalf" | "orange" | "pineapple" | "banana" | "lemon" | "watermelon",
-  WorldItemAction
-> = {
-  coconutHalf: {
-    label: "Eat / drink",
-    eatHeld: true,
-    meal: { hunger: EAT_COCONUT_HUNGER, thirst: EAT_COCONUT_THIRST },
-  },
-  orange: fruitEat,
-  pineapple: {
-    label: "Eat",
-    eatHeld: true,
-    meal: { hunger: EAT_PINEAPPLE_HUNGER, thirst: EAT_PINEAPPLE_THIRST },
-  },
-  banana: fruitEat,
-  lemon: fruitEat,
-  watermelon: fruitEat,
-};
-
 const PICKUP: WorldItemAction = { label: "Pick up" };
 
 const ACTIONS: Partial<Record<WorldKind, WorldItemAction>> = {
+  coconut: { ...PICKUP, pickup: "coconut" },
   coconutHalf: { ...PICKUP, pickup: "coconutHalf" },
   orange: { ...PICKUP, pickup: "orange" },
   banana: { ...PICKUP, pickup: "banana" },
   lemon: { ...PICKUP, pickup: "lemon" },
   watermelon: { ...PICKUP, pickup: "watermelon" },
-  coconut: {
-    label: "Break (needs a hammer)",
-    blockedReason: "needs a hammer",
-    needsHeld: "hammer",
-  },
-  pineapple: {
-    label: "Peel (needs a knife)",
-    blockedReason: "needs a knife",
-    needsHeld: "knife",
-  },
+  pineapple: { ...PICKUP, pickup: "pineapple" },
+  tomato: { ...PICKUP, pickup: "tomato" },
+  mushroomTan: { ...PICKUP, pickup: "mushroomTan" },
+  mushroomRed: { ...PICKUP, pickup: "mushroomRed" },
   knife: { ...PICKUP, pickup: "knife" },
   hammer: { ...PICKUP, pickup: "hammer" },
   axe: { ...PICKUP, pickup: "axe" },
@@ -171,11 +165,31 @@ const ACTIONS: Partial<Record<WorldKind, WorldItemAction>> = {
 };
 
 export type SpawnFn = (
-  kind: ModelKind | "torch",
+  kind: ModelKind | "torch" | "tomato",
   x: number,
   z: number,
   extra?: { yaw?: number; dx?: number; dz?: number },
 ) => WorldItem | null;
+
+function itemPrep(item: WorldItem): FoodPrep {
+  if (item.prep) return item.prep;
+  if (isFoodKind(item.kind)) return defaultPrep(item.kind);
+  return "ready";
+}
+
+function refreshFoodItem(item: WorldItem): void {
+  if (!isFoodKind(item.kind)) return;
+  const prep = itemPrep(item);
+  const freshness = item.freshness ?? "fresh";
+  item.prep = prep;
+  item.name = formatFoodName(item.kind, prep, freshness);
+  writeFoodState(item.mesh, prep, freshness);
+  if (freshness === "rotten") {
+    item.action = { label: "Rotten", blockedReason: "too rotten to eat" };
+    return;
+  }
+  item.action = ACTIONS[item.kind];
+}
 
 export function makeWorldItem(
   kind: WorldKind,
@@ -183,7 +197,7 @@ export function makeWorldItem(
   cellZ: number,
   mesh: THREE.Object3D,
 ): WorldItem {
-  return {
+  const item: WorldItem = {
     kind,
     name: NAMES[kind] ?? kind,
     cellX,
@@ -191,27 +205,79 @@ export function makeWorldItem(
     mesh,
     action: ACTIONS[kind],
   };
+  if (isFoodKind(kind)) {
+    const prep = readFoodPrep(mesh) ?? defaultPrep(kind);
+    const freshness = readFoodFreshness(mesh) ?? "fresh";
+    item.prep = prep;
+    item.freshness = freshness;
+    refreshFoodItem(item);
+  }
+  return item;
 }
 
 function resolveAction(item: WorldItem, held: HeldKind | null): WorldItemAction | undefined {
   if (item.freshness === "rotten") {
     return { label: "Rotten", blockedReason: "too rotten to eat" };
   }
-  if (item.kind === "pineapple") {
-    if (item.cut) return { label: "Pick up", pickup: "pineapple" };
-    if (held === "knife") return { label: "Cut", cut: true, needsHeld: "knife" };
-    return ACTIONS.pineapple;
+  const prep = itemPrep(item);
+  if (item.kind === "pineapple" && prep === "whole") {
+    if (held === "knife") return { label: "Peel", cut: true, needsHeld: "knife" };
+    return { ...PICKUP, pickup: "pineapple" };
   }
-  if (item.kind === "coconut") {
-    if (held === "hammer") return { label: "Break", crack: true, needsHeld: "hammer" };
-    return ACTIONS.coconut;
+  if (item.kind === "watermelon" && prep === "whole") {
+    if (held === "knife") return { label: "Slice", cut: true, needsHeld: "knife" };
+    return { ...PICKUP, pickup: "watermelon" };
+  }
+  if (item.kind === "coconut" && (prep === "whole" || prep === "hole" || prep === "drunk")) {
+    if (held === "hammer") return { label: "Split", crack: true, needsHeld: "hammer" };
+    if (held === "knife" && prep === "whole") return { label: "Open", cut: true, needsHeld: "knife" };
+    return { ...PICKUP, pickup: "coconut" };
   }
   return item.action;
 }
 
-function heldMealAction(held: HeldKind | null): WorldItemAction | undefined {
-  if (!isHeldFood(held)) return undefined;
-  return HELD_MEAL[held];
+function heldMealAction(held: HeldKind | null, mesh: THREE.Object3D | null): WorldItemAction | undefined {
+  if (!isHeldFood(held) || !isFoodKind(held)) return undefined;
+  const prep = readFoodPrep(mesh) ?? defaultPrep(held);
+  const freshness = readFoodFreshness(mesh) ?? "fresh";
+  if (freshness === "rotten") return { label: "Rotten", blockedReason: "too rotten to eat" };
+  if (held === "coconut") {
+    if (prep === "hole") {
+      return {
+        label: "Drink",
+        eatHeld: true,
+        drinkHeld: true,
+        keepHeld: true,
+        meal: { hunger: EAT_DRINK_HOLE_HUNGER, thirst: EAT_DRINK_HOLE_THIRST },
+      };
+    }
+    if (prep === "half") {
+      return {
+        label: "Eat",
+        eatHeld: true,
+        meal: { hunger: EAT_COCONUT_HUNGER, thirst: EAT_COCONUT_THIRST },
+      };
+    }
+    if (prep === "drunk") return { label: "Split (need a hammer)", blockedReason: "need a hammer" };
+    return { label: "Open (need a knife or hammer)", blockedReason: "need a knife or hammer" };
+  }
+  if (held === "coconutHalf") {
+    return {
+      label: "Eat",
+      eatHeld: true,
+      meal: { hunger: EAT_COCONUT_HUNGER, thirst: EAT_COCONUT_THIRST },
+    };
+  }
+  if (held === "pineapple" && prep === "whole") {
+    return { label: "Peel (need a knife)", blockedReason: "need a knife" };
+  }
+  if (held === "watermelon" && prep === "whole") {
+    return { label: "Slice (need a knife)", blockedReason: "need a knife" };
+  }
+  if (held === "mushroomRed") {
+    return { label: "Eat", eatHeld: true, poison: true, meal: { hunger: 0, thirst: 0 } };
+  }
+  return fruitEat;
 }
 
 function actionEnabled(action: WorldItemAction | undefined): boolean {
@@ -222,8 +288,10 @@ function chebyshev(ax: number, az: number, bx: number, bz: number): number {
   return Math.max(Math.abs(ax - bx), Math.abs(az - bz));
 }
 
-function slotLabel(kind: HeldKind | null): string {
-  return kind ? HELD_NAME[kind] : "Empty";
+function slotLabel(kind: HeldKind | null, mesh: THREE.Object3D | null = null): string {
+  if (!kind) return "Empty";
+  if (isFoodKind(kind)) return heldFoodLabel(kind, mesh);
+  return HELD_NAME[kind];
 }
 
 export function nearestItem(
@@ -291,18 +359,22 @@ export function createInteract(
       return;
     }
     gearEl.hidden = false;
-    handsItem.textContent = slotLabel(player.heldKind);
+    handsItem.textContent = slotLabel(player.heldKind, player.heldMesh);
     leftItem.textContent = slotLabel(player.pocket("left"));
     rightItem.textContent = slotLabel(player.pocket("right"));
   }
 
   function dropToWorld(dropped: { mesh: THREE.Object3D; kind: HeldKind }): void {
     const item = makeWorldItem(dropped.kind, player.cellX, player.cellZ, dropped.mesh);
-    if (dropped.kind === "pineapple") {
-      item.cut = true;
-      item.name = "Cut pineapple";
-    }
     items.push(item);
+  }
+
+  function finishKnifePrep(item: WorldItem): void {
+    const kind = item.kind;
+    if (kind === "pineapple") item.prep = "peeled";
+    else if (kind === "watermelon") item.prep = "sliced";
+    else if (kind === "coconut") item.prep = "hole";
+    refreshFoodItem(item);
   }
 
   function perform(): void {
@@ -311,11 +383,18 @@ export function createInteract(
     if (!player.alive || player.busy) return;
 
     if (action.eatHeld) {
-      if (!action.meal || !isHeldFood(player.heldKind)) return;
+      if (!isHeldFood(player.heldKind) || !isFoodKind(player.heldKind)) return;
       const food = player.heldKind;
-      if (!player.beginHeldMeal(EAT_ACTION_SECONDS, () => audio.stopMeal())) return;
-      needs.feed(action.meal.hunger, action.meal.thirst);
-      audio.playMeal(food === "coconutHalf" ? "drink" : "eat");
+      const keep = Boolean(action.keepHeld);
+      if (!player.beginHeldMeal(EAT_ACTION_SECONDS, () => {
+        audio.stopMeal();
+        if (keep && player.heldMesh && food === "coconut") {
+          writeFoodState(player.heldMesh, "drunk", "fresh");
+        }
+      }, keep)) return;
+      if (action.poison) needs.poison();
+      else if (action.meal) needs.feed(action.meal.hunger, action.meal.thirst);
+      audio.playMeal(action.drinkHeld ? "drink" : "eat");
       hide();
       return;
     }
@@ -337,10 +416,7 @@ export function createInteract(
     }
 
     if (action.cut) {
-      if (!player.beginCut(CUT_SECONDS, () => {
-        item.cut = true;
-        item.name = "Cut pineapple";
-      })) return;
+      if (!player.beginCut(CUT_SECONDS, () => finishKnifePrep(item))) return;
       hide();
       return;
     }
@@ -351,8 +427,14 @@ export function createInteract(
           const i = items.indexOf(item);
           if (i >= 0) items.splice(i, 1);
           onRemoved?.(item);
-          spawn("coconutHalf", item.cellX, item.cellZ, { dx: 0.18, dz: 0.08 });
-          spawn("coconutHalf", item.cellX, item.cellZ, { dx: -0.16, dz: 0.12, yaw: 1.3 });
+          const a = spawn("coconutHalf", item.cellX, item.cellZ, { dx: 0.18, dz: 0.08 });
+          const b = spawn("coconutHalf", item.cellX, item.cellZ, { dx: -0.16, dz: 0.12, yaw: 1.3 });
+          for (const half of [a, b]) {
+            if (!half) continue;
+            half.prep = "half";
+            half.freshness = "fresh";
+            refreshFoodItem(half);
+          }
         })
       ) {
         return;
@@ -427,12 +509,8 @@ export function createInteract(
       }
       const next = nearestItem(items, cellX, cellZ, player.heldKind);
       const worldAction = next ? resolveAction(next, player.heldKind) : undefined;
-      const eatHeld = heldMealAction(player.heldKind);
-      const preferWorld = Boolean(next && actionEnabled(worldAction));
-      if (preferWorld && next && worldAction) {
-        current = next;
-        currentAction = worldAction;
-      } else if (eatHeld) {
+      const eatHeld = heldMealAction(player.heldKind, player.heldMesh);
+      if (eatHeld) {
         current = null;
         currentAction = eatHeld;
       } else if (next && worldAction) {
@@ -445,7 +523,9 @@ export function createInteract(
         return;
       }
       panel.hidden = false;
-      nameEl.textContent = current ? current.name : slotLabel(player.heldKind);
+      nameEl.textContent = current
+        ? current.name
+        : slotLabel(player.heldKind, player.heldMesh);
       btn.hidden = false;
       btn.textContent = currentAction.label;
       btn.disabled = Boolean(currentAction.blockedReason);

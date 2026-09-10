@@ -64,6 +64,7 @@ import bridgeUrl from "@/assets/model/miniforest/Bridge.glb?url";
 
 import lilyObjUrl from "@/assets/model/Lilypad.obj?url";
 import torchObjUrl from "@/assets/model/TorchMetal.obj?url";
+import tomatoObjUrl from "@/assets/model/food/Tomato.obj?url";
 
 import pigFbxUrl from "@/assets/model/Pig.fbx?url";
 import sheepFbxUrl from "@/assets/model/Sheep.fbx?url";
@@ -153,6 +154,7 @@ export const MODEL_URLS = {
 
 export const LILY_URL = lilyObjUrl;
 export const TORCH_URL = torchObjUrl;
+export const TOMATO_URL = tomatoObjUrl;
 
 export const ANIMAL_URLS = {
   pig: pigFbxUrl,

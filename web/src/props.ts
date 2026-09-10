@@ -21,9 +21,9 @@ import {
   nearestCell,
 } from "@/web/src/island";
 import { makeWorldItem, type WorldItem } from "@/web/src/interact";
-import type { Cell, LootSites } from "@/web/src/loot";
 import { loadGlb, loadObj } from "@/web/src/loaders";
-import { LILY_URL, MODEL_URLS, TORCH_URL, type ModelKind } from "@/web/src/models";
+import type { Cell, LootSites } from "@/web/src/loot";
+import { LILY_URL, MODEL_URLS, TOMATO_URL, TORCH_URL, type ModelKind } from "@/web/src/models";
 import { mulberry32 } from "@/web/src/rng";
 import { fitAndPlant, plantOnGround, specFor } from "@/web/src/scale";
 
@@ -35,16 +35,16 @@ const PLUS: [number, number][] = [
   [0, -1],
 ];
 
-/** Chebyshev distance 2, southwest of the trunk (camera looks from -X/-Z). Empty ring = no loot. */
-const NEAR: [number, number][] = [
-  [-2, 0],
-  [-2, -1],
-  [-2, -2],
-  [-1, -2],
-  [0, -2],
-];
+/** Land cells at Chebyshev 1–2 so palms on any bank (including the pond) can host fruit. */
+const NEAR: [number, number][] = [];
+for (let dz = -2; dz <= 2; dz++) {
+  for (let dx = -2; dx <= 2; dx++) {
+    const cheb = Math.max(Math.abs(dx), Math.abs(dz));
+    if (cheb >= 1 && cheb <= 2) NEAR.push([dx, dz]);
+  }
+}
 
-type PlaceKind = ModelKind | "lilypad" | "torch";
+type PlaceKind = ModelKind | "lilypad" | "torch" | "tomato";
 
 export type AudioAnchor = { id: string; position: THREE.Vector3 };
 
@@ -54,7 +54,7 @@ export type ScatterResult = {
   items: WorldItem[];
   lootSites: LootSites;
   spawn: (
-    kind: ModelKind | "torch",
+    kind: ModelKind | "torch" | "tomato",
     x: number,
     z: number,
     extra?: { yaw?: number; dx?: number; dz?: number },
@@ -173,6 +173,7 @@ export async function scatterProps(
   );
   templates.lilypad = await loadObj(LILY_URL);
   templates.torch = await loadObj(TORCH_URL, 0x6a4a32);
+  templates.tomato = await loadObj(TOMATO_URL, 0xc43b2b);
 
   const grass: [number, number][] = [];
   const land: [number, number][] = [];
@@ -192,7 +193,16 @@ export async function scatterProps(
   group.name = "props";
   const audioAnchors: AudioAnchor[] = [];
   const items: WorldItem[] = [];
-  const lootSites: LootSites = { palm: [], grove: [], wreck: [], boat: [], hut: [], forest: [] };
+  const lootSites: LootSites = {
+    palm: [],
+    inlandPalm: [],
+    grove: [],
+    wreck: [],
+    boat: [],
+    hut: [],
+    forest: [],
+    bush: [],
+  };
 
   const add = (
     kind: PlaceKind,
@@ -290,10 +300,18 @@ export async function scatterProps(
   audioAnchors.push({ id: "pond", position: worldPos(POND_X, POND_Z) });
 
   const collectPalm = (px: number, pz: number) => {
-    lootSites.palm.push(...collectNearTree(biomes, blocked, px, pz));
+    const near = collectNearTree(biomes, blocked, px, pz);
+    lootSites.palm.push(...near);
+    if (biomes[cellIndex(px, pz)] !== Biome.Grass) return;
+    const grassNear = near.filter((cell) => biomes[cellIndex(cell.x, cell.z)] === Biome.Grass);
+    lootSites.inlandPalm.push(...(grassNear.length ? grassNear : near));
   };
   const collectGrove = (px: number, pz: number) => {
     lootSites.grove.push(...collectNearTree(biomes, blocked, px, pz));
+  };
+  const collectBush = (px: number, pz: number) => {
+    if (inForest(px, pz)) return;
+    lootSites.bush.push(...collectNearTree(biomes, blocked, px, pz));
   };
 
   const tryPlace = (
@@ -366,6 +384,22 @@ export async function scatterProps(
   tryPlace("palmSimple", sand, 6, () => true, "cell", collectPalm);
   tryPlace("piratePalm", sand, 6, () => true, "cell", collectPalm);
   tryPlace("piratePalmStraight", sand, 5, () => true, "cell", collectPalm);
+  tryPlace(
+    "palmShort",
+    sand,
+    4,
+    (x, z) => Math.hypot(x - POND_X, z - POND_Z) <= 10,
+    "cell",
+    collectPalm,
+  );
+  tryPlace(
+    "piratePalm",
+    sand,
+    3,
+    (x, z) => Math.hypot(x - POND_X, z - POND_Z) <= 12,
+    "cell",
+    collectPalm,
+  );
   tryPlace("oak", grass, 10, (x, z) => inForest(x, z), "cell", collectGrove);
   tryPlace("oak", grass, 6, (x, z) => !inForest(x, z), "cell", collectGrove);
   tryPlace("pine", grass, 14, (x, z) => inForest(x, z), "cell", collectGrove);
@@ -373,23 +407,9 @@ export async function scatterProps(
   tryPlace("rockLarge", land, 12, (x, z) => !inForest(x, z), "plus");
   tryPlace("rockSmall", land, 28, (x, z) => !inForest(x, z), "cell");
   tryPlace("sandRock", sand, 10, () => true, "cell");
-  tryPlace("bush", grass, 48, () => true, "none");
-  tryPlace("bushSmall", grass, 28, () => true, "none");
-  tryPlace("bushDetailed", grass, 22, () => true, "none");
-  tryPlace(
-    "mushroomTan",
-    grass,
-    12,
-    (x, z) => cellCenterDist(x, z) <= 42,
-    "none",
-  );
-  tryPlace(
-    "mushroomRed",
-    grass,
-    8,
-    (x, z) => cellCenterDist(x, z) <= 42,
-    "none",
-  );
+  tryPlace("bush", grass, 48, (x, z) => !inForest(x, z), "none", collectBush);
+  tryPlace("bushSmall", grass, 28, (x, z) => !inForest(x, z), "none", collectBush);
+  tryPlace("bushDetailed", grass, 22, (x, z) => !inForest(x, z), "none", collectBush);
   tryPlace("natureLog", grass, 3, (x, z) => inForest(x, z), "walk");
   tryPlace("logLarge", grass, 2, (x, z) => inForest(x, z), "walk");
   tryPlace("campfireStones", sand, 2, () => true, "none");
@@ -402,11 +422,13 @@ export async function scatterProps(
     }
   }
   lootSites.palm = uniqueCells(lootSites.palm);
+  lootSites.inlandPalm = uniqueCells(lootSites.inlandPalm);
   lootSites.grove = uniqueCells(lootSites.grove);
   lootSites.wreck = uniqueCells(lootSites.wreck);
   lootSites.boat = uniqueCells(lootSites.boat);
   lootSites.hut = uniqueCells(lootSites.hut);
   lootSites.forest = uniqueCells(lootSites.forest);
+  lootSites.bush = uniqueCells(lootSites.bush);
 
   let pads = 0;
   let padGuard = 0;
@@ -419,7 +441,7 @@ export async function scatterProps(
 
   scene.add(group);
   const spawn = (
-    kind: ModelKind | "torch",
+    kind: ModelKind | "torch" | "tomato",
     x: number,
     z: number,
     extra?: { yaw?: number; dx?: number; dz?: number },
