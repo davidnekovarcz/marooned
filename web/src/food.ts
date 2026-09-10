@@ -67,18 +67,18 @@ export function formatFoodName(kind: FoodKind, prep: FoodPrep, freshness: Freshn
   }
   if (kind === "mushroomRed") return `${noun} [poisonous]`;
   if (kind === "coconut") {
-    if (prep === "whole") return `${noun} (need a knife or hammer to open)`;
-    if (prep === "hole") return `${noun} (with drinking hole) [ready-to-drink]`;
-    if (prep === "drunk") return `${noun} (need a hammer to split)`;
+    if (prep === "whole") return `${noun}`;
+    if (prep === "hole") return `${noun} (with drinking hole)`;
+    if (prep === "drunk") return `${noun}`;
     if (prep === "half") return `${noun} (half)`;
   }
   if (kind === "coconutHalf") return `${noun} (half)`;
   if (kind === "pineapple") {
-    if (prep === "whole") return `${noun} (need a knife to peel)`;
+    if (prep === "whole") return `${noun}`;
     if (prep === "peeled") return `${noun} (peeled)`;
   }
   if (kind === "watermelon") {
-    if (prep === "whole") return `${noun} (need a knife to slice)`;
+    if (prep === "whole") return `${noun}`;
     if (prep === "sliced") return `${noun} (sliced)`;
   }
   return `${noun}`;
