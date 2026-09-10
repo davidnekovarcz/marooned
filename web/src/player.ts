@@ -133,6 +133,7 @@ export class GridPlayer {
   private lockSeconds = 0;
   private tool: THREE.Object3D | null = null;
   private meal: THREE.Object3D | null = null;
+  private mealScale = new THREE.Vector3(1, 1, 1);
   private grabbed = false;
   private pockets: Record<PocketSlot, PocketItem | null> = { left: null, right: null };
   private pocketGroup = new THREE.Group();
@@ -235,6 +236,7 @@ export class GridPlayer {
     this.grabbed = true;
     this.onMealEnd = onEnd ?? null;
     this.tool.visible = true;
+    this.mealScale.copy(this.tool.scale);
     this.gait = this.inWater() ? "swim" : "idle";
     this.visual.setGait(this.gait);
     return true;
@@ -388,6 +390,10 @@ export class GridPlayer {
       this.lockT += dt;
       if (this.lock === "meal") {
         this.visual.setCrouch(0);
+        if (this.meal) {
+          const u = Math.min(1, this.lockT / Math.max(0.001, this.lockSeconds));
+          this.meal.scale.copy(this.mealScale).multiplyScalar(Math.max(0.08, 1 - u));
+        }
       } else {
         this.visual.setCrouch(crouchEnvelope(this.lockT, this.lockSeconds));
       }

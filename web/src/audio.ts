@@ -165,7 +165,6 @@ export function setupIslandAudio(
     mealSound.setVolume(0.62);
     mealSound.play();
     window.clearTimeout(mealTimer);
-    // Schedule by duration — Three.js overwrites source.onended, so don't rely on "ended".
     mealTimer = window.setTimeout(() => {
       if (mealActive) playNextEatClip();
     }, Math.max(50, buf.duration * 1000));
@@ -244,11 +243,12 @@ export function setupIslandAudio(
       void _kind;
       startMeal();
     },
-    /** Stop queueing further eat clips; never interrupt the current one. */
+    /** Cut chew when the meal lock ends so silence and movement return together. */
     stopMeal: () => {
       mealActive = false;
       pendingMeal = false;
       window.clearTimeout(mealTimer);
+      if (mealSound.isPlaying) mealSound.stop();
     },
     playPickup: () => {
       if (!rustleBuf) return;
