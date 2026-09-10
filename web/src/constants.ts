@@ -120,6 +120,8 @@ export const LOOT_FRESH_HOURS = 4;
 export const LOOT_ROTTEN_HOURS = 3;
 /** Empty fruit/tool slot waits this many island-hours before spawning elsewhere. */
 export const LOOT_RESPAWN_HOURS = 2;
+/** Don't respawn fruit within this many cells of the player. */
+export const LOOT_SPAWN_AWAY = 18;
 export const LOOT_FRESH_SECONDS = (LOOT_FRESH_HOURS / 24) * DAY_SECONDS;
 export const LOOT_ROTTEN_SECONDS = (LOOT_ROTTEN_HOURS / 24) * DAY_SECONDS;
 export const LOOT_RESPAWN_SECONDS = (LOOT_RESPAWN_HOURS / 24) * DAY_SECONDS;

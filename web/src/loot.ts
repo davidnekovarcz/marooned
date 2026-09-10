@@ -3,6 +3,7 @@ import {
   LOOT_FRESH_SECONDS,
   LOOT_RESPAWN_SECONDS,
   LOOT_ROTTEN_SECONDS,
+  LOOT_SPAWN_AWAY,
   SEED,
   TOOL_RESPAWN_SECONDS,
 } from "@/web/src/constants";
@@ -141,7 +142,7 @@ function nameLoot(kind: LootKind, rotten: boolean): string {
 }
 
 export type LootSystem = {
-  update: (dt: number) => void;
+  update: (dt: number, playerX?: number, playerZ?: number) => void;
   onRemoved: (item: WorldItem) => void;
 };
 
@@ -152,6 +153,7 @@ export function createLoot(
 ): LootSystem {
   const rng = mulberry32(`${SEED}-loot`);
   const lives: Live[] = [];
+  let playerAt: Cell | null = null;
 
   const occupiedKeys = (): Set<string> => {
     const occupied = new Set<string>();
@@ -165,7 +167,7 @@ export function createLoot(
   const freshCount = (kind: LootKind): number =>
     lives.filter((live) => live.kind === kind && live.state === "fresh" && live.item).length;
 
-  const pickCell = (live: Live, nearWreck: boolean): Cell | null => {
+  const pickCell = (live: Live, nearWreck: boolean, awayFromPlayer: boolean): Cell | null => {
     let cells = pool(sites, live.sites);
     if (nearWreck) {
       const origin = centroid(sites.wreck);
@@ -177,19 +179,25 @@ export function createLoot(
     if (!cells.length) return null;
     const occupied = occupiedKeys();
     const avoid = live.cell;
+    const origin = playerAt ?? (awayFromPlayer ? live.cell : null);
+    const far = (cell: Cell): boolean => {
+      if (!awayFromPlayer || !origin) return true;
+      return Math.hypot(cell.x - origin.x, cell.z - origin.z) >= LOOT_SPAWN_AWAY;
+    };
+    const ok = (cell: Cell, strict: boolean): boolean => {
+      if (avoid && cell.x === avoid.x && cell.z === avoid.z) return false;
+      if (strict && occupied.has(keyOf(cell))) return false;
+      if (!far(cell)) return false;
+      return true;
+    };
     const tryPick = (strict: boolean): Cell | null => {
-      for (let n = 0; n < 64; n++) {
+      for (let n = 0; n < 96; n++) {
         const cell = cells[Math.floor(rng() * cells.length)];
         if (!cell) continue;
-        if (avoid && cell.x === avoid.x && cell.z === avoid.z) continue;
-        if (strict && occupied.has(keyOf(cell))) continue;
+        if (!ok(cell, strict)) continue;
         return cell;
       }
-      return (
-        cells.find(
-          (c) => (!avoid || c.x !== avoid.x || c.z !== avoid.z) && (!strict || !occupied.has(keyOf(c))),
-        ) ?? null
-      );
+      return cells.find((c) => ok(c, strict)) ?? null;
     };
     return tryPick(true) ?? tryPick(false);
   };
@@ -220,10 +228,13 @@ export function createLoot(
     return true;
   };
 
-  const trySpawn = (live: Live, opts?: { stagger?: boolean; nearWreck?: boolean; ignoreCap?: boolean }): boolean => {
+  const trySpawn = (
+    live: Live,
+    opts?: { stagger?: boolean; nearWreck?: boolean; ignoreCap?: boolean; awayFromPlayer?: boolean },
+  ): boolean => {
     const food = FOOD.find((spec) => spec.kind === live.kind);
     if (food && !opts?.ignoreCap && freshCount(live.kind) >= food.cap) return false;
-    const cell = pickCell(live, Boolean(opts?.nearWreck));
+    const cell = pickCell(live, Boolean(opts?.nearWreck), Boolean(opts?.awayFromPlayer));
     if (!cell) return false;
     return place(live, cell, Boolean(opts?.stagger), Boolean(opts?.nearWreck));
   };
@@ -263,7 +274,7 @@ export function createLoot(
       item: null,
     };
     lives.push(live);
-    trySpawn(live, { stagger: false });
+    trySpawn(live, { stagger: false, awayFromPlayer: true });
   };
 
   for (const spec of FOOD) {
@@ -317,14 +328,15 @@ export function createLoot(
   });
 
   return {
-    update: (dt: number) => {
+    update: (dt: number, playerX?: number, playerZ?: number) => {
+      if (playerX !== undefined && playerZ !== undefined) playerAt = { x: playerX, z: playerZ };
       for (const live of [...lives]) {
         live.age += dt;
         if (live.state === "waiting") {
           if (!live.respawn) continue;
           const tool = TOOLS.some((spec) => spec.kind === live.kind);
           const wait = tool ? TOOL_RESPAWN_SECONDS : LOOT_RESPAWN_SECONDS;
-          if (live.age >= wait) trySpawn(live);
+          if (live.age >= wait) trySpawn(live, { awayFromPlayer: !tool });
           continue;
         }
         if (!live.rots) continue;
@@ -343,12 +355,15 @@ export function createLoot(
       const live = lives.find((it) => it.item === item);
       if (!live) return;
       live.item = null;
-      live.cell = null;
       live.state = "waiting";
       live.age = 0;
-      if (!live.respawn) return;
+      if (!live.respawn) {
+        live.cell = null;
+        return;
+      }
       const food = FOOD.find((spec) => spec.kind === live.kind);
-      if (food) trySpawn(live);
+      if (food) trySpawn(live, { awayFromPlayer: true });
+      if (live.state === "waiting") live.cell = null;
     },
   };
 }

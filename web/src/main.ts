@@ -102,7 +102,7 @@ async function start(): Promise<void> {
     player.canSprint = needs.canSprint;
     player.update(dt);
     wildlife.update(dt);
-    loot.update(dt);
+    loot.update(dt, player.cellX, player.cellZ);
     needs.tick(player.gait, dt, isDaytime(day.t));
     day.update(dt);
     applyDayNight(scene, lights, day.t);
