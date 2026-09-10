@@ -6,6 +6,7 @@ import { cellIndex, inBounds, isLand } from "./island";
 import { loadFbx, loadGltfFile, prepareTemplate } from "./loaders";
 import { ANIMAL_URLS, FISH_URLS, WILD_URLS } from "./models";
 import { mulberry32 } from "./rng";
+import { fitToSpec, type SizeSpec, ANIMAL_SIZE } from "./scale";
 
 const LAND_STEP = 0.95;
 const FISH_STEP = 1.2;
@@ -56,23 +57,6 @@ function inPondCell(x: number, z: number): boolean {
   return Math.hypot(x + 0.5 - POND_X, z + 0.5 - POND_Z) <= POND_RADIUS + 0.6;
 }
 
-function scaleToHeight(obj: THREE.Object3D, height: number): void {
-  obj.updateMatrixWorld(true);
-  const box = new THREE.Box3().setFromObject(obj);
-  const size = box.getSize(new THREE.Vector3());
-  if (size.y < 1e-4) return;
-  obj.scale.multiplyScalar(height / size.y);
-}
-
-function scaleToLongest(obj: THREE.Object3D, length: number): void {
-  obj.updateMatrixWorld(true);
-  const box = new THREE.Box3().setFromObject(obj);
-  const size = box.getSize(new THREE.Vector3());
-  const longest = Math.max(size.x, size.y, size.z);
-  if (longest < 1e-4) return;
-  obj.scale.multiplyScalar(length / longest);
-}
-
 function plant(obj: THREE.Object3D, y: number): void {
   obj.updateMatrixWorld(true);
   const box = new THREE.Box3().setFromObject(obj);
@@ -103,26 +87,35 @@ function paintFish(root: THREE.Object3D, color: number): void {
   });
 }
 
-function layIfUpright(obj: THREE.Object3D): void {
-  obj.updateMatrixWorld(true);
-  const box = new THREE.Box3().setFromObject(obj);
-  const size = box.getSize(new THREE.Vector3());
-  if (size.y > Math.max(size.x, size.z) * 1.15) {
-    obj.rotation.x = -Math.PI / 2;
-  }
+function fixGltfMaterials(root: THREE.Object3D): void {
+  root.traverse((obj) => {
+    const mesh = obj as THREE.Mesh;
+    if (!mesh.isMesh) return;
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
+    mesh.frustumCulled = false;
+    const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+    for (const mat of materials) {
+      mat.transparent = false;
+      mat.opacity = 1;
+      mat.side = THREE.FrontSide;
+      mat.depthWrite = true;
+      mat.depthTest = true;
+      if ('visible' in mat) (mat as any).visible = true;
+    }
+  });
 }
 
-async function templateFromFbx(url: string, size: number, byLongest: boolean): Promise<Template> {
+async function templateFromFbx(url: string, spec: SizeSpec): Promise<Template> {
   const fbx = await loadFbx(url);
   prepareTemplate(fbx);
-  if (byLongest) scaleToLongest(fbx, size);
-  else scaleToHeight(fbx, size);
+  fitToSpec(fbx, spec);
   return { root: fbx, clips: fbx.animations };
 }
 
-async function templateFromGltf(url: string, height: number): Promise<Template> {
+async function templateFromGltf(url: string, spec: SizeSpec): Promise<Template> {
   const loaded = await loadGltfFile(url);
-  scaleToHeight(loaded.root, height);
+  fitToSpec(loaded.root, spec);
   return { root: loaded.root, clips: loaded.animations };
 }
 
@@ -204,22 +197,16 @@ export async function spawnWildlife(
     }
   }
 
-  const [pig, sheep, llama, fox, deer, fish1, fish2, fish3] = await Promise.all([
-    templateFromFbx(ANIMAL_URLS.pig, 0.48, false),
-    templateFromFbx(ANIMAL_URLS.sheep, 0.52, false),
-    templateFromFbx(ANIMAL_URLS.llama, 0.78, false),
-    templateFromGltf(WILD_URLS.fox, 0.42),
-    templateFromGltf(WILD_URLS.deer, 0.85),
-    templateFromFbx(FISH_URLS.fish1, 0.85, true),
-    templateFromFbx(FISH_URLS.fish2, 0.75, true),
-    templateFromFbx(FISH_URLS.fish3, 0.7, true),
+  const [pig, fox, deer, fish1, fish2, fish3] = await Promise.all([
+    templateFromFbx(ANIMAL_URLS.pig, ANIMAL_SIZE.pig),
+    templateFromGltf(WILD_URLS.fox, ANIMAL_SIZE.fox),
+    templateFromGltf(WILD_URLS.deer, ANIMAL_SIZE.deer),
+    templateFromFbx(FISH_URLS.fish1, { ...ANIMAL_SIZE.fish1, layFlat: true }),
+    templateFromFbx(FISH_URLS.fish2, { ...ANIMAL_SIZE.fish2, layFlat: true }),
+    templateFromFbx(FISH_URLS.fish3, { ...ANIMAL_SIZE.fish3, layFlat: true }),
   ]);
-  layIfUpright(fish1.root);
-  layIfUpright(fish2.root);
-  layIfUpright(fish3.root);
-  scaleToLongest(fish1.root, 0.85);
-  scaleToLongest(fish2.root, 0.75);
-  scaleToLongest(fish3.root, 0.7);
+  fixGltfMaterials(fox.root);
+  fixGltfMaterials(deer.root);
   paintFish(fish1.root, 0xc45a3a);
   paintFish(fish2.root, 0x3a6ec8);
   paintFish(fish3.root, 0xe07020);
@@ -245,8 +232,7 @@ export async function spawnWildlife(
   };
 
   placeLand(pig, 3);
-  placeLand(sheep, 2);
-  placeLand(llama, 1);
+  // Sheep/llama FBX cast shadows but meshes invisible — skip spawn; assets kept in models/scale.
   placeLand(fox, 2);
   placeLand(deer, 1);
   placeFish(fish1, 3);

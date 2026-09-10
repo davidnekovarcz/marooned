@@ -1,14 +1,15 @@
 import "./style.css";
 import * as THREE from "three";
-import { DEFAULT_APPEARANCE } from "./appearance";
+import { randomCharacter, saveCharacter } from "./appearance";
 import { setupIslandAudio } from "./audio";
 import { applyZoomFog, CameraZoom, offsetForZoom } from "./cameraZoom";
 import { CAMERA_OFFSET, CENTER, DAY_START, DEBUG_GRID, GRID, HUD_BLINK } from "./constants";
 import { applyDayNight, createDayLights, DayClock, isDaytime } from "./dayNight";
 import { buildGridOverlay } from "./gridOverlay";
-import { createHud, showDeathScreen } from "./hud";
+import { createHud, formatDeathMessage, showDeathScreen } from "./hud";
 import { createInteract } from "./interact";
 import { buildBiomes, buildCoastField, buildIslandMesh, findSpawn } from "./island";
+import { createLoot } from "./loot";
 import { Needs } from "./needs";
 import { buildOcean } from "./ocean";
 import { GridPlayer } from "./player";
@@ -43,27 +44,41 @@ scene.add(ocean.mesh);
 scene.add(buildIslandMesh(biomes));
 
 async function start(): Promise<void> {
+  // Character select UI is parked for now — always wash up as a random survivor.
+  const character = randomCharacter();
+  saveCharacter(character);
+
   const spawn = findSpawn(biomes);
   blocked[spawn.z * GRID + spawn.x] = 1;
 
-  const scattered = await scatterProps(scene, biomes, blocked);
-  const wildlife = await spawnWildlife(scene, biomes, blocked);
-  blocked[spawn.z * GRID + spawn.x] = 0;
+  const worldP = (async () => {
+    const scattered = await scatterProps(scene, biomes, blocked);
+    const loot = createLoot(scattered.lootSites, scattered.items, scattered.spawn);
+    const wildlife = await spawnWildlife(scene, biomes, blocked);
+    blocked[spawn.z * GRID + spawn.x] = 0;
+    if (DEBUG_GRID) scene.add(buildGridOverlay(biomes, blocked));
+    return { scattered, loot, wildlife };
+  })();
+  const visualP = loadPlayerModel(character);
 
-  if (DEBUG_GRID) scene.add(buildGridOverlay(biomes, blocked));
-
-  const visual = await loadPlayerModel(DEFAULT_APPEARANCE);
+  const [{ scattered, loot, wildlife }, visual] = await Promise.all([worldP, visualP]);
   const player = new GridPlayer(biomes, blocked, spawn, visual);
   scene.add(player.mesh);
 
   const islandAudio = setupIslandAudio(scene, player, scattered.audioAnchors, coast);
   const hud = createHud();
   const needs = new Needs();
-  const interact = createInteract(scattered.items, needs, player, islandAudio, scattered.spawn);
+  const interact = createInteract(scattered.items, needs, player, islandAudio, scattered.spawn, loot.onRemoved);
   const day = new DayClock();
   hud.update({ sky: isDaytime(day.t) ? "sun" : "moon", clock: day.clockLabel(), ...needs.snapshot() });
 
   const zoom = new CameraZoom();
+  const offset = offsetForZoom(camera, zoom.cells);
+  applyZoomFog(scene, camera, offset.length(), zoom.cells, day.t);
+  player.followCamera(camera, offset);
+  applyDayNight(scene, lights, day.t);
+  renderer.render(scene, camera);
+  document.body.classList.remove("gate");
 
   window.addEventListener("resize", () => {
     camera.aspect = window.innerWidth / window.innerHeight;
@@ -87,14 +102,15 @@ async function start(): Promise<void> {
     player.canSprint = needs.canSprint;
     player.update(dt);
     wildlife.update(dt);
+    loot.update(dt);
     needs.tick(player.gait, dt, isDaytime(day.t));
     day.update(dt);
     applyDayNight(scene, lights, day.t);
     ocean.update(clock.elapsedTime);
     islandAudio.update();
-    const offset = offsetForZoom(camera, zoom.cells);
-    applyZoomFog(scene, camera, offset.length(), zoom.cells, day.t);
-    player.followCamera(camera, offset);
+    const camOffset = offsetForZoom(camera, zoom.cells);
+    applyZoomFog(scene, camera, camOffset.length(), zoom.cells, day.t);
+    player.followCamera(camera, camOffset);
     interact.update(player.cellX, player.cellZ, player.alive, player.busy);
     hud.update({
       sky: isDaytime(day.t) ? "sun" : "moon",
@@ -108,7 +124,9 @@ async function start(): Promise<void> {
       player.alive = false;
       interact.update(player.cellX, player.cellZ, false, false);
       applyHealthLook(0);
-      showDeathScreen(day.survivedGameHours());
+      void showDeathScreen(formatDeathMessage(day.survivedGameHours())).then(() => {
+        window.location.reload();
+      });
       return;
     }
     requestAnimationFrame(frame);

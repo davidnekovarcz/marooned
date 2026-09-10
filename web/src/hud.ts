@@ -129,13 +129,26 @@ export function formatDeathMessage(gameHours: number): string {
   return `You have survived ${unitLabel(hours, "hour", "hours")} + ${unitLabel(minutes, "minute", "minutes")}... but now you're dead.`;
 }
 
-export function showDeathScreen(gameHours: number): void {
+/** Black death card with message + Respawn; resolves when the player continues. */
+export function showDeathScreen(message: string): Promise<void> {
   const overlay = document.getElementById("death");
-  const message = document.getElementById("death-message");
-  const retry = document.getElementById("death-retry");
-  if (!overlay || !message || !retry) return;
+  const messageEl = document.getElementById("death-message");
+  const respawnBtn = document.getElementById("death-respawn");
+  if (!overlay || !messageEl || !(respawnBtn instanceof HTMLButtonElement)) {
+    throw new Error("Death markup missing from index.html");
+  }
+
   document.body.classList.add("dead");
-  message.textContent = formatDeathMessage(gameHours);
+  messageEl.textContent = message;
   overlay.hidden = false;
-  retry.addEventListener("click", () => window.location.reload(), { once: true });
+  respawnBtn.focus();
+
+  return new Promise((resolve) => {
+    const onRespawn = () => {
+      respawnBtn.removeEventListener("click", onRespawn);
+      overlay.hidden = true;
+      resolve();
+    };
+    respawnBtn.addEventListener("click", onRespawn);
+  });
 }

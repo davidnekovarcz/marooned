@@ -36,6 +36,8 @@ export type WorldItem = {
   mesh: THREE.Object3D;
   action?: WorldItemAction;
   cut?: boolean;
+  freshness?: "fresh" | "rotten";
+  loot?: boolean;
 };
 
 const NAMES: Record<WorldKind, string> = {
@@ -104,6 +106,8 @@ const NAMES: Record<WorldKind, string> = {
 const HELD_NAME: Record<HeldKind, string> = {
   knife: "Knife",
   hammer: "Hammer",
+  axe: "Axe",
+  shovel: "Shovel",
   torch: "Torch",
   tinder: "Tinder box",
   coconutHalf: "Open coconut",
@@ -160,12 +164,14 @@ const ACTIONS: Partial<Record<WorldKind, WorldItemAction>> = {
   },
   knife: { ...PICKUP, pickup: "knife" },
   hammer: { ...PICKUP, pickup: "hammer" },
+  axe: { ...PICKUP, pickup: "axe" },
+  shovel: { ...PICKUP, pickup: "shovel" },
   torch: { ...PICKUP, pickup: "torch" },
   tinder: { ...PICKUP, pickup: "tinder" },
 };
 
 export type SpawnFn = (
-  kind: ModelKind,
+  kind: ModelKind | "torch",
   x: number,
   z: number,
   extra?: { yaw?: number; dx?: number; dz?: number },
@@ -188,6 +194,9 @@ export function makeWorldItem(
 }
 
 function resolveAction(item: WorldItem, held: HeldKind | null): WorldItemAction | undefined {
+  if (item.freshness === "rotten") {
+    return { label: "Rotten", blockedReason: "too rotten to eat" };
+  }
   if (item.kind === "pineapple") {
     if (item.cut) return { label: "Pick up", pickup: "pineapple" };
     if (held === "knife") return { label: "Cut", cut: true, needsHeld: "knife" };
@@ -249,8 +258,9 @@ export function createInteract(
   items: WorldItem[],
   needs: Needs,
   player: GridPlayer,
-  audio: { playMeal: (kind: MealKind) => void; playPickup: () => void },
+  audio: { playMeal: (kind: MealKind) => void; stopMeal: () => void; playPickup: () => void },
   spawn: SpawnFn,
+  onRemoved?: (item: WorldItem) => void,
 ): { update: (cellX: number, cellZ: number, alive: boolean, busy: boolean) => void } {
   const panelEl = document.getElementById("interact");
   const nameEl = document.getElementById("interact-name");
@@ -303,7 +313,7 @@ export function createInteract(
     if (action.eatHeld) {
       if (!action.meal || !isHeldFood(player.heldKind)) return;
       const food = player.heldKind;
-      if (!player.beginHeldMeal(EAT_ACTION_SECONDS)) return;
+      if (!player.beginHeldMeal(EAT_ACTION_SECONDS, () => audio.stopMeal())) return;
       needs.feed(action.meal.hunger, action.meal.thirst);
       audio.playMeal(food === "coconutHalf" ? "drink" : "eat");
       hide();
@@ -321,6 +331,7 @@ export function createInteract(
       audio.playPickup();
       const i = items.indexOf(item);
       if (i >= 0) items.splice(i, 1);
+      onRemoved?.(item);
       hide();
       return;
     }
@@ -339,6 +350,7 @@ export function createInteract(
         !player.beginBreak(item.mesh, BREAK_SECONDS, () => {
           const i = items.indexOf(item);
           if (i >= 0) items.splice(i, 1);
+          onRemoved?.(item);
           spawn("coconutHalf", item.cellX, item.cellZ, { dx: 0.18, dz: 0.08 });
           spawn("coconutHalf", item.cellX, item.cellZ, { dx: -0.16, dz: 0.12, yaw: 1.3 });
         })

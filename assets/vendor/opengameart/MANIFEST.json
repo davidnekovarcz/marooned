@@ -1,0 +1,90 @@
+[
+  {
+    "slug": "beach-ocean-waves",
+    "page": "https://opengameart.org/content/beach-ocean-waves",
+    "license": "CC0",
+    "author": "jasinski (via qubodup)",
+    "files": [
+      {
+        "url": "https://opengameart.org/sites/default/files/wave_01_cc0-18363__jasinski__alkaibeach.flac",
+        "file": "wave_01_cc0-18363__jasinski__alkaibeach.flac",
+        "bytes": 626248,
+        "sha256": "fcfca178eca2eac536e8c2a4ed5cf8096e44c921acd587047b3d9f1d7845435c"
+      },
+      {
+        "url": "https://opengameart.org/sites/default/files/wave_02_cc0-18363__jasinski__alkaibeach.flac",
+        "file": "wave_02_cc0-18363__jasinski__alkaibeach.flac",
+        "bytes": 404529,
+        "sha256": "53b5c28c0edc36f049e77e65f2cf8a86135103328c44c1507c416e6469d18096"
+      },
+      {
+        "url": "https://opengameart.org/sites/default/files/wave_03_cc0-18363__jasinski__alkaibeach.flac",
+        "file": "wave_03_cc0-18363__jasinski__alkaibeach.flac",
+        "bytes": 367584,
+        "sha256": "fc795f95f352b354867d69a587daecb8815334e28e3b56a7798c5f3005349054"
+      },
+      {
+        "url": "https://opengameart.org/sites/default/files/wave_04_cc0-18363__jasinski__alkaibeach.flac",
+        "file": "wave_04_cc0-18363__jasinski__alkaibeach.flac",
+        "bytes": 591767,
+        "sha256": "3c490e736365fdd617ce8405470d8878fc6146d9a8dba448d622addb01cfff3b"
+      }
+    ]
+  },
+  {
+    "slug": "sea-and-river-waves",
+    "page": "https://opengameart.org/content/sea-and-river-wave-sounds",
+    "license": "CC0",
+    "author": "RandomMind",
+    "files": [
+      {
+        "url": "https://opengameart.org/sites/default/files/VistulaShort_0.mp3",
+        "file": "VistulaShort_0.mp3",
+        "bytes": 12004407,
+        "sha256": "8c24607e41edd6f018ec3582a07e5a8dbc57347276339cb68440951a0fb4cfb1"
+      }
+    ]
+  },
+  {
+    "slug": "ambient-bird-sounds",
+    "page": "https://opengameart.org/content/ambient-bird-sounds",
+    "license": "CC0",
+    "author": "isaiah658",
+    "files": [
+      {
+        "url": "https://opengameart.org/sites/default/files/birds-isaiah658_0.ogg",
+        "file": "birds-isaiah658_0.ogg",
+        "bytes": 544669,
+        "sha256": "359e4e3f9da9d75aac64cede511c7e3ef8b461f9d9f8c230f8f80e44c4b3e35f"
+      }
+    ]
+  },
+  {
+    "slug": "sheep-baa",
+    "page": "https://opengameart.org/content/sheep-baa",
+    "license": "CC0",
+    "author": "mikewest (via OpenGameArt)",
+    "files": [
+      {
+        "url": "https://opengameart.org/sites/default/files/sheep_baa_0.ogg",
+        "file": "sheep_baa_0.ogg",
+        "bytes": 18524,
+        "sha256": "88618dd49eaadaeea8950a613e75588cccecb39b699e289004dd56d1f3aef9de"
+      }
+    ]
+  },
+  {
+    "slug": "80-cc0-creature-sfx",
+    "page": "https://opengameart.org/content/80-cc0-creature-sfx",
+    "license": "CC0",
+    "author": "rubberduck",
+    "files": [
+      {
+        "url": "https://opengameart.org/sites/default/files/80-CC0-creature-SFX_0.zip",
+        "file": "80-CC0-creature-SFX_0.zip",
+        "bytes": 1885648,
+        "sha256": "5d4002eea42f278e76543bb36e8ddd2cb978588a13271984191d8228f5d26768"
+      }
+    ]
+  }
+]

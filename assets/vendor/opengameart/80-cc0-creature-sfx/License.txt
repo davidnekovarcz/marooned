@@ -1,0 +1,5 @@
+80-cc0-creature-sfx
+Author: rubberduck
+License: CC0
+Source: https://opengameart.org/content/80-cc0-creature-sfx
+Creative Commons CC0 — public domain. Attribution not required.

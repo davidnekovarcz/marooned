@@ -3,6 +3,7 @@ import type { Appearance } from "./appearance";
 import { GROUND_Y, RUN_ANIM_SCALE, SWIM_SINK, WALK_ANIM_SCALE } from "./constants";
 import { loadFbx } from "./loaders";
 import { PLAYER_URLS } from "./models";
+import { tintSurvivorAtlas } from "./tintAtlas";
 
 const TARGET_HEIGHT = 1.6;
 const FADE = 0.14;
@@ -149,17 +150,17 @@ function overlayBone(
 }
 
 export async function loadPlayerModel(appearance: Appearance): Promise<PlayerVisual> {
-  const [model, idleFbx, runFbx, map] = await Promise.all([
+  const [model, idleFbx, runFbx, rawMap] = await Promise.all([
     loadFbx(PLAYER_URLS.model),
     loadFbx(PLAYER_URLS.idle),
     loadFbx(PLAYER_URLS.run),
     new THREE.TextureLoader().loadAsync(skinUrl(appearance)),
   ]);
 
+  const map = tintSurvivorAtlas(rawMap, appearance);
   applySkin(model, map);
   hideIkBones(model);
   scaleToHeight(model);
-  // TODO: tint atlas peaches → appearance.skin and greys → appearance.clothes
 
   const root = new THREE.Group();
   root.name = "player";

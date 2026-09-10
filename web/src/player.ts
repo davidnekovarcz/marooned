@@ -1,14 +1,9 @@
 import * as THREE from "three";
-import {
-  CELL,
-  GROUND_Y,
-  STEP_SECONDS_RUN,
-  STEP_SECONDS_SWIM,
-  STEP_SECONDS_WALK,
-} from "./constants";
+import { CELL, GROUND_Y, STEP_SECONDS_RUN, STEP_SECONDS_SWIM, STEP_SECONDS_WALK } from "./constants";
 import { canEnter } from "./gridOverlay";
 import { isInlandWater } from "./island";
 import type { PlayerGait, PlayerVisual } from "./playerModel";
+import { fitAndPlant, specFor } from "./scale";
 
 const DIRS: Record<string, { x: number; z: number }> = {
   KeyW: { x: 0, z: 1 },
@@ -27,6 +22,8 @@ const PICK_AT = 0.32;
 export type HeldKind =
   | "knife"
   | "hammer"
+  | "axe"
+  | "shovel"
   | "torch"
   | "tinder"
   | "coconutHalf"
@@ -41,9 +38,11 @@ type PocketItem = { kind: HeldKind; mesh: THREE.Object3D };
 
 const FOOD_HOLD = { rot: new THREE.Euler(0.4, 0.2, 0.5) };
 const PINEAPPLE_HOLD = { rot: new THREE.Euler(0.35, 0.15, 0.45) };
-const TOOL_HOLD: Record<"knife" | "hammer" | "torch", { length: number; rot: THREE.Euler }> = {
+const TOOL_HOLD: Record<"knife" | "hammer" | "axe" | "shovel" | "torch", { length: number; rot: THREE.Euler }> = {
   knife: { length: 0.28, rot: new THREE.Euler(0.2, 0.9, 1.2) },
   hammer: { length: 0.36, rot: new THREE.Euler(0.15, 0.7, 1.05) },
+  axe: { length: 0.42, rot: new THREE.Euler(0.12, 0.65, 1.08) },
+  shovel: { length: 0.48, rot: new THREE.Euler(0.1, 0.6, 1.05) },
   torch: { length: 0.38, rot: new THREE.Euler(0.12, 0.65, 1.1) },
 };
 
@@ -63,7 +62,9 @@ export function isHeldFood(
 }
 
 function poseFor(kind: HeldKind): { length: number | null; rot: THREE.Euler } {
-  if (kind === "knife" || kind === "hammer" || kind === "torch") return TOOL_HOLD[kind];
+  if (kind === "knife" || kind === "hammer" || kind === "axe" || kind === "shovel" || kind === "torch") {
+    return TOOL_HOLD[kind];
+  }
   if (kind === "tinder") return { length: 0.16, rot: FOOD_HOLD.rot };
   if (kind === "pineapple") return { length: null, rot: PINEAPPLE_HOLD.rot };
   return { length: null, rot: FOOD_HOLD.rot };
@@ -132,11 +133,13 @@ export class GridPlayer {
   private lockSeconds = 0;
   private tool: THREE.Object3D | null = null;
   private meal: THREE.Object3D | null = null;
+  private mealScale = new THREE.Vector3(1, 1, 1);
   private grabbed = false;
   private pockets: Record<PocketSlot, PocketItem | null> = { left: null, right: null };
   private pocketGroup = new THREE.Group();
   private onCutDone: (() => void) | null = null;
   private onCrack: (() => void) | null = null;
+  private onMealEnd: (() => void) | null = null;
 
   constructor(
     private biomes: Uint8Array,
@@ -222,7 +225,7 @@ export class GridPlayer {
   }
 
   /** Eat whatever food is already in the hands. */
-  beginHeldMeal(seconds: number): boolean {
+  beginHeldMeal(seconds: number, onEnd?: () => void): boolean {
     if (!this.alive || this.busy || !this.tool || !isHeldFood(this.heldKind)) return false;
     this.stopMoving();
     this.busy = true;
@@ -231,7 +234,9 @@ export class GridPlayer {
     this.lockSeconds = seconds;
     this.meal = this.tool;
     this.grabbed = true;
+    this.onMealEnd = onEnd ?? null;
     this.tool.visible = true;
+    this.mealScale.copy(this.tool.scale);
     this.gait = this.inWater() ? "swim" : "idle";
     this.visual.setGait(this.gait);
     return true;
@@ -279,6 +284,9 @@ export class GridPlayer {
       }
       this.meal?.removeFromParent();
       this.meal = null;
+      const ended = this.onMealEnd;
+      this.onMealEnd = null;
+      ended?.();
     }
     if (lock === "cut" && finished) this.onCutDone?.();
     if (this.tool) this.tool.visible = true;
@@ -313,8 +321,9 @@ export class GridPlayer {
     const parent = this.mesh.parent;
     if (parent) parent.attach(mesh);
     else mesh.removeFromParent();
-    mesh.position.set(this.cellX * CELL + CELL / 2, GROUND_Y + 0.04, this.cellZ * CELL + CELL / 2);
+    mesh.position.set(this.cellX * CELL + CELL / 2, GROUND_Y, this.cellZ * CELL + CELL / 2);
     mesh.rotation.set(0, 0.4, 0);
+    fitAndPlant(mesh, specFor(kind), GROUND_Y);
     mesh.visible = true;
     this.tool = null;
     this.heldKind = null;
@@ -379,7 +388,15 @@ export class GridPlayer {
 
     if (this.busy) {
       this.lockT += dt;
-      this.visual.setCrouch(crouchEnvelope(this.lockT, this.lockSeconds));
+      if (this.lock === "meal") {
+        this.visual.setCrouch(0);
+        if (this.meal) {
+          const u = Math.min(1, this.lockT / Math.max(0.001, this.lockSeconds));
+          this.meal.scale.copy(this.mealScale).multiplyScalar(Math.max(0.08, 1 - u));
+        }
+      } else {
+        this.visual.setCrouch(crouchEnvelope(this.lockT, this.lockSeconds));
+      }
       this.onLockTick();
       this.visual.applyPose();
       this.gait = water ? "swim" : "idle";

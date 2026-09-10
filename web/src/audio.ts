@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { CELL, EAT_ACTION_SECONDS, SOUND_3D } from "./constants";
+import { CELL, SOUND_3D } from "./constants";
 import type { CoastField } from "./island";
 import { cellIndex } from "./island";
 import { SOUND_URLS } from "./models";
@@ -26,84 +26,8 @@ function makeWaveBuffer(ctx: AudioContext): AudioBuffer {
   return buffer;
 }
 
-function makePondBed(ctx: AudioContext): AudioBuffer {
-  const seconds = 2.8;
-  const rate = ctx.sampleRate;
-  const buffer = ctx.createBuffer(1, Math.floor(rate * seconds), rate);
-  const data = buffer.getChannelData(0);
-  let prev = 0;
-  for (let i = 0; i < data.length; i++) {
-    const t = i / data.length;
-    const white = Math.random() * 2 - 1;
-    prev = prev * 0.94 + white * 0.06;
-    const fade = Math.min(t * 16, (1 - t) * 16, 1);
-    data[i] = prev * fade * 0.12;
-  }
-  return buffer;
-}
-
-function makeSeagullBuffer(ctx: AudioContext, variant: number): AudioBuffer {
-  const seconds = 0.55;
-  const rate = ctx.sampleRate;
-  const n = Math.floor(rate * seconds);
-  const buffer = ctx.createBuffer(1, n, rate);
-  const data = buffer.getChannelData(0);
-  const f0 = 820 + variant * 90;
-  let phase = 0;
-  for (let i = 0; i < n; i++) {
-    const t = i / rate;
-    const u = t / seconds;
-    const env = Math.sin(u * Math.PI) ** 1.1 * Math.exp(-u * 1.4);
-    const freq = f0 + 180 * Math.sin(t * Math.PI * 2 * 6.5);
-    phase += freq / rate;
-    data[i] = Math.sin(phase * Math.PI * 2) * env * 0.28;
-  }
-  return buffer;
-}
-
-function makeBirdBuffer(ctx: AudioContext, variant: number): AudioBuffer {
-  const seconds = 0.38;
-  const rate = ctx.sampleRate;
-  const n = Math.floor(rate * seconds);
-  const buffer = ctx.createBuffer(1, n, rate);
-  const data = buffer.getChannelData(0);
-  const notes = [1480, 1760, 1320].map((f) => f * (0.94 + variant * 0.05));
-  let phase = 0;
-  for (let i = 0; i < n; i++) {
-    const t = i / rate;
-    const hop = Math.min(2, Math.floor(t / 0.11));
-    const freq = notes[hop] ?? notes[0]!;
-    const local = (t - hop * 0.11) / 0.1;
-    const env = local >= 0 && local <= 1 ? Math.sin(local * Math.PI) ** 1.3 : 0;
-    phase += freq / rate;
-    data[i] = Math.sin(phase * Math.PI * 2) * env * 0.22;
-  }
-  return buffer;
-}
-
-function makeOinkBuffer(ctx: AudioContext, variant: number): AudioBuffer {
-  const seconds = 0.32;
-  const rate = ctx.sampleRate;
-  const n = Math.floor(rate * seconds);
-  const buffer = ctx.createBuffer(1, n, rate);
-  const data = buffer.getChannelData(0);
-  const f0 = 180 + variant * 28;
-  let phase = 0;
-  let prev = 0;
-  for (let i = 0; i < n; i++) {
-    const t = i / rate;
-    const u = t / seconds;
-    const env = Math.sin(u * Math.PI) ** 1.05;
-    const freq = f0 - u * 70;
-    phase += freq / rate;
-    const white = Math.random() * 2 - 1;
-    prev = prev * 0.86 + white * 0.14;
-    data[i] = (Math.sin(phase * Math.PI * 2) * 0.55 + prev * 0.45) * env * 0.34;
-  }
-  return buffer;
-}
-
-function makeSplashBuffer(ctx: AudioContext): AudioBuffer {
+/** Dirt/shovel strike — was pond splash; keep for dig interact later (not ambient). */
+export function makeShovelBuffer(ctx: AudioContext): AudioBuffer {
   const seconds = 0.45;
   const rate = ctx.sampleRate;
   const n = Math.floor(rate * seconds);
@@ -117,37 +41,6 @@ function makeSplashBuffer(ctx: AudioContext): AudioBuffer {
     prev = prev * 0.72 + white * 0.28;
     const env = Math.exp(-u * 7) * Math.sin(Math.min(1, u * 18) * Math.PI * 0.5);
     data[i] = prev * env * 0.4;
-  }
-  return buffer;
-}
-
-function makeFrogBuffer(ctx: AudioContext, variant: number): AudioBuffer {
-  const seconds = 0.72;
-  const rate = ctx.sampleRate;
-  const n = Math.floor(rate * seconds);
-  const buffer = ctx.createBuffer(1, n, rate);
-  const data = buffer.getChannelData(0);
-  const pitch = 0.82 + variant * 0.09;
-  const croaks = [
-    { start: 0.04, dur: 0.15, f0: 690 * pitch, f1: 300 * pitch },
-    { start: 0.24, dur: 0.18, f0: 610 * pitch, f1: 250 * pitch },
-  ];
-  const phases = [0, 0];
-  for (let i = 0; i < n; i++) {
-    const t = i / rate;
-    let s = 0;
-    for (let c = 0; c < croaks.length; c++) {
-      const croak = croaks[c]!;
-      const u = (t - croak.start) / croak.dur;
-      if (u < 0 || u > 1) continue;
-      const freq = croak.f0 + (croak.f1 - croak.f0) * u * u;
-      phases[c] += freq / rate;
-      const env = Math.sin(u * Math.PI) ** 1.35 * Math.exp(-u * 0.8);
-      const trem = 0.5 + 0.5 * Math.sin(t * Math.PI * 2 * (32 + variant * 3));
-      s += Math.sin(phases[c]! * Math.PI * 2) * env * trem;
-      s += Math.sin(phases[c]! * Math.PI * 4) * env * 0.16;
-    }
-    data[i] = s * 0.32;
   }
   return buffer;
 }
@@ -240,58 +133,6 @@ function attachRandomOneShots(
   return sound;
 }
 
-function makeDrinkBuffer(ctx: AudioContext, seconds: number): AudioBuffer {
-  const rate = ctx.sampleRate;
-  const n = Math.floor(rate * seconds);
-  const buffer = ctx.createBuffer(1, n, rate);
-  const data = buffer.getChannelData(0);
-  const gulps = [0.14, 0.7, 1.28, 1.86, 2.42];
-  let prev = 0;
-  for (let i = 0; i < n; i++) {
-    const t = i / rate;
-    const white = Math.random() * 2 - 1;
-    prev = prev * 0.96 + white * 0.04;
-    const fade = Math.min(t * 10, (seconds - t) * 10, 1);
-    let s = prev * 0.05 * fade;
-    for (const g of gulps) {
-      const u = t - g;
-      if (u < 0 || u > 0.24) continue;
-      const env = Math.sin((u / 0.24) * Math.PI) ** 1.25;
-      const freq = 280 - u * 720;
-      s += Math.sin(t * freq * Math.PI * 2) * env * 0.34;
-      s += prev * env * 0.16;
-    }
-    data[i] = s * 0.72;
-  }
-  return buffer;
-}
-
-function makeChewBuffer(ctx: AudioContext, seconds: number): AudioBuffer {
-  const rate = ctx.sampleRate;
-  const n = Math.floor(rate * seconds);
-  const buffer = ctx.createBuffer(1, n, rate);
-  const data = buffer.getChannelData(0);
-  const chews: number[] = [];
-  for (let t = 0.18; t < seconds - 0.2; t += 0.36) chews.push(t);
-  let prev = 0;
-  for (let i = 0; i < n; i++) {
-    const t = i / rate;
-    const white = Math.random() * 2 - 1;
-    prev = prev * 0.9 + white * 0.1;
-    const fade = Math.min(t * 12, (seconds - t) * 12, 1);
-    let s = 0;
-    for (const c of chews) {
-      const u = t - c;
-      if (u < 0 || u > 0.09) continue;
-      const env = Math.sin((u / 0.09) * Math.PI) ** 1.1;
-      s += prev * env * 0.55;
-      s += Math.sin(t * 90 * Math.PI * 2) * env * 0.12;
-    }
-    data[i] = s * fade * 0.65;
-  }
-  return buffer;
-}
-
 export type MealKind = "drink" | "eat";
 
 export function setupIslandAudio(
@@ -299,7 +140,7 @@ export function setupIslandAudio(
   player: GridPlayer,
   anchors: { id: string; position: THREE.Vector3 }[],
   coast: CoastField,
-): { update: () => void; playMeal: (kind: MealKind) => void; playPickup: () => void } {
+): { update: () => void; playMeal: (kind: MealKind) => void; stopMeal: () => void; playPickup: () => void } {
   const listener = new THREE.AudioListener();
   player.mesh.add(listener);
 
@@ -308,9 +149,37 @@ export function setupIslandAudio(
   const tracked: { sound: THREE.PositionalAudio; source: THREE.Vector3 }[] = [];
   const mealSound = new THREE.Audio(listener);
   const rustleSound = new THREE.Audio(listener);
-  let drinkBuf: AudioBuffer | null = null;
-  let chewBuf: AudioBuffer | null = null;
+  let eatBufs: AudioBuffer[] = [];
   let rustleBuf: AudioBuffer | null = null;
+  let mealActive = false;
+  let eatIndex = 0;
+  let mealTimer = 0;
+  let pendingMeal = false;
+
+  const playNextEatClip = () => {
+    if (!mealActive || eatBufs.length === 0) return;
+    const buf = eatBufs[eatIndex % eatBufs.length]!;
+    eatIndex += 1;
+    if (mealSound.isPlaying) mealSound.stop();
+    mealSound.setBuffer(buf);
+    mealSound.setVolume(0.62);
+    mealSound.play();
+    window.clearTimeout(mealTimer);
+    mealTimer = window.setTimeout(() => {
+      if (mealActive) playNextEatClip();
+    }, Math.max(50, buf.duration * 1000));
+  };
+
+  const startMeal = () => {
+    if (eatBufs.length === 0) {
+      pendingMeal = true;
+      return;
+    }
+    pendingMeal = false;
+    mealActive = true;
+    eatIndex = 0;
+    playNextEatClip();
+  };
 
   const hint = document.getElementById("hint");
   const unlock = async () => {
@@ -319,20 +188,14 @@ export function setupIslandAudio(
     await listener.context.resume();
 
     const ctx = listener.context as AudioContext;
-    const [creaks, cloths, chops] = await Promise.all([
+    const [creaks, cloths, chops, eats] = await Promise.all([
       Promise.all(SOUND_URLS.creaks.map((u) => loadBuffer(ctx, u))),
       Promise.all(SOUND_URLS.cloths.map((u) => loadBuffer(ctx, u))),
       Promise.all(SOUND_URLS.chops.map((u) => loadBuffer(ctx, u))),
+      Promise.all(SOUND_URLS.eats.map((u) => loadBuffer(ctx, u))),
     ]);
     const waves = makeWaveBuffer(ctx);
-    const pondBed = makePondBed(ctx);
-    const frogs = [0, 1, 2, 3].map((v) => makeFrogBuffer(ctx, v));
-    const seagulls = [0, 1, 2].map((v) => makeSeagullBuffer(ctx, v));
-    const birds = [0, 1, 2, 3].map((v) => makeBirdBuffer(ctx, v));
-    const oinks = [0, 1].map((v) => makeOinkBuffer(ctx, v));
-    const splash = makeSplashBuffer(ctx);
-    drinkBuf = makeDrinkBuffer(ctx, EAT_ACTION_SECONDS);
-    chewBuf = makeChewBuffer(ctx, EAT_ACTION_SECONDS);
+    eatBufs = eats;
     rustleBuf = cloths[0] ?? null;
 
     const group = new THREE.Group();
@@ -351,28 +214,17 @@ export function setupIslandAudio(
       const source = a.position.clone();
       if (a.id === "wreck") {
         track(attachRandomOneShots(listener, creaks, source, 0.55, [2.5, 8], LANDMARK_HEAR), source);
-        track(attachRandomOneShots(listener, seagulls, source, 0.28, [6, 16], LANDMARK_HEAR), source);
-      } else if (a.id === "hut") {
-        track(attachRandomOneShots(listener, cloths, source, 0.42, [3.5, 11], LANDMARK_HEAR), source);
-        track(attachRandomOneShots(listener, birds, source, 0.22, [5, 14], LANDMARK_HEAR), source);
-        track(attachRandomOneShots(listener, oinks, source, 0.26, [8, 18], LANDMARK_HEAR), source);
-      } else if (a.id === "boat") {
+      } else if (a.id === "hut" || a.id === "boat") {
         track(attachRandomOneShots(listener, chops, source, 0.32, [4, 12], LANDMARK_HEAR), source);
-        track(attachRandomOneShots(listener, seagulls, source, 0.2, [9, 20], LANDMARK_HEAR), source);
-      } else if (a.id === "pond") {
-        const bed = attachLoop(listener, pondBed, source, 0.22, LANDMARK_HEAR);
-        track(bed, source);
-        bed.play();
-        track(attachRandomOneShots(listener, frogs, source, 0.48, [1.2, 3.6], LANDMARK_HEAR), source);
-        track(attachRandomOneShots(listener, [splash], source, 0.3, [7, 16], LANDMARK_HEAR), source);
       }
     }
 
     scene.add(group);
 
+    if (pendingMeal) startMeal();
+
     if (hint) {
-      hint.textContent =
-        "+ / − zoom. WASD walk. SHIFT run.";
+      hint.textContent = "+ / − zoom. WASD walk. SHIFT run.";
     }
   };
 
@@ -386,19 +238,17 @@ export function setupIslandAudio(
       oceanSource.set(coast.nearX[i]! * CELL + CELL / 2, 0.8, coast.nearZ[i]! * CELL + CELL / 2);
       for (const item of tracked) applySpatial(item.sound, item.source, listener);
     },
-    playMeal: (kind) => {
-      if (rustleBuf) {
-        if (rustleSound.isPlaying) rustleSound.stop();
-        rustleSound.setBuffer(rustleBuf);
-        rustleSound.setVolume(0.38);
-        rustleSound.play();
-      }
-      const buf = kind === "drink" ? drinkBuf : chewBuf;
-      if (!buf) return;
+    playMeal: (_kind) => {
+      // Same loaded eat_01 / eat_04 clips for every fruit (incl. coconut half).
+      void _kind;
+      startMeal();
+    },
+    /** Cut chew when the meal lock ends so silence and movement return together. */
+    stopMeal: () => {
+      mealActive = false;
+      pendingMeal = false;
+      window.clearTimeout(mealTimer);
       if (mealSound.isPlaying) mealSound.stop();
-      mealSound.setBuffer(buf);
-      mealSound.setVolume(kind === "drink" ? 0.52 : 0.46);
-      mealSound.play();
     },
     playPickup: () => {
       if (!rustleBuf) return;
