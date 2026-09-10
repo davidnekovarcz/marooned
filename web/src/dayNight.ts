@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { CENTER, DAY_SECONDS, DAY_START } from "./constants";
+import { CENTER, DAY_SECONDS, DAY_START } from "@/web/src/constants";
 
 const SKY_NOON = new THREE.Color(0xb5e8f6);
 const SKY_DAWN = new THREE.Color(0xf4b878);

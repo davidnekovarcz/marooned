@@ -26,8 +26,8 @@ import {
   THIRST_DRAIN_IDLE,
   THIRST_DRAIN_RUN,
   THIRST_DRAIN_WALK,
-} from "./constants";
-import type { PlayerGait } from "./playerModel";
+} from "@/web/src/constants";
+import type { PlayerGait } from "@/web/src/playerModel";
 
 export type NeedsState = {
   energy: number;

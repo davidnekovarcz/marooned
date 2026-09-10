@@ -1,6 +1,6 @@
 import * as THREE from "three";
-import { CELL, GRID } from "./constants";
-import { cellIndex, inBounds, isOceanCell } from "./island";
+import { CELL, GRID } from "@/web/src/constants";
+import { cellIndex, inBounds, isOceanCell } from "@/web/src/island";
 
 /** Semi-transparent grid on walkable cells only. */
 export function buildGridOverlay(

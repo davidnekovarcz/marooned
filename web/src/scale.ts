@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { GROUND_Y } from "./constants";
+import { GROUND_Y } from "@/web/src/constants";
 
 export type SizeAxis = "height" | "longest";
 

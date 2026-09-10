@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { sourceClothes, sourceSkin, type Appearance } from "./appearance";
+import { sourceClothes, sourceSkin, type Appearance } from "@/web/src/appearance";
 
 const _src = { h: 0, s: 0, l: 0 };
 const _dst = { h: 0, s: 0, l: 0 };

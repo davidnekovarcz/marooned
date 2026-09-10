@@ -6,7 +6,7 @@ import {
   randomName,
   type Character,
   type Gender,
-} from "./appearance";
+} from "@/web/src/appearance";
 
 function hexCss(n: number): string {
   return `#${n.toString(16).padStart(6, "0")}`;

@@ -9,8 +9,8 @@ import {
   ZOOM_CELLS_OUT,
   ZOOM_CELLS_PER_SEC,
   ZOOM_CELLS_START,
-} from "./constants";
-import { sunElevation } from "./dayNight";
+} from "@/web/src/constants";
+import { sunElevation } from "@/web/src/dayNight";
 
 function isZoomIn(e: KeyboardEvent): boolean {
   return e.key === "+" || e.key === "=" || e.code === "NumpadAdd";

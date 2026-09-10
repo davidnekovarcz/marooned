@@ -9,11 +9,11 @@ import {
   EAT_FRUIT_THIRST,
   EAT_PINEAPPLE_HUNGER,
   EAT_PINEAPPLE_THIRST,
-} from "./constants";
-import type { MealKind } from "./audio";
-import type { Needs } from "./needs";
-import type { ModelKind } from "./models";
-import { isHeldFood, type GridPlayer, type HeldKind, type PocketSlot } from "./player";
+} from "@/web/src/constants";
+import type { MealKind } from "@/web/src/audio";
+import type { Needs } from "@/web/src/needs";
+import type { ModelKind } from "@/web/src/models";
+import { isHeldFood, type GridPlayer, type HeldKind, type PocketSlot } from "@/web/src/player";
 
 export type WorldKind = ModelKind | "lilypad" | "torch";
 
