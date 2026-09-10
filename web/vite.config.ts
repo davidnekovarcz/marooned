@@ -3,6 +3,11 @@ import { defineConfig } from "vite";
 
 export default defineConfig({
   assetsInclude: ["**/*.obj", "**/*.mtl", "**/*.ogg", "**/*.fbx", "**/*.gltf"],
+  resolve: {
+    alias: {
+      "@": path.resolve(__dirname, ".."),
+    },
+  },
   build: {
     target: "es2022",
   },

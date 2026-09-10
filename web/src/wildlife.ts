@@ -1,12 +1,12 @@
 import * as THREE from "three";
 import { clone as cloneSkinned } from "three/addons/utils/SkeletonUtils.js";
-import { Biome, CELL, GRID, GROUND_Y, POND_RADIUS, POND_X, POND_Z, SEED, WATER_Y } from "./constants";
-import { canEnter } from "./gridOverlay";
-import { cellIndex, inBounds, isLand } from "./island";
-import { loadFbx, loadGltfFile, prepareTemplate } from "./loaders";
-import { ANIMAL_URLS, FISH_URLS, WILD_URLS } from "./models";
-import { mulberry32 } from "./rng";
-import { fitToSpec, type SizeSpec, ANIMAL_SIZE } from "./scale";
+import { Biome, CELL, GRID, GROUND_Y, POND_RADIUS, POND_X, POND_Z, SEED, WATER_Y } from "@/web/src/constants";
+import { canEnter } from "@/web/src/gridOverlay";
+import { cellIndex, inBounds, isLand } from "@/web/src/island";
+import { loadFbx, loadGltfFile, prepareTemplate } from "@/web/src/loaders";
+import { ANIMAL_URLS, FISH_URLS, WILD_URLS } from "@/web/src/models";
+import { mulberry32 } from "@/web/src/rng";
+import { fitToSpec, type SizeSpec, ANIMAL_SIZE } from "@/web/src/scale";
 
 const LAND_STEP = 0.95;
 const FISH_STEP = 1.2;

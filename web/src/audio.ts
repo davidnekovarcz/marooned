@@ -1,9 +1,9 @@
 import * as THREE from "three";
-import { CELL, SOUND_3D } from "./constants";
-import type { CoastField } from "./island";
-import { cellIndex } from "./island";
-import { SOUND_URLS } from "./models";
-import type { GridPlayer } from "./player";
+import { CELL, SOUND_3D } from "@/web/src/constants";
+import type { CoastField } from "@/web/src/island";
+import { cellIndex } from "@/web/src/island";
+import { SOUND_URLS } from "@/web/src/models";
+import type { GridPlayer } from "@/web/src/player";
 
 const LANDMARK_HEAR = 20 * CELL;
 const OCEAN_HEAR = 42 * CELL;

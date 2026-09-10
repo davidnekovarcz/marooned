@@ -1,9 +1,9 @@
 import * as THREE from "three";
-import type { Appearance } from "./appearance";
-import { GROUND_Y, RUN_ANIM_SCALE, SWIM_SINK, WALK_ANIM_SCALE } from "./constants";
-import { loadFbx } from "./loaders";
-import { PLAYER_URLS } from "./models";
-import { tintSurvivorAtlas } from "./tintAtlas";
+import type { Appearance } from "@/web/src/appearance";
+import { GROUND_Y, RUN_ANIM_SCALE, SWIM_SINK, WALK_ANIM_SCALE } from "@/web/src/constants";
+import { loadFbx } from "@/web/src/loaders";
+import { PLAYER_URLS } from "@/web/src/models";
+import { tintSurvivorAtlas } from "@/web/src/tintAtlas";
 
 const TARGET_HEIGHT = 1.6;
 const FADE = 0.14;

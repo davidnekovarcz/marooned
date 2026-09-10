@@ -1,9 +1,9 @@
 import * as THREE from "three";
-import { CELL, GROUND_Y, STEP_SECONDS_RUN, STEP_SECONDS_SWIM, STEP_SECONDS_WALK } from "./constants";
-import { canEnter } from "./gridOverlay";
-import { isInlandWater } from "./island";
-import type { PlayerGait, PlayerVisual } from "./playerModel";
-import { fitAndPlant, specFor } from "./scale";
+import { CELL, GROUND_Y, STEP_SECONDS_RUN, STEP_SECONDS_SWIM, STEP_SECONDS_WALK } from "@/web/src/constants";
+import { canEnter } from "@/web/src/gridOverlay";
+import { isInlandWater } from "@/web/src/island";
+import type { PlayerGait, PlayerVisual } from "@/web/src/playerModel";
+import { fitAndPlant, specFor } from "@/web/src/scale";
 
 const DIRS: Record<string, { x: number; z: number }> = {
   KeyW: { x: 0, z: 1 },

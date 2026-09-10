@@ -11,21 +11,21 @@ import {
   POND_Z,
   SEED,
   WATER_Y,
-} from "./constants";
-import { canEnter } from "./gridOverlay";
+} from "@/web/src/constants";
+import { canEnter } from "@/web/src/gridOverlay";
 import {
   cellCenterDist,
   cellIndex,
   inBounds,
   isLand,
   nearestCell,
-} from "./island";
-import { makeWorldItem, type WorldItem } from "./interact";
-import type { Cell, LootSites } from "./loot";
-import { loadGlb, loadObj } from "./loaders";
-import { LILY_URL, MODEL_URLS, TORCH_URL, type ModelKind } from "./models";
-import { mulberry32 } from "./rng";
-import { fitAndPlant, plantOnGround, specFor } from "./scale";
+} from "@/web/src/island";
+import { makeWorldItem, type WorldItem } from "@/web/src/interact";
+import type { Cell, LootSites } from "@/web/src/loot";
+import { loadGlb, loadObj } from "@/web/src/loaders";
+import { LILY_URL, MODEL_URLS, TORCH_URL, type ModelKind } from "@/web/src/models";
+import { mulberry32 } from "@/web/src/rng";
+import { fitAndPlant, plantOnGround, specFor } from "@/web/src/scale";
 
 const PLUS: [number, number][] = [
   [0, 0],

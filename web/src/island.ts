@@ -15,7 +15,7 @@ import {
   RIVER_HALF,
   SAND_A,
   SAND_B,
-} from "./constants";
+} from "@/web/src/constants";
 
 export function cellIndex(x: number, z: number): number {
   return z * GRID + x;

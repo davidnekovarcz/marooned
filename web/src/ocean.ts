@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { CENTER, ISLAND_RADIUS, POND_RADIUS, POND_X, POND_Z, WATER, WATER_Y } from "./constants";
+import { CENTER, ISLAND_RADIUS, POND_RADIUS, POND_X, POND_Z, WATER, WATER_Y } from "@/web/src/constants";
 
 export type Ocean = {
   mesh: THREE.Mesh;

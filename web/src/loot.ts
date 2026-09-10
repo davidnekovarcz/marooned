@@ -5,10 +5,10 @@ import {
   LOOT_ROTTEN_SECONDS,
   SEED,
   TOOL_RESPAWN_SECONDS,
-} from "./constants";
-import type { SpawnFn, WorldItem } from "./interact";
-import type { ModelKind } from "./models";
-import { mulberry32 } from "./rng";
+} from "@/web/src/constants";
+import type { SpawnFn, WorldItem } from "@/web/src/interact";
+import type { ModelKind } from "@/web/src/models";
+import { mulberry32 } from "@/web/src/rng";
 
 export type Cell = { x: number; z: number };
 export type Freshness = "fresh" | "rotten";

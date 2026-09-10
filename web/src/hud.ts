@@ -1,4 +1,4 @@
-import { HUD_BAND_HIGH, HUD_BAND_LOW, HUD_BAND_MID, HUD_BLINK, HUD_ENERGY_MAX_BLINK, HUD_TEMP_HOT_BLINK } from "./constants";
+import { HUD_BAND_HIGH, HUD_BAND_LOW, HUD_BAND_MID, HUD_BLINK, HUD_ENERGY_MAX_BLINK, HUD_TEMP_HOT_BLINK } from "@/web/src/constants";
 
 export type SkyKind = "sun" | "moon";
 
