@@ -91,23 +91,26 @@ export const HEALTH_DRAIN_PER_EMPTY = 2 / (3 * 60);
 /** Health 0→full while food and water are both out of the yellow HUD band. */
 export const HEALTH_RESTORE = 1 / (4 * 60);
 
-/** Open coconut: thirst / hunger restored. */
-export const EAT_COCONUT_THIRST = 0.15;
-export const EAT_COCONUT_HUNGER = 0.1;
-/** Raw fruit (orange). */
-export const EAT_FRUIT_HUNGER = 0.15;
-export const EAT_FRUIT_THIRST = 0.1;
+/** Drink from a coconut with a hole. */
+export const EAT_DRINK_HOLE_THIRST = 0.2;
+export const EAT_DRINK_HOLE_HUNGER = 0.05;
+/** Coconut half: more food, a little drink. */
+export const EAT_COCONUT_HUNGER = 0.15;
+export const EAT_COCONUT_THIRST = 0.05;
+/** Juicy fruit / peeled pineapple / sliced melon / tan mushroom. */
+export const EAT_FRUIT_HUNGER = 0.1;
+export const EAT_FRUIT_THIRST = 0.15;
 /** Seconds to apply a typical 0.15 bite on the HUD. */
 export const EAT_RESTORE_SECONDS = 6;
 export const EAT_RESTORE_RATE = 0.15 / EAT_RESTORE_SECONDS;
 /** Locked crouch + eat/drink (no walking). */
 export const EAT_ACTION_SECONDS = 3;
-/** Cut pineapple with a held knife (eat is a second interact). */
+/** Peel / slice / open with a held knife. */
 export const CUT_SECONDS = 2.2;
-/** Crack a whole coconut with a hammer. */
+/** Split a coconut with a hammer. */
 export const BREAK_SECONDS = 2.2;
-export const EAT_PINEAPPLE_HUNGER = EAT_FRUIT_HUNGER;
-export const EAT_PINEAPPLE_THIRST = EAT_FRUIT_THIRST;
+/** Red mushroom: health empty→dead in this many seconds. */
+export const HEALTH_POISON_DRAIN = 1 / 8;
 /** Extra cooling while swimming inland water. */
 export const TEMP_SWIM_COOL = 1 / 35;
 

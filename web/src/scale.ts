@@ -126,6 +126,7 @@ export const PROP_SIZE: Record<string, SizeSpec> = {
   banana: { axis: "longest", meters: 0.18, min: 0.7, layFlat: true },
   lemon: { axis: "longest", meters: 0.075, min: 0.3 },
   watermelon: { axis: "longest", meters: 0.3, min: 0.7 },
+  tomato: { axis: "longest", meters: 0.08, min: 0.32 },
   fish: { axis: "longest", meters: 0.35, min: 0.38, layFlat: true },
   bow: { axis: "height", meters: 0.9 },
   arrow: { axis: "longest", meters: 0.55 },

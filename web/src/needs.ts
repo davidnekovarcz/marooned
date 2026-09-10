@@ -9,6 +9,7 @@ import {
   HUNGER_DRAIN_RUN,
   HUNGER_DRAIN_WALK,
   HEALTH_DRAIN_PER_EMPTY,
+  HEALTH_POISON_DRAIN,
   HEALTH_RESTORE,
   HUD_BAND_MID,
   HUD_TEMP_HOT_BLINK,
@@ -55,10 +56,15 @@ export class Needs {
   canSprint = true;
   private pendingHunger = 0;
   private pendingThirst = 0;
+  private poisoned = false;
 
   feed(hunger: number, thirst: number): void {
     this.pendingHunger += hunger;
     this.pendingThirst += thirst;
+  }
+
+  poison(): void {
+    this.poisoned = true;
   }
 
   snapshot(): NeedsState {
@@ -127,10 +133,14 @@ export class Needs {
     this.thirst = clamp01(this.thirst);
     this.hunger = clamp01(this.hunger);
     this.temperature = clamp01(this.temperature);
-    const emptyNeeds = (this.thirst <= 0 ? 1 : 0) + (this.hunger <= 0 ? 1 : 0);
-    if (emptyNeeds > 0) this.health -= HEALTH_DRAIN_PER_EMPTY * emptyNeeds * dt;
-    else if (this.thirst >= HUD_BAND_MID && this.hunger >= HUD_BAND_MID) {
-      this.health += HEALTH_RESTORE * dt;
+    if (this.poisoned) {
+      this.health -= HEALTH_POISON_DRAIN * dt;
+    } else {
+      const emptyNeeds = (this.thirst <= 0 ? 1 : 0) + (this.hunger <= 0 ? 1 : 0);
+      if (emptyNeeds > 0) this.health -= HEALTH_DRAIN_PER_EMPTY * emptyNeeds * dt;
+      else if (this.thirst >= HUD_BAND_MID && this.hunger >= HUD_BAND_MID) {
+        this.health += HEALTH_RESTORE * dt;
+      }
     }
     this.health = clamp01(this.health);
     this.energy = Math.min(energyMaxFromFood(this.thirst, this.hunger), Math.max(0, this.energy));
