@@ -2,7 +2,7 @@
 import { computed } from "vue";
 import { HUD_BAND_HIGH, HUD_BAND_LOW, HUD_BAND_MID, HUD_BLINK, HUD_ENERGY_MAX_BLINK, HUD_TEMP_HOT_BLINK } from "@/web/src/constants";
 import { t } from "@/web/src/i18n";
-import { useNeedsStore, useSessionStore } from "@/web/src/stores/game";
+import { useNeedsStore, usePlayerStore, useSessionStore } from "@/web/src/stores/game";
 
 type NeedId = "energy" | "thirst" | "hunger" | "temperature" | "wetness" | "health";
 type Tone = "ok" | "warn" | "alert" | "cold";
@@ -51,6 +51,7 @@ function tempTone(v: number): Tone {
 
 const session = useSessionStore();
 const needs = useNeedsStore();
+const player = usePlayerStore();
 
 const skySvg = computed(() => SKY_SVG[session.sky]);
 
@@ -86,7 +87,7 @@ function needBlink(id: NeedId): Blink {
 <template>
   <div id="hud-world" aria-hidden="true">
     <div id="hud-weather" :data-sky="session.sky" v-html="skySvg" />
-    <time id="hud-clock">{{ session.clock }}</time>
+    <time id="hud-clock" :data-cell="`${player.cellX},${player.cellZ}`">{{ session.clock }}</time>
   </div>
   <div id="hud-needs" aria-hidden="true">
     <div
