@@ -44,7 +44,7 @@ for (let dz = -2; dz <= 2; dz++) {
   }
 }
 
-type PlaceKind = ModelKind | "lilypad" | "torch" | "tomato";
+type PlaceKind = ModelKind | "lilypad" | "torch" | "tomato" | "fishCooked";
 
 export type AudioAnchor = { id: string; position: THREE.Vector3 };
 
@@ -54,7 +54,7 @@ export type ScatterResult = {
   items: Item[];
   lootSites: LootSites;
   spawn: (
-    kind: ModelKind | "torch" | "tomato",
+    kind: ModelKind | "torch" | "tomato" | "fishCooked",
     x: number,
     z: number,
     extra?: { yaw?: number; dx?: number; dz?: number },
@@ -76,7 +76,7 @@ function placeAtCell(
 ): void {
   obj.position.set(x * CELL + CELL / 2, 0, z * CELL + CELL / 2);
   obj.rotation.y = yaw;
-  const spec = specFor(kind);
+    const spec = specFor(kind === "fishCooked" ? "fish" : kind);
   fitAndPlant(obj, { ...spec, meters: spec.meters * vary, min: spec.min ? spec.min * vary : undefined }, y);
 }
 
@@ -212,7 +212,8 @@ export async function scatterProps(
     extra?: { tiltX?: number; tiltZ?: number; y?: number; dx?: number; dz?: number; vary?: boolean },
   ): THREE.Object3D | null => {
     if (!inBounds(x, z)) return null;
-    const src = templates[kind];
+    const srcKey: PlaceKind = kind === "fishCooked" ? "fish" : kind;
+    const src = templates[srcKey];
     if (!src) return null;
     const clone = src.clone(true);
     const vary = extra?.vary === false ? 1 : 0.92 + rng() * 0.16;
@@ -441,7 +442,7 @@ export async function scatterProps(
 
   scene.add(group);
   const spawn = (
-    kind: ModelKind | "torch" | "tomato",
+    kind: ModelKind | "torch" | "tomato" | "fishCooked",
     x: number,
     z: number,
     extra?: { yaw?: number; dx?: number; dz?: number },

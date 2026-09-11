@@ -60,7 +60,14 @@
     "arrow": "Arrow",
     "bridge": "Bridge",
     "lilypad": "Lily pad",
-    "torch": "Torch"
+    "torch": "Torch",
+    "stick": "Stick",
+    "stone": "Stone",
+    "fiber": "Fronds",
+    "leanTo": "Lean-to",
+    "pond": "Fresh water",
+    "shore": "Shore",
+    "fishCooked": "Cooked fish"
   },
   "food": {
     "prep": {
@@ -83,6 +90,10 @@
     "open": "Open [SPACE]",
     "pickup": "Pick up [SPACE]",
     "drop": "Drop [G]",
+    "fish": "Fish [SPACE]",
+    "light": "Light fire [SPACE]",
+    "cook": "Cook [SPACE]",
+    "build": "Raise lean-to [SPACE]",
     "blocked": {
       "rotten": "too rotten to eat",
       "needKnife": "need a knife",
@@ -111,6 +122,7 @@
       "thirst": "thirst",
       "hunger": "hunger",
       "temperature": "temperature",
+      "wetness": "wetness",
       "health": "health"
     }
   },

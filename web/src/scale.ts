@@ -128,6 +128,7 @@ export const PROP_SIZE: Record<string, SizeSpec> = {
   watermelon: { axis: "longest", meters: 0.3, min: 0.7 },
   tomato: { axis: "longest", meters: 0.08, min: 0.32 },
   fish: { axis: "longest", meters: 0.35, min: 0.38, layFlat: true },
+  fishCooked: { axis: "longest", meters: 0.35, min: 0.38, layFlat: true },
   bow: { axis: "height", meters: 0.9 },
   arrow: { axis: "longest", meters: 0.55 },
   bridge: { axis: "height", meters: 2.8 },
@@ -135,6 +136,10 @@ export const PROP_SIZE: Record<string, SizeSpec> = {
   bottle: { axis: "longest", meters: 0.28, min: 0.28 },
   tinder: { axis: "longest", meters: 0.18, min: 0.26 },
   torch: { axis: "longest", meters: 0.55, min: 0.55 },
+  stick: { axis: "longest", meters: 0.55, min: 0.5 },
+  stone: { axis: "longest", meters: 0.28, min: 0.32 },
+  fiber: { axis: "longest", meters: 0.42, min: 0.38 },
+  leanTo: { axis: "height", meters: 1.85 },
 };
 
 export const ANIMAL_SIZE = {

@@ -6,13 +6,30 @@ import {
   EAT_DRINK_HOLE_THIRST,
   EAT_FRUIT_HUNGER,
   EAT_FRUIT_THIRST,
+  FISH_COOKED_HUNGER,
+  FISH_COOKED_THIRST,
+  FISH_HUNGER,
+  DRINK_POND_THIRST,
+  LEAN_TO_FIBER,
+  LEAN_TO_STICKS,
 } from "@/web/src/constants";
 import { defaultPrep, isFoodKind, readFoodFreshness, readFoodPrep, type FoodPrep } from "@/web/src/food";
 import { Item } from "@/web/src/world/item";
 import { isHeldFood, type HeldKind, type WorldKind } from "@/web/src/world/kinds";
 
-export type ActionId = "eat" | "drink" | "peel" | "slice" | "split" | "open" | "pickup";
-export type BlockedId = "rotten" | "needKnife" | "needHammer" | "needKnifeOrHammer";
+export type ActionId =
+  | "eat"
+  | "drink"
+  | "peel"
+  | "slice"
+  | "split"
+  | "open"
+  | "pickup"
+  | "fish"
+  | "light"
+  | "cook"
+  | "build";
+export type BlockedId = "rotten" | "needKnife" | "needHammer" | "needKnifeOrHammer" | "needFire" | "needMats";
 
 export type ResolvedAction = {
   id: ActionId;
@@ -26,6 +43,11 @@ export type ResolvedAction = {
   drinkHeld?: boolean;
   poison?: boolean;
   keepHeld?: boolean;
+  pond?: boolean;
+  fish?: boolean;
+  light?: boolean;
+  cook?: boolean;
+  build?: boolean;
 };
 
 const PICKUP: Record<string, HeldKind> = {
@@ -45,6 +67,11 @@ const PICKUP: Record<string, HeldKind> = {
   shovel: "shovel",
   torch: "torch",
   tinder: "tinder",
+  stick: "stick",
+  stone: "stone",
+  fiber: "fiber",
+  fish: "fish",
+  fishCooked: "fishCooked",
 };
 
 const fruitEat: ResolvedAction = {
@@ -124,7 +151,46 @@ export class Actions {
     if (held === "mushroomRed") {
       return { id: "eat", eatHeld: true, poison: true, meal: { hunger: 0, thirst: 0 } };
     }
+    if (held === "fish") {
+      return { id: "eat", eatHeld: true, meal: { hunger: FISH_HUNGER, thirst: 0 } };
+    }
+    if (held === "fishCooked") {
+      return {
+        id: "eat",
+        eatHeld: true,
+        meal: { hunger: FISH_COOKED_HUNGER, thirst: FISH_COOKED_THIRST },
+      };
+    }
     return fruitEat;
+  }
+
+  context(opts: {
+    held: HeldKind | null;
+    inWater: boolean;
+    onShore: boolean;
+    nearLitFire: boolean;
+    nearUnlitFire: boolean;
+    sticks: number;
+    fiber: number;
+  }): ResolvedAction | undefined {
+    if (opts.held === "fish" && opts.nearLitFire) {
+      return { id: "cook", cook: true };
+    }
+    if (opts.nearUnlitFire && (opts.held === "tinder" || opts.held === "torch")) {
+      return { id: "light", light: true };
+    }
+    if (opts.held === "hammer" && !opts.inWater) {
+      if (opts.sticks >= LEAN_TO_STICKS && opts.fiber >= LEAN_TO_FIBER) {
+        return { id: "build", build: true };
+      }
+    }
+    if (opts.inWater && !isHeldFood(opts.held)) {
+      return { id: "drink", pond: true, meal: { hunger: 0, thirst: DRINK_POND_THIRST } };
+    }
+    if (opts.onShore && !opts.held) {
+      return { id: "fish", fish: true };
+    }
+    return undefined;
   }
 
   nearest(items: Item[], cellX: number, cellZ: number, held: HeldKind | null = null): Item | null {

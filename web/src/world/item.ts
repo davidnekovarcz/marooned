@@ -16,7 +16,7 @@ export type ItemSnapshot = {
 };
 
 export type SpawnFn = (
-  kind: ModelKind | "torch" | "tomato",
+  kind: ModelKind | "torch" | "tomato" | "fishCooked",
   x: number,
   z: number,
   extra?: { yaw?: number; dx?: number; dz?: number },

@@ -16,19 +16,23 @@ export type InventorySnapshot = {
 
 const FOOD_HOLD = { rot: new THREE.Euler(0.4, 0.2, 0.5) };
 const PINEAPPLE_HOLD = { rot: new THREE.Euler(0.35, 0.15, 0.45) };
-const TOOL_HOLD: Record<"knife" | "hammer" | "axe" | "shovel" | "torch", { length: number; rot: THREE.Euler }> = {
+const TOOL_HOLD: Record<
+  "knife" | "hammer" | "axe" | "shovel" | "torch" | "stick" | "stone" | "fiber" | "tinder",
+  { length: number; rot: THREE.Euler }
+> = {
   knife: { length: 0.28, rot: new THREE.Euler(0.2, 0.9, 1.2) },
   hammer: { length: 0.36, rot: new THREE.Euler(0.15, 0.7, 1.05) },
   axe: { length: 0.42, rot: new THREE.Euler(0.12, 0.65, 1.08) },
   shovel: { length: 0.48, rot: new THREE.Euler(0.1, 0.6, 1.05) },
   torch: { length: 0.38, rot: new THREE.Euler(0.12, 0.65, 1.1) },
+  stick: { length: 0.4, rot: new THREE.Euler(0.15, 0.7, 1.05) },
+  stone: { length: 0.2, rot: new THREE.Euler(0.3, 0.4, 0.5) },
+  fiber: { length: 0.26, rot: new THREE.Euler(0.4, 0.2, 0.5) },
+  tinder: { length: 0.16, rot: new THREE.Euler(0.4, 0.2, 0.5) },
 };
 
 function poseFor(kind: HeldKind): { length: number | null; rot: THREE.Euler } {
-  if (kind === "knife" || kind === "hammer" || kind === "axe" || kind === "shovel" || kind === "torch") {
-    return TOOL_HOLD[kind];
-  }
-  if (kind === "tinder") return { length: 0.16, rot: FOOD_HOLD.rot };
+  if (kind in TOOL_HOLD) return TOOL_HOLD[kind as keyof typeof TOOL_HOLD];
   if (kind === "pineapple") return { length: null, rot: PINEAPPLE_HOLD.rot };
   return { length: null, rot: FOOD_HOLD.rot };
 }
@@ -174,6 +178,18 @@ export class Inventory {
 
   isHoldingFood(): boolean {
     return isHeldFood(this.heldKind) && this.tool !== null;
+  }
+
+  relabelHeld(kind: HeldKind): void {
+    if (!this.tool) return;
+    this.heldKind = kind;
+  }
+
+  clearPocket(slot: PocketSlot): void {
+    const item = this.pockets[slot];
+    if (!item) return;
+    item.mesh.removeFromParent();
+    this.pockets[slot] = null;
   }
 
   private hideInPocket(slot: PocketSlot, item: PocketItem): void {

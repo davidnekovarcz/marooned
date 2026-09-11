@@ -67,6 +67,46 @@ PACKS = [
         ],
         "extract_zip": True,
     },
+    {
+        "slug": "rain-loopable",
+        "page": "https://opengameart.org/content/rain-loopable",
+        "license": "CC0",
+        "author": "Ylmir",
+        "files": [
+            "https://opengameart.org/sites/default/files/Rain%20OGG.zip",
+        ],
+        "extract_zip": True,
+    },
+    {
+        "slug": "fire-crackling",
+        "page": "https://opengameart.org/content/fire-crackling",
+        "license": "CC0",
+        "author": "AntumDeluge",
+        "files": [
+            "https://opengameart.org/sites/default/files/fire-1_0.ogg",
+        ],
+        "extract_zip": False,
+    },
+    {
+        "slug": "fireplace-sound-loop",
+        "page": "https://opengameart.org/content/fireplace-sound-loop",
+        "license": "CC0",
+        "author": "PagDev",
+        "files": [
+            "https://opengameart.org/sites/default/files/fire.wav",
+        ],
+        "extract_zip": False,
+    },
+    {
+        "slug": "water-splash-slime-sfx",
+        "page": "https://opengameart.org/content/40-cc0-water-splash-slime-sfx",
+        "license": "CC0",
+        "author": "rubberduck",
+        "files": [
+            "https://opengameart.org/sites/default/files/water-splash-slime-sfx.zip",
+        ],
+        "extract_zip": True,
+    },
 ]
 
 

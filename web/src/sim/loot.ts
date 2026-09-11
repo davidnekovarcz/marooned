@@ -26,7 +26,7 @@ export type LootSites = {
   bush: Cell[];
 };
 
-export type LootKind = FoodKind | ToolKind;
+export type LootKind = FoodKind | ToolKind | "stick" | "stone" | "fiber";
 
 type SiteKey = keyof LootSites;
 
@@ -39,7 +39,7 @@ type FoodSpec = {
 };
 
 type ToolSpec = {
-  kind: ToolKind;
+  kind: ToolKind | "stick" | "stone" | "fiber";
   count: number;
   sites: SiteKey[];
 };
@@ -63,6 +63,12 @@ const TOOLS: ToolSpec[] = [
   { kind: "shovel", count: 1, sites: ["hut", "wreck"] },
   { kind: "axe", count: 1, sites: ["forest", "hut"] },
   { kind: "torch", count: 1, sites: ["hut", "boat"] },
+];
+
+const RESOURCES: ToolSpec[] = [
+  { kind: "stick", count: 8, sites: ["forest", "grove", "boat"] },
+  { kind: "stone", count: 5, sites: ["wreck", "forest", "hut"] },
+  { kind: "fiber", count: 6, sites: ["bush", "palm"] },
 ];
 
 /** Timers only — freshness/prep live on Item. */
@@ -145,7 +151,7 @@ export class Loot {
         });
       }
     }
-    for (const spec of TOOLS) {
+    for (const spec of [...TOOLS, ...RESOURCES]) {
       for (let i = 0; i < spec.count; i++) {
         const live: Live = {
           kind: spec.kind,
@@ -154,7 +160,7 @@ export class Loot {
           respawn: true,
           cell: null,
           state: "waiting",
-          age: TOOL_RESPAWN_SECONDS,
+          age: TOOLS.some((it) => it.kind === spec.kind) ? TOOL_RESPAWN_SECONDS : 0,
           item: null,
         };
         this.lives.push(live);

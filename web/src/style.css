@@ -175,6 +175,11 @@ button.gear-slot:hover {
   color: #dce6f5;
 }
 
+#hud-weather[data-sky="rain"],
+#hud-weather[data-sky="storm"] {
+  color: #c5d8ee;
+}
+
 #hud-weather svg {
   display: block;
   width: 100%;
@@ -234,6 +239,15 @@ button.gear-slot:hover {
 
 .need[data-need="thirst"][data-tone="ok"] .need-fill {
   background: #4aa7e0;
+}
+
+.need[data-need="wetness"][data-tone="ok"] .need-fill {
+  background: #7ec8e8;
+}
+
+.need[data-need="wetness"][data-tone="warn"] .need-fill,
+.need[data-need="wetness"][data-tone="alert"] .need-fill {
+  background: #5aa0d4;
 }
 
 .need[data-need="hunger"][data-tone="ok"] .need-fill {

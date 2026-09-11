@@ -82,6 +82,25 @@ export function isOceanCell(x: number, z: number, biomes: Uint8Array): boolean {
   return biomes[cellIndex(x, z)] === Biome.Water && cellCenterDist(x, z) >= ISLAND_RADIUS;
 }
 
+/** Pond, river, or open sea next to this land cell. */
+export function isShore(x: number, z: number, biomes: Uint8Array): boolean {
+  if (!inBounds(x, z)) return false;
+  if (!isLand(biomes[cellIndex(x, z)] as Biome)) return false;
+  const dirs: [number, number][] = [
+    [1, 0],
+    [-1, 0],
+    [0, 1],
+    [0, -1],
+  ];
+  for (const [dx, dz] of dirs) {
+    const nx = x + dx;
+    const nz = z + dz;
+    if (!inBounds(nx, nz)) continue;
+    if (biomes[cellIndex(nx, nz)] === Biome.Water) return true;
+  }
+  return false;
+}
+
 /** Pond and river — not the open sea. */
 export function isInlandWater(x: number, z: number, biomes: Uint8Array): boolean {
   if (!inBounds(x, z)) return false;

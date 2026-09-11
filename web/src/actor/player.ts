@@ -108,6 +108,15 @@ export class GridPlayer {
     return true;
   }
 
+  beginWork(seconds: number, onDone: () => void): boolean {
+    if (!this.alive || this.busy) return false;
+    this.stopMoving();
+    this.busyAction.beginWork(seconds, onDone, this.inventory.heldMesh);
+    this.gait = this.inWater() ? "swim" : "idle";
+    this.visual.setGait(this.gait);
+    return true;
+  }
+
   private snap(): void {
     this.mesh.position.set(this.cellX * CELL + CELL / 2, 0, this.cellZ * CELL + CELL / 2);
   }

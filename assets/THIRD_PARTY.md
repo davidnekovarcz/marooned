@@ -7,7 +7,7 @@ Everything under `assets/vendor/` is **not original Marooned art**. Keep this fi
 | [Kenney](https://kenney.nl) | CC0 | All packs in `vendor/kenney/` |
 | [Quaternius](https://quaternius.com) | CC0 | Packs in `vendor/quaternius/` (nature, megakits, UAL, farm animals, ultimate animated animals, animated fish) |
 | [Poly Haven](https://polyhaven.com/license) | CC0 | `vendor/polyhaven/` HDRI |
-| [OpenGameArt](https://opengameart.org) | CC0 | Audio packs in `vendor/opengameart/` (ocean, river, birds, sheep, creature SFX) |
+| [OpenGameArt](https://opengameart.org) | CC0 | Audio packs in `vendor/opengameart/` (ocean, river, rain, fire, splash, birds, sheep, creature SFX) |
 
 Credit is not required for CC0; credit Kenney / Quaternius / Poly Haven / OpenGameArt authors in the game credits anyway.
 
