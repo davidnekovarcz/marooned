@@ -3,7 +3,7 @@ import { CELL, SOUND_3D } from "@/web/src/constants";
 import type { CoastField } from "@/web/src/island";
 import { cellIndex } from "@/web/src/island";
 import { SOUND_URLS } from "@/web/src/models";
-import type { GridPlayer } from "@/web/src/player";
+import type { GridPlayer } from "@/web/src/actor/player";
 
 const LANDMARK_HEAR = 20 * CELL;
 const OCEAN_HEAR = 42 * CELL;
@@ -140,6 +140,7 @@ export function setupIslandAudio(
   player: GridPlayer,
   anchors: { id: string; position: THREE.Vector3 }[],
   coast: CoastField,
+  onUnlocked?: () => void,
 ): { update: () => void; playMeal: (kind: MealKind) => void; stopMeal: () => void; playPickup: () => void } {
   const listener = new THREE.AudioListener();
   player.mesh.add(listener);
@@ -181,7 +182,6 @@ export function setupIslandAudio(
     playNextEatClip();
   };
 
-  const hint = document.getElementById("hint");
   const unlock = async () => {
     window.removeEventListener("pointerdown", unlock);
     window.removeEventListener("keydown", unlock);
@@ -222,10 +222,7 @@ export function setupIslandAudio(
     scene.add(group);
 
     if (pendingMeal) startMeal();
-
-    if (hint) {
-      hint.textContent = "+ / − zoom. WASD walk. SHIFT run.";
-    }
+    onUnlocked?.();
   };
 
   window.addEventListener("pointerdown", unlock);
