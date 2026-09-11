@@ -69,6 +69,7 @@ export class Atmosphere {
   private readonly flies: Cloud;
   private readonly glints: Cloud;
   private readonly torchLight: THREE.PointLight;
+  private readonly torchFill: THREE.PointLight;
   private readonly fireLights: THREE.PointLight[] = [];
   private readonly rainTex: THREE.CanvasTexture;
   private readonly fireTex: THREE.CanvasTexture;
@@ -158,8 +159,10 @@ export class Atmosphere {
       3,
     );
 
-    this.torchLight = new THREE.PointLight(0xffb45a, 0, 11, 1.6);
+    this.torchLight = new THREE.PointLight(0xffc078, 0, 18, 1.1);
     this.torchLight.castShadow = false;
+    this.torchFill = new THREE.PointLight(0xffb45a, 0, 32, 1);
+    this.torchFill.castShadow = false;
     this.group.add(
       this.rain.points,
       this.fire.points,
@@ -167,6 +170,7 @@ export class Atmosphere {
       this.flies.points,
       this.glints.points,
       this.torchLight,
+      this.torchFill,
     );
     this.scene.add(this.group);
 
@@ -379,12 +383,16 @@ export class Atmosphere {
 
   private updateLights(torch: THREE.Vector3 | null, elapsed: number, flash: number): void {
     if (torch) {
-      const flicker = 1.6 + Math.sin(elapsed * 17) * 0.22 + Math.sin(elapsed * 41) * 0.12;
+      const flicker = 8.6 + Math.sin(elapsed * 17) * 0.9 + Math.sin(elapsed * 41) * 0.45;
       this.torchLight.position.copy(torch);
       this.torchLight.position.y += 0.22;
-      this.torchLight.intensity = flicker + flash * 0.4;
+      this.torchLight.intensity = flicker + flash * 0.6;
+      this.torchFill.position.copy(torch);
+      this.torchFill.position.y += 0.12;
+      this.torchFill.intensity = 2.5 + flash * 0.35;
     } else {
       this.torchLight.intensity = 0;
+      this.torchFill.intensity = 0;
     }
     const lit = this.hearths.filter((h) => h.lit);
     for (let i = 0; i < this.fireLights.length; i++) {
