@@ -17,14 +17,14 @@ const SKY_SVG = {
 
 const NEED_SVG: Record<NeedId, string> = {
   energy: `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M13.2 2 6 13.2h5.1L9.8 22 19 10.2h-5.4L13.2 2Z"/></svg>`,
-  thirst: `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 3.2c0 0-6.2 7.1-6.2 11.2A6.2 6.2 0 0 0 12 20.6a6.2 6.2 0 0 0 6.2-6.2C18.2 10.3 12 3.2 12 3.2Z"/></svg>`,
+  thirst: `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M9.2 2.4h5.6v2.1l1.5 2.4c.4.7.6 1.5.6 2.3V18.4a3.4 3.4 0 0 1-3.4 3.4h-3.6A3.4 3.4 0 0 1 7.1 18.4V9.2c0-.8.2-1.6.6-2.3l1.5-2.4V2.4Z"/><path d="M10 2.4h4v1.5h-4Z" opacity=".9"/><path d="M10.2 11.4h3.6v7.2c0 .7-.6 1.2-1.3 1.2h-1c-.7 0-1.3-.5-1.3-1.2v-7.2Z" opacity=".4"/></svg>`,
   hunger: `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M14.2 2.2c1.3.15 2.6.9 3.3 2.1-1.6.05-3 .7-3.8 1.7-.7-1.2-.7-2.6.5-3.8Z"/><path d="M12.15 6.35c.2-1.55.85-2.7 1.85-3.45-.25 1.45-.55 2.45-1.85 3.45Z"/><path d="M12 8.55c-1.55-1.85-4.85-1.45-5.9 1.35-1.05 2.85.15 6.85 2.45 9.15 1.25 1.25 2.35 1.55 3.45 1.55s2.2-.3 3.45-1.55c2.3-2.3 3.5-6.3 2.45-9.15-1.05-2.8-4.35-3.2-5.9-1.35Z"/></svg>`,
   temperature: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M10 13.4V6.6a2 2 0 1 1 4 0v6.8a3.4 3.4 0 1 1-4 0Z"/><path d="M12 15.6V18"/></svg>`,
   wetness: `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 3.4s-6 6.8-6 10.4a6 6 0 1 0 12 0C18 10.2 12 3.4 12 3.4Z"/></svg>`,
   health: `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 20.2 4.8 13A4.6 4.6 0 0 1 12 6.8a4.6 4.6 0 0 1 7.2 6.2L12 20.2Z"/></svg>`,
 };
 
-const NEED_ORDER: NeedId[] = ["energy", "thirst", "hunger", "temperature", "wetness", "health"];
+const NEED_ORDER: NeedId[] = ["energy", "wetness", "hunger", "thirst", "temperature", "health"];
 
 function clamp01(n: number): number {
   return Math.min(1, Math.max(0, n));
