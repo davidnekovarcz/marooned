@@ -18,6 +18,7 @@ import {
   cellIndex,
   inBounds,
   isLand,
+  isOceanCell,
   nearestCell,
 } from "@/web/src/island";
 import { loadGlb, loadObj } from "@/web/src/loaders";
@@ -224,8 +225,18 @@ export async function scatterProps(
     if (extra?.tiltZ) clone.rotation.z += extra.tiltZ;
     if (extra?.tiltX || extra?.tiltZ) sitOnGround(clone);
     group.add(clone);
+    if (kind === "campfire" || kind === "campfireStones") nestLogs(clone, x, z, yaw);
     items.push(new Item(kind, x, z, clone));
     return clone;
+  };
+
+  const nestLogs = (ring: THREE.Object3D, x: number, z: number, yaw: number): void => {
+    const src = templates.campfireLogs;
+    if (!src) return;
+    const logs = src.clone(true);
+    placeAtCell(logs, "campfireLogs", x, z, yaw, GROUND_Y, 0.72);
+    group.add(logs);
+    ring.attach(logs);
   };
 
   const wreck = nearestCell(
@@ -416,7 +427,21 @@ export async function scatterProps(
   tryPlace("bushDetailed", grass, 22, (x, z) => !inForest(x, z), "none", collectBush);
   tryPlace("natureLog", grass, 3, (x, z) => inForest(x, z), "walk");
   tryPlace("logLarge", grass, 2, (x, z) => inForest(x, z), "walk");
-  tryPlace("campfireStones", sand, 2, () => true, "none");
+
+  const oceanNearby = (x: number, z: number, range = 2): boolean => {
+    for (let dz = -range; dz <= range; dz++) {
+      for (let dx = -range; dx <= range; dx++) {
+        if (isOceanCell(x + dx, z + dz, biomes)) return true;
+      }
+    }
+    return false;
+  };
+  const forestRim = (x: number, z: number): boolean => {
+    const d = Math.hypot(x - forestX, z - forestZ);
+    return d >= 7 && d <= 12;
+  };
+  tryPlace("campfireStones", grass, 1, (x, z) => forestRim(x, z), "walk");
+  tryPlace("campfireStones", sand, 1, (x, z) => !oceanNearby(x, z, 2), "walk");
 
   for (let z = forestZ - 12; z <= forestZ + 12; z++) {
     for (let x = forestX - 12; x <= forestX + 12; x++) {

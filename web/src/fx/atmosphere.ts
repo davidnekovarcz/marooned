@@ -243,7 +243,7 @@ export class Atmosphere {
       this.fire.extra[i * 4] = Math.random();
       this.fire.extra[i * 4 + 1] = 0.55 + Math.random() * 1.1;
       this.fire.extra[i * 4 + 2] = Math.random() * Math.PI * 2;
-      this.fire.extra[i * 4 + 3] = 0.12 + Math.random() * 0.22;
+      this.fire.extra[i * 4 + 3] = 0.04 + Math.random() * 0.08;
     }
   }
 
@@ -319,10 +319,10 @@ export class Atmosphere {
         if (this.fire.extra[ex]! > 1) this.fire.extra[ex] = 0;
         const u = this.fire.extra[ex]!;
         const spin = this.fire.extra[ex + 2]!;
-        const rad = this.fire.extra[ex + 3]! * (1 - u);
-        this.fire.pos[ix] = origin.x + Math.cos(spin + elapsed * 2.2) * rad;
-        this.fire.pos[ix + 1] = origin.y + 0.2 + u * 1.35;
-        this.fire.pos[ix + 2] = origin.z + Math.sin(spin + elapsed * 2.2) * rad;
+        const rad = this.fire.extra[ex + 3]! * (1 - u * 0.35);
+        this.fire.pos[ix] = origin.x + Math.cos(spin + elapsed * 0.7) * rad;
+        this.fire.pos[ix + 1] = origin.y + 0.08 + u * 0.4;
+        this.fire.pos[ix + 2] = origin.z + Math.sin(spin + elapsed * 0.7) * rad;
       }
     }
     (this.fire.geo.attributes.position as THREE.BufferAttribute).needsUpdate = true;
