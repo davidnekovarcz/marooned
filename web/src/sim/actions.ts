@@ -186,10 +186,10 @@ export class Actions {
       }
     }
     // Pond/river first so a coconut at your feet doesn't steal Drink.
-    if (opts.atFreshWater && !isHeldFood(opts.held)) {
+    if (opts.atFreshWater) {
       return { id: "drink", pond: true, meal: { hunger: 0, thirst: DRINK_POND_THIRST } };
     }
-    if (opts.onShore && !opts.held && !opts.atFreshWater) {
+    if (opts.onShore && !opts.held) {
       return { id: "fish", fish: true };
     }
     return undefined;

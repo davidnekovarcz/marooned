@@ -1,11 +1,12 @@
 import * as THREE from "three";
-import { CELL, GROUND_Y } from "@/web/src/constants";
+import { CELL, GROUND_Y, POND_RADIUS, POND_X, POND_Z } from "@/web/src/constants";
 import type { Camp, Hearth } from "@/web/src/sim/camp";
 
 const RAIN_COUNT = 1600;
 const FIRE_COUNT = 70;
 const STEAM_COUNT = 48;
 const FLY_COUNT = 28;
+const GLINT_COUNT = 36;
 
 function makeCircleTexture(color: string, size = 32): THREE.CanvasTexture {
   const c = document.createElement("canvas");
@@ -66,6 +67,7 @@ export class Atmosphere {
   private readonly fire: Cloud;
   private readonly steam: Cloud;
   private readonly flies: Cloud;
+  private readonly glints: Cloud;
   private readonly torchLight: THREE.PointLight;
   private readonly fireLights: THREE.PointLight[] = [];
   private readonly rainTex: THREE.CanvasTexture;
@@ -141,10 +143,31 @@ export class Atmosphere {
       }),
       4,
     );
+    const glintTex = makeCircleTexture("rgba(210,245,255,1)", 24);
+    this.glints = cloud(
+      GLINT_COUNT,
+      new THREE.PointsMaterial({
+        map: glintTex,
+        transparent: true,
+        depthWrite: false,
+        blending: THREE.AdditiveBlending,
+        size: 0.22,
+        opacity: 0.55,
+        sizeAttenuation: true,
+      }),
+      3,
+    );
 
     this.torchLight = new THREE.PointLight(0xffb45a, 0, 11, 1.6);
     this.torchLight.castShadow = false;
-    this.group.add(this.rain.points, this.fire.points, this.steam.points, this.flies.points, this.torchLight);
+    this.group.add(
+      this.rain.points,
+      this.fire.points,
+      this.steam.points,
+      this.flies.points,
+      this.glints.points,
+      this.torchLight,
+    );
     this.scene.add(this.group);
 
     for (let i = 0; i < 4; i++) {
@@ -156,6 +179,7 @@ export class Atmosphere {
 
     this.seedRain();
     this.seedFlies();
+    this.seedGlints();
   }
 
   attachIsland(mesh: THREE.Mesh): void {
@@ -196,6 +220,7 @@ export class Atmosphere {
     this.updateFire(dt, elapsed);
     this.updateSteam(dt, player);
     this.updateFlies(dt, player, elapsed);
+    this.updateGlints(elapsed);
     this.updateLights(torch, elapsed, flash);
     if (this.island) {
       const w = this.wet;
@@ -229,6 +254,28 @@ export class Atmosphere {
       this.flies.extra[i * 4 + 2] = 1.5 + Math.random() * 3.5;
       this.flies.extra[i * 4 + 3] = 0.6 + Math.random() * 1.4;
     }
+  }
+
+  private seedGlints(): void {
+    for (let i = 0; i < GLINT_COUNT; i++) {
+      this.glints.extra[i * 3] = Math.random() * Math.PI * 2;
+      this.glints.extra[i * 3 + 1] = 0.4 + Math.random() * 1.2;
+      this.glints.extra[i * 3 + 2] = Math.random() * POND_RADIUS;
+    }
+  }
+
+  private updateGlints(elapsed: number): void {
+    const mat = this.glints.points.material as THREE.PointsMaterial;
+    mat.opacity = 0.35 + 0.25 * Math.sin(elapsed * 2.4);
+    mat.size = 0.18 + 0.08 * Math.sin(elapsed * 5.1);
+    for (let i = 0; i < GLINT_COUNT; i++) {
+      const a = this.glints.extra[i * 3]! + elapsed * 0.15 * this.glints.extra[i * 3 + 1]!;
+      const r = this.glints.extra[i * 3 + 2]!;
+      this.glints.pos[i * 3] = POND_X + Math.cos(a) * r;
+      this.glints.pos[i * 3 + 1] = GROUND_Y + 0.08 + Math.abs(Math.sin(elapsed * 3 + i)) * 0.12;
+      this.glints.pos[i * 3 + 2] = POND_Z + Math.sin(a) * r * 0.85;
+    }
+    (this.glints.geo.attributes.position as THREE.BufferAttribute).needsUpdate = true;
   }
 
   private updateRain(dt: number, player: THREE.Vector3): void {

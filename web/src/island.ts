@@ -118,7 +118,15 @@ export function isInlandWater(x: number, z: number, biomes: Uint8Array): boolean
 
 /** Dry bank of the pond or river — kneel and drink without swimming. */
 export function isPondShore(x: number, z: number, biomes: Uint8Array): boolean {
-  return landTouches(x, z, biomes, (nx, nz) => isInlandWater(nx, nz, biomes));
+  if (!inBounds(x, z)) return false;
+  if (!isLand(biomes[cellIndex(x, z)] as Biome)) return false;
+  for (let dz = -2; dz <= 2; dz++) {
+    for (let dx = -2; dx <= 2; dx++) {
+      if (dx === 0 && dz === 0) continue;
+      if (isInlandWater(x + dx, z + dz, biomes)) return true;
+    }
+  }
+  return false;
 }
 
 export type CoastField = {

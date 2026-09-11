@@ -282,6 +282,9 @@ export async function scatterProps(
     add("bedroll", hut.x + 1, hut.z - 1, rng() * 3);
     add("bucket", hut.x - 1, hut.z + 1, rng() * 4);
     add("tinder", hut.x + 1, hut.z + 1, rng() * 2);
+    add("stick", hut.x - 3, hut.z, rng() * 2);
+    add("stick", hut.x + 3, hut.z + 1, rng() * 2);
+    add("fiber", hut.x + 2, hut.z + 1, rng() * 3);
     add("bow", hut.x + 1, hut.z + 2, 0.7);
     add("arrow", hut.x + 2, hut.z + 2, 1.2);
     lootSites.hut.push(...collectAround(biomes, blocked, hut.x, hut.z, 2, 2, 2));

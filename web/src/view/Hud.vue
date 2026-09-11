@@ -52,6 +52,7 @@ function tempTone(v: number): Tone {
 const session = useSessionStore();
 const needs = useNeedsStore();
 const player = usePlayerStore();
+const debugCells = new URLSearchParams(window.location.search).has("debug");
 
 const skySvg = computed(() => SKY_SVG[session.sky]);
 
@@ -87,7 +88,9 @@ function needBlink(id: NeedId): Blink {
 <template>
   <div id="hud-world" aria-hidden="true">
     <div id="hud-weather" :data-sky="session.sky" v-html="skySvg" />
-    <time id="hud-clock" :data-cell="`${player.cellX},${player.cellZ}`">{{ session.clock }}</time>
+    <time id="hud-clock" :data-cell="`${player.cellX},${player.cellZ}`">
+      {{ session.clock }}<template v-if="debugCells"> {{ player.cellX }},{{ player.cellZ }}</template>
+    </time>
   </div>
   <div id="hud-needs" aria-hidden="true">
     <div
