@@ -185,6 +185,7 @@ export class Game {
       wildlife.update(dt);
       loot.update(dt, player.cellX, player.cellZ);
       weather.update(dt, day.t);
+      if (weather.raining) camp.douseExposed();
       const daytime = isDaytime(day.t);
       const sheltered = camp.covered(player.cellX, player.cellZ);
       const fireWarmth = camp.warmthAt(player.cellX, player.cellZ);
@@ -233,6 +234,8 @@ export class Game {
           atFreshWater: inland || isPondShore(player.cellX, player.cellZ, biomes),
           nearLitFire: Boolean(hearth?.lit),
           nearUnlitFire: Boolean(hearth && !hearth.lit),
+          raining: weather.raining,
+          fireSheltered: hearth ? camp.covered(hearth.item.cellX, hearth.item.cellZ) : false,
           sticks: countNearby("stick", player, scattered.items, player.cellX, player.cellZ),
           fiber: countNearby("fiber", player, scattered.items, player.cellX, player.cellZ),
         });
@@ -245,7 +248,7 @@ export class Game {
           const inv = player.inventory.snapshot();
           ui.promptPrep = inv.heldPrep;
           ui.promptFreshness = inv.heldFreshness;
-        } else if (context?.light && hearth) {
+        } else if (context?.id === "light" && hearth) {
           applyAction(context, hearth.item, hearth.item.kind);
         } else if (context?.build) {
           applyAction(context, null, "leanTo");

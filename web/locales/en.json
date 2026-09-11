@@ -98,7 +98,8 @@
       "rotten": "too rotten to eat",
       "needKnife": "need a knife",
       "needHammer": "need a hammer",
-      "needKnifeOrHammer": "need a knife or hammer"
+      "needKnifeOrHammer": "need a knife or hammer",
+      "tooWet": "too wet to light"
     }
   },
   "gear": {

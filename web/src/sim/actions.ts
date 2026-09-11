@@ -29,7 +29,7 @@ export type ActionId =
   | "light"
   | "cook"
   | "build";
-export type BlockedId = "rotten" | "needKnife" | "needHammer" | "needKnifeOrHammer" | "needFire" | "needMats";
+export type BlockedId = "rotten" | "needKnife" | "needHammer" | "needKnifeOrHammer" | "needFire" | "needMats" | "tooWet";
 
 export type ResolvedAction = {
   id: ActionId;
@@ -171,6 +171,8 @@ export class Actions {
     atFreshWater: boolean;
     nearLitFire: boolean;
     nearUnlitFire: boolean;
+    raining: boolean;
+    fireSheltered: boolean;
     sticks: number;
     fiber: number;
   }): ResolvedAction | undefined {
@@ -178,6 +180,7 @@ export class Actions {
       return { id: "cook", cook: true };
     }
     if (opts.nearUnlitFire && (opts.held === "tinder" || opts.held === "torch")) {
+      if (opts.raining && !opts.fireSheltered) return { id: "light", light: true, blocked: "tooWet" };
       return { id: "light", light: true };
     }
     if (opts.held === "hammer" && !opts.inWater) {

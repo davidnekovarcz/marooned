@@ -65,6 +65,19 @@ export class Camp {
     hearth.lit = true;
   }
 
+  douse(hearth: Hearth): void {
+    hearth.lit = false;
+  }
+
+  /** Rain kills unsheltered flames. A lean-to over the hearth keeps it lit. */
+  douseExposed(): void {
+    for (const h of this.hearths) {
+      if (!h.lit) continue;
+      if (this.covered(h.item.cellX, h.item.cellZ)) continue;
+      this.douse(h);
+    }
+  }
+
   addShelter(x: number, z: number): void {
     this.shelters.push({ x, z });
   }
