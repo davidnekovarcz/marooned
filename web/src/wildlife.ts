@@ -23,7 +23,10 @@ const DIRS: [number, number][] = [
 
 type Template = { root: THREE.Object3D; clips: THREE.AnimationClip[] };
 
+export type WildlifeKind = "fox" | "pig" | "deer";
+
 type Critter = {
+  kind: WildlifeKind | "fish";
   root: THREE.Object3D;
   mixer: THREE.AnimationMixer;
   idle: THREE.AnimationAction;
@@ -119,7 +122,14 @@ async function templateFromGltf(url: string, spec: SizeSpec): Promise<Template> 
   return { root: loaded.root, clips: loaded.animations };
 }
 
-function spawn(template: Template, x: number, z: number, y: number, aquatic: boolean): Critter {
+function spawn(
+  template: Template,
+  kind: Critter["kind"],
+  x: number,
+  z: number,
+  y: number,
+  aquatic: boolean,
+): Critter {
   const root = cloneSkinned(template.root);
   root.traverse((obj) => {
     obj.frustumCulled = false;
@@ -143,6 +153,7 @@ function spawn(template: Template, x: number, z: number, y: number, aquatic: boo
     walk.setEffectiveWeight(0);
   }
   return {
+    kind,
     root,
     mixer,
     idle,
@@ -182,7 +193,10 @@ export async function spawnWildlife(
   scene: THREE.Scene,
   biomes: Uint8Array,
   blocked: Uint8Array,
-): Promise<{ update: (dt: number) => void }> {
+): Promise<{
+  update: (dt: number) => void;
+  nearest: (cellX: number, cellZ: number, max?: number) => WildlifeKind | null;
+}> {
   const rng = mulberry32(`${SEED}-wildlife`);
   const group = new THREE.Group();
   group.name = "wildlife";
@@ -212,11 +226,11 @@ export async function spawnWildlife(
   paintFish(fish3.root, 0xe07020);
 
   const critters: Critter[] = [];
-  const placeLand = (template: Template, count: number) => {
+  const placeLand = (template: Template, kind: WildlifeKind, count: number) => {
     for (let n = 0; n < count; n++) {
       const cell = pickCell(rng, grass, (x, z) => canEnter(biomes, blocked, x, z) && isLand(biomes[cellIndex(x, z)] as Biome));
       if (!cell) continue;
-      const critter = spawn(template, cell[0], cell[1], GROUND_Y, false);
+      const critter = spawn(template, kind, cell[0], cell[1], GROUND_Y, false);
       group.add(critter.root);
       critters.push(critter);
     }
@@ -225,16 +239,16 @@ export async function spawnWildlife(
     for (let n = 0; n < count; n++) {
       const cell = pickCell(rng, pond, (x, z) => inPondCell(x, z));
       if (!cell) continue;
-      const critter = spawn(template, cell[0], cell[1], WATER_Y + 0.28, true);
+      const critter = spawn(template, "fish", cell[0], cell[1], WATER_Y + 0.28, true);
       group.add(critter.root);
       critters.push(critter);
     }
   };
 
-  placeLand(pig, 3);
+  placeLand(pig, "pig", 3);
   // Sheep/llama FBX cast shadows but meshes invisible — skip spawn; assets kept in models/scale.
-  placeLand(fox, 2);
-  placeLand(deer, 1);
+  placeLand(fox, "fox", 2);
+  placeLand(deer, "deer", 1);
   placeFish(fish1, 3);
   placeFish(fish2, 3);
   placeFish(fish3, 2);
@@ -246,6 +260,19 @@ export async function spawnWildlife(
   const waterOk = (x: number, z: number) => inPondCell(x, z);
 
   return {
+    nearest: (cellX: number, cellZ: number, max = 2): WildlifeKind | null => {
+      let best: WildlifeKind | null = null;
+      let bestD = max;
+      for (const critter of critters) {
+        if (critter.kind === "fish") continue;
+        const d = Math.max(Math.abs(cellX - critter.cellX), Math.abs(cellZ - critter.cellZ));
+        if (d <= bestD) {
+          best = critter.kind;
+          bestD = d;
+        }
+      }
+      return best;
+    },
     update: (dt: number) => {
       for (const critter of critters) {
         critter.mixer.update(dt);

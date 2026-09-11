@@ -264,12 +264,13 @@ export class Game {
         } else if (next && worldAction) {
           applyAction(worldAction, next, next.kind);
         } else {
+          const animal = wildlife.nearest(player.cellX, player.cellZ);
           currentItem = null;
           currentAction = null;
           ui.actionId = null;
           ui.actionBlocked = undefined;
           ui.nearbyItemId = null;
-          ui.promptKind = null;
+          ui.promptKind = animal;
         }
       }
 

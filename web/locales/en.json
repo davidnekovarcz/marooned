@@ -67,6 +67,9 @@
     "leanTo": "Lean-to",
     "pond": "Fresh water",
     "shore": "Shore",
+    "fox": "Fox",
+    "pig": "Pig",
+    "deer": "Deer",
     "fishCooked": "Cooked fish"
   },
   "food": {
