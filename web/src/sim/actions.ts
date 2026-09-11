@@ -168,6 +168,7 @@ export class Actions {
     held: HeldKind | null;
     inWater: boolean;
     onShore: boolean;
+    atFreshWater: boolean;
     nearLitFire: boolean;
     nearUnlitFire: boolean;
     sticks: number;
@@ -184,10 +185,11 @@ export class Actions {
         return { id: "build", build: true };
       }
     }
-    if (opts.inWater && !isHeldFood(opts.held)) {
+    // Pond/river first so a coconut at your feet doesn't steal Drink.
+    if (opts.atFreshWater && !isHeldFood(opts.held)) {
       return { id: "drink", pond: true, meal: { hunger: 0, thirst: DRINK_POND_THIRST } };
     }
-    if (opts.onShore && !opts.held) {
+    if (opts.onShore && !opts.held && !opts.atFreshWater) {
       return { id: "fish", fish: true };
     }
     return undefined;

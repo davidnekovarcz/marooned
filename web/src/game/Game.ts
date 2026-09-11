@@ -7,7 +7,15 @@ import { applyDayNight, createDayLights, DayClock, isDaytime } from "@/web/src/d
 import { Atmosphere } from "@/web/src/fx/atmosphere";
 import { buildGridOverlay } from "@/web/src/gridOverlay";
 import { Input } from "@/web/src/input/Input";
-import { buildBiomes, buildCoastField, buildIslandMesh, findSpawn, isInlandWater, isShore } from "@/web/src/island";
+import {
+  buildBiomes,
+  buildCoastField,
+  buildIslandMesh,
+  findSpawn,
+  isInlandWater,
+  isPondShore,
+  isShore,
+} from "@/web/src/island";
 import { Needs } from "@/web/src/needs";
 import { buildOcean } from "@/web/src/ocean";
 import { GridPlayer } from "@/web/src/actor/player";
@@ -217,10 +225,12 @@ export class Game {
         ui.promptKind = null;
       } else {
         const hearth = camp.nearestHearth(player.cellX, player.cellZ);
+        const inland = isInlandWater(player.cellX, player.cellZ, biomes);
         const context = actions.context({
           held: player.heldKind,
-          inWater: isInlandWater(player.cellX, player.cellZ, biomes),
+          inWater: inland,
           onShore: isShore(player.cellX, player.cellZ, biomes),
+          atFreshWater: inland || isPondShore(player.cellX, player.cellZ, biomes),
           nearLitFire: Boolean(hearth?.lit),
           nearUnlitFire: Boolean(hearth && !hearth.lit),
           sticks: countNearby("stick", player, scattered.items, player.cellX, player.cellZ),
@@ -229,18 +239,12 @@ export class Game {
         const heldMeal = actions.heldMeal(player.heldKind, player.heldMesh);
         const next = actions.nearest(scattered.items, player.cellX, player.cellZ, player.heldKind);
         const worldAction = next ? actions.world(next, player.heldKind) : undefined;
+        // Survival verbs beat loot at your feet (a coconut used to hide Drink / Fish / Light).
         if (context?.cook) {
           applyAction(context, null, player.heldKind);
           const inv = player.inventory.snapshot();
           ui.promptPrep = inv.heldPrep;
           ui.promptFreshness = inv.heldFreshness;
-        } else if (heldMeal) {
-          applyAction(heldMeal, null, player.heldKind);
-          const inv = player.inventory.snapshot();
-          ui.promptPrep = inv.heldPrep;
-          ui.promptFreshness = inv.heldFreshness;
-        } else if (next && worldAction) {
-          applyAction(worldAction, next, next.kind);
         } else if (context?.light && hearth) {
           applyAction(context, hearth.item, hearth.item.kind);
         } else if (context?.build) {
@@ -249,6 +253,13 @@ export class Game {
           applyAction(context, null, "pond");
         } else if (context?.fish) {
           applyAction(context, null, "shore");
+        } else if (heldMeal) {
+          applyAction(heldMeal, null, player.heldKind);
+          const inv = player.inventory.snapshot();
+          ui.promptPrep = inv.heldPrep;
+          ui.promptFreshness = inv.heldFreshness;
+        } else if (next && worldAction) {
+          applyAction(worldAction, next, next.kind);
         } else {
           currentItem = null;
           currentAction = null;
