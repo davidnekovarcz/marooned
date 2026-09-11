@@ -62,8 +62,16 @@ export const HUNGER_DRAIN_RUN = 1 / (7 * 60);
 
 /** Sprint in daylight: empty→hot in this many seconds. */
 export const TEMP_HEAT_RUN_DAY = 1 / 28;
-/** Idle at night: comfortable→cold in this many seconds. */
-export const TEMP_COOL_IDLE_NIGHT = 1 / 50;
+/** Idle at night: settle toward night comfort in about this many seconds. */
+export const TEMP_COOL_IDLE_NIGHT = 1 / 70;
+/** Clear night is chilly, not freezing. */
+export const TEMP_NIGHT_COMFORT = 0.34;
+/** Soaked clothes pull toward this in daylight. */
+export const TEMP_WET_DAY_FLOOR = 0.36;
+/** Soaked at night (no storm): shivering, not hypothermia. */
+export const TEMP_WET_NIGHT_FLOOR = 0.2;
+/** Soaked in an unsheltered night storm. */
+export const TEMP_WET_STORM_FLOOR = 0.12;
 /** Idle in daylight: return to 50% in about this many seconds from full heat. */
 export const TEMP_IDLE_DAY_RECOVER = 1 / 55;
 /** Walking: slower drift back to 50%. */
@@ -115,9 +123,9 @@ export const BREAK_SECONDS = 2.2;
 export const HEALTH_POISON_DRAIN = 1 / 8;
 /** Extra cooling while swimming inland water. */
 export const TEMP_SWIM_COOL = 1 / 35;
-/** Wet clothes pull temperature down (stronger at night). */
-export const TEMP_WET_DAY = 1 / 90;
-export const TEMP_WET_NIGHT = 1 / 28;
+/** Wet clothes pull temperature toward the wet floor (not through it). */
+export const TEMP_WET_DAY = 1 / 80;
+export const TEMP_WET_NIGHT = 1 / 55;
 /** Fire warmth: empty→comfortable in this many seconds at full radius. */
 export const TEMP_FIRE_WARM = 1 / 14;
 /** Held torch: slow night warmth. */
@@ -130,9 +138,11 @@ export const WET_SWIM = 1 / 10;
 export const WET_FIRE_DRY = 1 / 9;
 export const WET_TORCH_DRY = 1 / 36;
 export const WET_SUN_DRY = 1 / 70;
+/** Clear night still dries you — leftover rain should not last until dawn. */
+export const WET_NIGHT_DRY = 1 / 110;
 export const WET_SHELTER_DRY = 1 / 40;
-/** Hypothermia: extra health drain when freezing and soaked. */
-export const HEALTH_COLD_WET_DRAIN = 1 / (90);
+/** Hypothermia: extra health drain when freezing and soaked (about 8 minutes empty). */
+export const HEALTH_COLD_WET_DRAIN = 1 / (8 * 60);
 
 export const DRINK_POND_THIRST = 0.32;
 export const DRINK_POND_SECONDS = 2.4;

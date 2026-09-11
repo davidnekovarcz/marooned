@@ -241,13 +241,21 @@ button.gear-slot:hover {
   background: #4aa7e0;
 }
 
-.need[data-need="wetness"][data-tone="ok"] .need-fill {
-  background: #7ec8e8;
+/* Dry = cloth, not an empty thirst bar. Water rises as you soak. */
+.need[data-need="wetness"] {
+  background: rgba(86, 64, 42, 0.72);
 }
 
-.need[data-need="wetness"][data-tone="warn"] .need-fill,
+.need[data-need="wetness"][data-tone="ok"] .need-fill {
+  background: rgba(180, 214, 232, 0.35);
+}
+
+.need[data-need="wetness"][data-tone="warn"] .need-fill {
+  background: #6eb4dc;
+}
+
 .need[data-need="wetness"][data-tone="alert"] .need-fill {
-  background: #5aa0d4;
+  background: #3d86c2;
 }
 
 .need[data-need="hunger"][data-tone="ok"] .need-fill {
