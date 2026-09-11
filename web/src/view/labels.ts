@@ -27,5 +27,5 @@ export function formatDeathTime(gameHours: number): string {
   const minutes = totalMinutes % 60;
   const hourText = hours === 1 ? t("hud.hourOne") : t("hud.hourMany", { n: hours });
   const minuteText = minutes === 1 ? t("hud.minuteOne") : t("hud.minuteMany", { n: minutes });
-  return t("hud.death", { time: `${hourText} + ${minuteText}` });
+  return t("hud.survived", { time: `${hourText} + ${minuteText}` });
 }

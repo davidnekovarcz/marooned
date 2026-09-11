@@ -14,7 +14,7 @@ function respawn(): void {
 
 <template>
   <div id="death" :hidden="!ui.dead">
-    <p id="death-message">{{ message }}</p>
+    <p id="death-message">{{ message }}<br />{{ t("hud.death") }}</p>
     <button type="button" id="death-respawn" @click="respawn">{{ t("hud.respawn") }}</button>
   </div>
 </template>

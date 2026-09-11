@@ -75,13 +75,14 @@
     }
   },
   "action": {
-    "eat": "Eat",
-    "drink": "Drink",
-    "peel": "Peel",
-    "slice": "Slice",
-    "split": "Split",
-    "open": "Open",
-    "pickup": "Pick up",
+    "eat": "Eat [SPACE]",
+    "drink": "Drink [SPACE]",
+    "peel": "Peel [SPACE]",
+    "slice": "Slice [SPACE]",
+    "split": "Split [SPACE]",
+    "open": "Open [SPACE]",
+    "pickup": "Pick up [SPACE]",
+    "drop": "Drop [G]",
     "blocked": {
       "rotten": "too rotten to eat",
       "needKnife": "need a knife",
@@ -90,15 +91,16 @@
     }
   },
   "gear": {
-    "hands": "Hands (0)",
-    "pocketLeft": "Left pocket (1)",
-    "pocketRight": "Right pocket (2)",
+    "hands": "Hands [0]",
+    "pocketLeft": "Left pocket [1]",
+    "pocketRight": "Right pocket [2]",
     "empty": "Empty"
   },
   "hud": {
-    "hintLocked": "Click or press a key to hear the island. WASD walk. SHIFT run. Space interact. 1 / 2 pockets. 0 empty hands. G drop.",
-    "hint": "+ / − zoom. WASD walk. SHIFT run.",
-    "death": "You have survived {time}... but now you're dead.",
+    "hintLocked": "Click or press a key to hear the island.",
+    "hint": "[+/-] zoom. [WSAD] walk. [SHIFT] run. [SPACE] interact. [G] drop.",
+    "survived": "You have survived {time}",
+    "death": "... but now you're dead.",
     "hourOne": "1 hour",
     "hourMany": "{n} hours",
     "minuteOne": "1 minute",
