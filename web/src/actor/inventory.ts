@@ -17,7 +17,7 @@ export type InventorySnapshot = {
 const FOOD_HOLD = { rot: new THREE.Euler(0.4, 0.2, 0.5) };
 const PINEAPPLE_HOLD = { rot: new THREE.Euler(0.35, 0.15, 0.45) };
 const TOOL_HOLD: Record<
-  "knife" | "hammer" | "axe" | "shovel" | "torch" | "stick" | "stone" | "fiber" | "tinder",
+  "knife" | "hammer" | "axe" | "shovel" | "torch" | "fishingPole" | "stick" | "stone" | "fiber" | "tinder",
   { length: number; rot: THREE.Euler }
 > = {
   knife: { length: 0.28, rot: new THREE.Euler(0.2, 0.9, 1.2) },
@@ -25,6 +25,7 @@ const TOOL_HOLD: Record<
   axe: { length: 0.42, rot: new THREE.Euler(0.12, 0.65, 1.08) },
   shovel: { length: 0.48, rot: new THREE.Euler(0.1, 0.6, 1.05) },
   torch: { length: 0.38, rot: new THREE.Euler(0.12, 0.65, 1.1) },
+  fishingPole: { length: 0.92, rot: new THREE.Euler(0.08, 0.55, 1.02) },
   stick: { length: 0.4, rot: new THREE.Euler(0.15, 0.7, 1.05) },
   stone: { length: 0.2, rot: new THREE.Euler(0.3, 0.4, 0.5) },
   fiber: { length: 0.26, rot: new THREE.Euler(0.4, 0.2, 0.5) },

@@ -136,6 +136,7 @@ export const PROP_SIZE: Record<string, SizeSpec> = {
   bottle: { axis: "longest", meters: 0.28, min: 0.28 },
   tinder: { axis: "longest", meters: 0.18, min: 0.26 },
   torch: { axis: "longest", meters: 0.55, min: 0.55 },
+  fishingPole: { axis: "height", meters: 1.45, min: 1.2 },
   stick: { axis: "longest", meters: 0.55, min: 0.5 },
   stone: { axis: "longest", meters: 0.28, min: 0.32 },
   fiber: { axis: "longest", meters: 0.42, min: 0.38 },

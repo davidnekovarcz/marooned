@@ -29,7 +29,7 @@ export type ActionId =
   | "light"
   | "cook"
   | "build";
-export type BlockedId = "rotten" | "needKnife" | "needHammer" | "needKnifeOrHammer" | "needFire" | "needMats" | "tooWet";
+export type BlockedId = "rotten" | "needKnife" | "needHammer" | "needKnifeOrHammer" | "needFire" | "needMats" | "needPole" | "tooWet";
 
 export type ResolvedAction = {
   id: ActionId;
@@ -66,6 +66,7 @@ const PICKUP: Record<string, HeldKind> = {
   axe: "axe",
   shovel: "shovel",
   torch: "torch",
+  fishingPole: "fishingPole",
   tinder: "tinder",
   stick: "stick",
   stone: "stone",
@@ -192,8 +193,9 @@ export class Actions {
     if (opts.atFreshWater) {
       return { id: "drink", pond: true, meal: { hunger: 0, thirst: DRINK_POND_THIRST } };
     }
-    if (opts.onShore && !opts.held) {
-      return { id: "fish", fish: true };
+    if (opts.onShore) {
+      if (opts.held === "fishingPole") return { id: "fish", fish: true };
+      return { id: "fish", blocked: "needPole" };
     }
     return undefined;
   }

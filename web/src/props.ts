@@ -23,6 +23,7 @@ import {
 } from "@/web/src/island";
 import { loadGlb, loadObj } from "@/web/src/loaders";
 import type { Cell, LootSites } from "@/web/src/sim/loot";
+import { makeFishingPole } from "@/web/src/world/fishingPole";
 import { Item } from "@/web/src/world/item";
 import { LILY_URL, MODEL_URLS, TOMATO_URL, TORCH_URL, type ModelKind } from "@/web/src/models";
 import { mulberry32 } from "@/web/src/rng";
@@ -45,7 +46,7 @@ for (let dz = -2; dz <= 2; dz++) {
   }
 }
 
-type PlaceKind = ModelKind | "lilypad" | "torch" | "tomato" | "fishCooked";
+type PlaceKind = ModelKind | "lilypad" | "torch" | "tomato" | "fishCooked" | "fishingPole";
 
 export type AudioAnchor = { id: string; position: THREE.Vector3 };
 
@@ -55,7 +56,7 @@ export type ScatterResult = {
   items: Item[];
   lootSites: LootSites;
   spawn: (
-    kind: ModelKind | "torch" | "tomato" | "fishCooked",
+    kind: ModelKind | "torch" | "tomato" | "fishCooked" | "fishingPole",
     x: number,
     z: number,
     extra?: { yaw?: number; dx?: number; dz?: number },
@@ -175,6 +176,7 @@ export async function scatterProps(
   templates.lilypad = await loadObj(LILY_URL);
   templates.torch = await loadObj(TORCH_URL, 0x6a4a32);
   templates.tomato = await loadObj(TOMATO_URL, 0xc43b2b);
+  templates.fishingPole = makeFishingPole();
 
   const grass: [number, number][] = [];
   const land: [number, number][] = [];
@@ -272,6 +274,7 @@ export async function scatterProps(
     add("rowBoat", boat.x - 3, boat.z + 1, 0.8, { tiltZ: 0.22 });
     add("mastRopes", boat.x + 1, boat.z + 2, rng() * 3);
     add("fishStand", boat.x - 2, boat.z - 2, 0.4);
+    add("fishingPole", boat.x - 1, boat.z - 2, rng() * 2);
     add("fish", boat.x, boat.z + 2, rng() * 6);
     lootSites.boat.push(...collectAround(biomes, blocked, boat.x, boat.z, 2, 2, 2));
     audioAnchors.push({ id: "boat", position: worldPos(boat.x, boat.z) });
@@ -470,7 +473,7 @@ export async function scatterProps(
 
   scene.add(group);
   const spawn = (
-    kind: ModelKind | "torch" | "tomato" | "fishCooked",
+    kind: ModelKind | "torch" | "tomato" | "fishCooked" | "fishingPole",
     x: number,
     z: number,
     extra?: { yaw?: number; dx?: number; dz?: number },

@@ -1,7 +1,7 @@
 import { isFoodKind } from "@/web/src/food";
 import type { ModelKind } from "@/web/src/models";
 
-export type WorldKind = ModelKind | "lilypad" | "torch" | "tomato" | "fishCooked";
+export type WorldKind = ModelKind | "lilypad" | "torch" | "tomato" | "fishCooked" | "fishingPole";
 
 export type HeldKind =
   | "knife"
@@ -9,6 +9,7 @@ export type HeldKind =
   | "axe"
   | "shovel"
   | "torch"
+  | "fishingPole"
   | "tinder"
   | "stick"
   | "stone"

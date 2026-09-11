@@ -61,6 +61,7 @@
     "bridge": "Bridge",
     "lilypad": "Lily pad",
     "torch": "Torch",
+    "fishingPole": "Fishing pole",
     "stick": "Stick",
     "stone": "Stone",
     "fiber": "Fronds",
@@ -102,6 +103,7 @@
       "needKnife": "need a knife",
       "needHammer": "need a hammer",
       "needKnifeOrHammer": "need a knife or hammer",
+      "needPole": "need a fishing pole",
       "tooWet": "too wet to light"
     }
   },

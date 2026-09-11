@@ -254,7 +254,7 @@ export class Game {
           applyAction(context, null, "leanTo");
         } else if (context?.pond) {
           applyAction(context, null, "pond");
-        } else if (context?.fish) {
+        } else if (context?.id === "fish") {
           applyAction(context, null, "shore");
         } else if (heldMeal) {
           applyAction(heldMeal, null, player.heldKind);
