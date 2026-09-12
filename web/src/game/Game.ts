@@ -88,7 +88,7 @@ export class Game {
 
     const worldP = (async () => {
       const scattered = await scatterProps(scene, biomes, blocked);
-      const loot = new Loot(scattered.lootSites, scattered.items, scattered.spawn);
+      const loot = new Loot(scattered.lootSites, scattered.items, scattered.spawn, spawn);
       const wildlife = await spawnWildlife(scene, biomes, blocked);
       blocked[spawn.z * GRID + spawn.x] = 0;
       if (DEBUG_GRID) scene.add(buildGridOverlay(biomes, blocked));

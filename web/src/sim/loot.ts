@@ -60,7 +60,7 @@ const FOOD: FoodSpec[] = [
 const TOOLS: ToolSpec[] = [
   { kind: "knife", count: 1, sites: ["wreck", "boat", "hut"] },
   { kind: "hammer", count: 1, sites: ["wreck", "hut", "boat"] },
-  { kind: "shovel", count: 1, sites: ["hut", "wreck"] },
+  { kind: "shovel", count: 1, sites: ["hut", "forest"] },
   { kind: "axe", count: 1, sites: ["forest", "hut"] },
   { kind: "torch", count: 1, sites: ["hut", "boat"] },
 ];
@@ -131,6 +131,7 @@ export class Loot {
     private sites: LootSites,
     private items: Item[],
     private spawn: SpawnFn,
+    private keepOff: Cell | null = null,
   ) {
     for (const spec of FOOD) {
       for (let i = 0; i < spec.cap; i++) {
@@ -258,6 +259,13 @@ export class Loot {
       if (avoid && cell.x === avoid.x && cell.z === avoid.z) return false;
       if (strict && occupied.has(keyOf(cell))) return false;
       if (!far(cell)) return false;
+      if (
+        live.kind === "shovel" &&
+        this.keepOff &&
+        Math.max(Math.abs(cell.x - this.keepOff.x), Math.abs(cell.z - this.keepOff.z)) < 8
+      ) {
+        return false;
+      }
       return true;
     };
     const tryPick = (strict: boolean): Cell | null => {
