@@ -1,9 +1,10 @@
 import * as THREE from "three";
 import { CELL, GROUND_Y, POND_RADIUS, POND_X, POND_Z } from "@/web/src/constants";
+import { sunElevation } from "@/web/src/dayNight";
 import type { Camp, Hearth } from "@/web/src/sim/camp";
 
 const RAIN_COUNT = 1600;
-const FIRE_COUNT = 70;
+const FIRE_COUNT = 90;
 const STEAM_COUNT = 48;
 const FLY_COUNT = 28;
 const GLINT_COUNT = 36;
@@ -88,7 +89,7 @@ export class Atmosphere {
   ) {
     this.group.name = "atmosphere";
     this.rainTex = makeStreakTexture();
-    this.fireTex = makeCircleTexture("rgba(255,180,60,1)", 48);
+    this.fireTex = makeCircleTexture("rgba(255,110,28,1)", 48);
     this.steamTex = makeCircleTexture("rgba(230,240,255,0.9)", 48);
     this.flyTex = makeCircleTexture("rgba(255,230,120,1)", 32);
 
@@ -112,7 +113,7 @@ export class Atmosphere {
         transparent: true,
         depthWrite: false,
         blending: THREE.AdditiveBlending,
-        size: 0.28,
+        size: 0.48,
         opacity: 0,
         sizeAttenuation: true,
       }),
@@ -175,7 +176,7 @@ export class Atmosphere {
     this.scene.add(this.group);
 
     for (let i = 0; i < 4; i++) {
-      const light = new THREE.PointLight(0xff8a3a, 0, 13, 1.4);
+      const light = new THREE.PointLight(0xff4a10, 0, 26, 1.3);
       light.castShadow = false;
       this.fireLights.push(light);
       this.group.add(light);
@@ -219,13 +220,14 @@ export class Atmosphere {
     torch: THREE.Vector3 | null,
     elapsed: number,
     flash: number,
+    dayT = 0,
   ): void {
     this.updateRain(dt, player);
     this.updateFire(dt, elapsed);
     this.updateSteam(dt, player);
     this.updateFlies(dt, player, elapsed);
     this.updateGlints(elapsed);
-    this.updateLights(torch, elapsed, flash);
+    this.updateLights(torch, elapsed, flash, dayT);
     if (this.island) {
       const w = this.wet;
       this.island.color.setRGB(1 - w * 0.38, 1 - w * 0.28, 1 - w * 0.18);
@@ -245,9 +247,9 @@ export class Atmosphere {
     const n = this.fire.pos.length / 3;
     for (let i = 0; i < n; i++) {
       this.fire.extra[i * 4] = Math.random();
-      this.fire.extra[i * 4 + 1] = 0.55 + Math.random() * 1.1;
+      this.fire.extra[i * 4 + 1] = 0.4 + Math.random() * 0.75;
       this.fire.extra[i * 4 + 2] = Math.random() * Math.PI * 2;
-      this.fire.extra[i * 4 + 3] = 0.04 + Math.random() * 0.08;
+      this.fire.extra[i * 4 + 3] = 0.08 + Math.random() * 0.16;
     }
   }
 
@@ -323,10 +325,10 @@ export class Atmosphere {
         if (this.fire.extra[ex]! > 1) this.fire.extra[ex] = 0;
         const u = this.fire.extra[ex]!;
         const spin = this.fire.extra[ex + 2]!;
-        const rad = this.fire.extra[ex + 3]! * (1 - u * 0.35);
-        this.fire.pos[ix] = origin.x + Math.cos(spin + elapsed * 0.7) * rad;
-        this.fire.pos[ix + 1] = origin.y + 0.08 + u * 0.4;
-        this.fire.pos[ix + 2] = origin.z + Math.sin(spin + elapsed * 0.7) * rad;
+        const rad = this.fire.extra[ex + 3]! * (1 - u * 0.45);
+        this.fire.pos[ix] = origin.x + Math.cos(spin + elapsed * 0.55) * rad;
+        this.fire.pos[ix + 1] = origin.y + 0.1 + u * 0.85;
+        this.fire.pos[ix + 2] = origin.z + Math.sin(spin + elapsed * 0.55) * rad;
       }
     }
     (this.fire.geo.attributes.position as THREE.BufferAttribute).needsUpdate = true;
@@ -381,7 +383,7 @@ export class Atmosphere {
     mat.size = 0.16 + Math.sin(elapsed * 7) * 0.03;
   }
 
-  private updateLights(torch: THREE.Vector3 | null, elapsed: number, flash: number): void {
+  private updateLights(torch: THREE.Vector3 | null, elapsed: number, flash: number, dayT: number): void {
     if (torch) {
       const flicker = 8.6 + Math.sin(elapsed * 17) * 0.9 + Math.sin(elapsed * 41) * 0.45;
       this.torchLight.position.copy(torch);
@@ -394,6 +396,8 @@ export class Atmosphere {
       this.torchLight.intensity = 0;
       this.torchFill.intensity = 0;
     }
+    // Noon sun already lights the sand; keep embers as a local orange pool.
+    const dayDim = 1 - Math.max(0, sunElevation(dayT)) * 0.78;
     const lit = this.hearths.filter((h) => h.lit);
     for (let i = 0; i < this.fireLights.length; i++) {
       const light = this.fireLights[i]!;
@@ -403,8 +407,9 @@ export class Atmosphere {
         continue;
       }
       light.position.copy(h.item.mesh.position);
-      light.position.y += 0.45;
-      light.intensity = 1.85 + Math.sin(elapsed * 11 + i) * 0.25 + Math.sin(elapsed * 29 + i) * 0.12 + flash * 0.3;
+      light.position.y += 0.55;
+      const flicker = 15.2 + Math.sin(elapsed * 11 + i) * 1.1 + Math.sin(elapsed * 29 + i) * 0.45;
+      light.intensity = flicker * dayDim + flash * 0.2;
     }
   }
 }

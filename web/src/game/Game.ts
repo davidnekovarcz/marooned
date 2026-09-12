@@ -215,7 +215,7 @@ export class Game {
         player.heldMesh.getWorldPosition(_torch);
         torchPos = _torch;
       }
-      atmosphere.update(dt, player.mesh.position, torchPos, clock.elapsedTime, weather.flash);
+      atmosphere.update(dt, player.mesh.position, torchPos, clock.elapsedTime, weather.flash, day.t);
 
       if (!player.alive || player.busy) {
         currentItem = null;
