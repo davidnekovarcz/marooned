@@ -91,7 +91,7 @@ export class BusyAction {
     this.lockT += dt;
     if (this.lock === "meal") {
       visual.setCrouch(0);
-      if (this.meal) {
+      if (this.meal && !this.mealKeep) {
         const u = Math.min(1, this.lockT / Math.max(0.001, this.lockSeconds));
         this.meal.scale.copy(this.mealScale).multiplyScalar(Math.max(0.08, 1 - u));
       }
