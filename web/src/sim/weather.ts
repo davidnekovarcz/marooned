@@ -1,21 +1,29 @@
 import { DAY_SECONDS } from "@/web/src/constants";
 
-/** Island-hour windows (0–24). First squall hits ~30s after an 08:00 spawn. */
-const WINDOWS: { start: number; end: number; storm: boolean }[] = [
-  { start: 9.5, end: 13.6, storm: false },
-  { start: 16.4, end: 18.1, storm: false },
-  { start: 20.4, end: 23.2, storm: true },
-];
+type Window = { start: number; end: number; storm: boolean };
+
+/** After day 0: one short shower every other day. Night storm every fourth day. */
+function windowsForDay(dayIndex: number): Window[] {
+  if (dayIndex < 1) return [];
+  if (dayIndex % 2 === 0) return [];
+  const storm = dayIndex % 4 === 3;
+  if (storm) return [{ start: 20.5, end: 22.4, storm: true }];
+  return [{ start: 14.2, end: 16.0, storm: false }];
+}
 
 const RAMP_IN = 3.5;
 const RAMP_OUT = 6.5;
 
 function hourOf(t: number): number {
-  return ((t % 1) + 1) % 1 * 24;
+  return ((((t % 1) + 1) % 1) * 24);
 }
 
-function inWindow(hour: number): { storm: boolean } | null {
-  for (const w of WINDOWS) {
+function dayIndexOf(elapsed: number): number {
+  return Math.floor(Math.max(0, elapsed) / DAY_SECONDS);
+}
+
+function inWindow(hour: number, windows: Window[]): Window | null {
+  for (const w of windows) {
     if (hour >= w.start && hour < w.end) return w;
   }
   return null;
@@ -32,9 +40,9 @@ export class Weather {
   flash = 0;
   private thunderIn = 12;
 
-  update(dt: number, dayT: number): void {
+  update(dt: number, dayT: number, elapsed = 0): void {
     const hour = hourOf(dayT);
-    const win = inWindow(hour);
+    const win = inWindow(hour, windowsForDay(dayIndexOf(elapsed)));
     const want = win ? 1 : 0;
     const ramp = want > this.intensity ? RAMP_IN : RAMP_OUT;
     const step = dt / ramp;
@@ -74,11 +82,19 @@ export class Weather {
   }
 
   /** Real seconds until the next shower starts (for debug / first-rain feel). */
-  secondsUntilRain(dayT: number): number {
+  secondsUntilRain(dayT: number, elapsed = 0): number {
     const hour = hourOf(dayT);
-    for (const w of WINDOWS) {
-      if (hour < w.start) return ((w.start - hour) / 24) * DAY_SECONDS;
+    let day = dayIndexOf(elapsed);
+    let remaining = hour;
+    for (let ahead = 0; ahead < 8; ahead += 1) {
+      const windows = windowsForDay(day);
+      for (const w of windows) {
+        if (ahead === 0 && remaining >= w.start) continue;
+        const hours = ahead === 0 ? w.start - remaining : 24 - remaining + w.start + (ahead - 1) * 24;
+        return (hours / 24) * DAY_SECONDS;
+      }
+      day += 1;
     }
-    return ((24 - hour + WINDOWS[0]!.start) / 24) * DAY_SECONDS;
+    return DAY_SECONDS;
   }
 }

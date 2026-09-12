@@ -184,7 +184,7 @@ export class Game {
       player.update(dt);
       wildlife.update(dt);
       loot.update(dt, player.cellX, player.cellZ);
-      weather.update(dt, day.t);
+      weather.update(dt, day.t, day.elapsed);
       if (weather.raining) camp.douseExposed();
       const daytime = isDaytime(day.t);
       const sheltered = camp.covered(player.cellX, player.cellZ);
