@@ -109,6 +109,12 @@ import bubble1Url from "@/assets/audio/bubble1.ogg?url";
 import bubble2Url from "@/assets/audio/bubble2.ogg?url";
 import plankUrl from "@/assets/audio/plank.ogg?url";
 import potUrl from "@/assets/audio/pot.ogg?url";
+import drink2Url from "@/assets/audio/drink2.ogg?url";
+import drink3Url from "@/assets/audio/drink3.ogg?url";
+import drink4Url from "@/assets/audio/drink4.ogg?url";
+import drink5Url from "@/assets/audio/drink5.ogg?url";
+import knifeSliceUrl from "@/assets/audio/knifeSlice.ogg?url";
+import knifeSlice2Url from "@/assets/audio/knifeSlice2.ogg?url";
 
 export const MODEL_URLS = {
   palm: palmUrl,
@@ -219,6 +225,8 @@ export const SOUND_URLS = {
   bubbles: [bubble1Url, bubble2Url],
   plank: plankUrl,
   pot: potUrl,
+  drinks: [drink2Url, drink3Url, drink4Url, drink5Url],
+  slices: [knifeSliceUrl, knifeSlice2Url],
 } as const;
 
 export type ModelKind = keyof typeof MODEL_URLS;

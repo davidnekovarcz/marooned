@@ -114,6 +114,7 @@ export type IslandAudio = {
   playPickup: () => void;
   playSplash: () => void;
   playDrink: () => void;
+  playCut: () => void;
   playBuild: () => void;
   playLight: () => void;
   playCook: () => void;
@@ -140,42 +141,49 @@ export function setupIslandAudio(
   const rainSoftSound = new THREE.Audio(listener);
   const fireSounds: THREE.PositionalAudio[] = [];
   let eatBufs: AudioBuffer[] = [];
+  let drinkBufs: AudioBuffer[] = [];
+  let sliceBufs: AudioBuffer[] = [];
   let rustleBuf: AudioBuffer | null = null;
   let splashBufs: AudioBuffer[] = [];
-  let bubbleBufs: AudioBuffer[] = [];
   let chopBuf: AudioBuffer | null = null;
   let plankBuf: AudioBuffer | null = null;
   let potBuf: AudioBuffer | null = null;
   let clothBuf: AudioBuffer | null = null;
   let rainReady = false;
   let mealActive = false;
+  let mealKind: MealKind = "eat";
   let eatIndex = 0;
   let mealTimer = 0;
   let pendingMeal = false;
+  let cutTimer = 0;
 
-  const playNextEatClip = () => {
-    if (!mealActive || eatBufs.length === 0) return;
-    const buf = eatBufs[eatIndex % eatBufs.length]!;
+  const mealBufs = (): AudioBuffer[] => (mealKind === "drink" ? drinkBufs : eatBufs);
+
+  const playNextMealClip = () => {
+    const bufs = mealBufs();
+    if (!mealActive || bufs.length === 0) return;
+    const buf = bufs[eatIndex % bufs.length]!;
     eatIndex += 1;
     if (mealSound.isPlaying) mealSound.stop();
     mealSound.setBuffer(buf);
-    mealSound.setVolume(0.62);
+    mealSound.setVolume(mealKind === "drink" ? 0.8 : 0.62);
     mealSound.play();
     window.clearTimeout(mealTimer);
     mealTimer = window.setTimeout(() => {
-      if (mealActive) playNextEatClip();
+      if (mealActive) playNextMealClip();
     }, Math.max(50, buf.duration * 1000));
   };
 
-  const startMeal = () => {
-    if (eatBufs.length === 0) {
+  const startMeal = (kind: MealKind) => {
+    mealKind = kind;
+    if (mealBufs().length === 0) {
       pendingMeal = true;
       return;
     }
     pendingMeal = false;
     mealActive = true;
     eatIndex = 0;
-    playNextEatClip();
+    playNextMealClip();
   };
 
   const unlock = async () => {
@@ -184,7 +192,7 @@ export function setupIslandAudio(
     await listener.context.resume();
 
     const ctx = listener.context as AudioContext;
-    const [creaks, cloths, chops, eats, waves, splashes, bubbles, river, rain, rainSoft, fire, crackle, plank, pot] =
+    const [creaks, cloths, chops, eats, waves, splashes, drinks, slices, river, rain, rainSoft, fire, crackle, plank, pot] =
       await Promise.all([
         Promise.all(SOUND_URLS.creaks.map((u) => loadBuffer(ctx, u))),
         Promise.all(SOUND_URLS.cloths.map((u) => loadBuffer(ctx, u))),
@@ -192,7 +200,8 @@ export function setupIslandAudio(
         Promise.all(SOUND_URLS.eats.map((u) => loadBuffer(ctx, u))),
         Promise.all(SOUND_URLS.waves.map((u) => loadBuffer(ctx, u))),
         Promise.all(SOUND_URLS.splashes.map((u) => loadBuffer(ctx, u))),
-        Promise.all(SOUND_URLS.bubbles.map((u) => loadBuffer(ctx, u))),
+        Promise.all(SOUND_URLS.drinks.map((u) => loadBuffer(ctx, u))),
+        Promise.all(SOUND_URLS.slices.map((u) => loadBuffer(ctx, u))),
         loadBuffer(ctx, SOUND_URLS.river),
         loadBuffer(ctx, SOUND_URLS.rain),
         loadBuffer(ctx, SOUND_URLS.rainSoft),
@@ -202,10 +211,11 @@ export function setupIslandAudio(
         loadBuffer(ctx, SOUND_URLS.pot),
       ]);
     eatBufs = eats;
+    drinkBufs = drinks;
+    sliceBufs = slices;
     rustleBuf = cloths[0] ?? null;
     clothBuf = cloths[1] ?? cloths[0] ?? null;
     splashBufs = splashes;
-    bubbleBufs = bubbles;
     chopBuf = chops[0] ?? null;
     plankBuf = plank;
     potBuf = pot;
@@ -259,7 +269,7 @@ export function setupIslandAudio(
     }
 
     scene.add(group);
-    if (pendingMeal) startMeal();
+    if (pendingMeal) startMeal(mealKind);
     onUnlocked?.();
   };
 
@@ -299,10 +309,7 @@ export function setupIslandAudio(
         if (!sound.isPlaying) sound.play();
       }
     },
-    playMeal: (_kind) => {
-      void _kind;
-      startMeal();
-    },
+    playMeal: (kind) => startMeal(kind),
     stopMeal: () => {
       mealActive = false;
       pendingMeal = false;
@@ -311,7 +318,15 @@ export function setupIslandAudio(
     },
     playPickup: () => playOne(rustleSound, rustleBuf, 0.4),
     playSplash: () => playOne(oneShot, pick(splashBufs) ?? null, 0.55),
-    playDrink: () => playOne(oneShot, pick(bubbleBufs) ?? null, 0.7),
+    playDrink: () => startMeal("drink"),
+    playCut: () => {
+      const first = pick(sliceBufs) ?? null;
+      playOne(oneShot, first, 0.7);
+      window.clearTimeout(cutTimer);
+      cutTimer = window.setTimeout(() => {
+        playOne(oneShot, pick(sliceBufs) ?? first, 0.62);
+      }, 850);
+    },
     playBuild: () => playOne(oneShot, plankBuf ?? chopBuf, 0.62),
     playLight: () => playOne(oneShot, clothBuf, 0.5),
     playCook: () => playOne(oneShot, potBuf, 0.55),

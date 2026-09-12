@@ -26,6 +26,7 @@ export type UseItemAudio = {
   playPickup: () => void;
   playSplash: () => void;
   playDrink: () => void;
+  playCut: () => void;
   playBuild: () => void;
   playLight: () => void;
   playCook: () => void;
@@ -88,9 +89,12 @@ export class Interactor {
 
     if (action.pond) {
       this.audio.playDrink();
-      return this.player.beginWork(DRINK_POND_SECONDS, () => {
+      const started = this.player.beginWork(DRINK_POND_SECONDS, () => {
+        this.audio.stopMeal();
         if (action.meal) this.needs.feed(action.meal.hunger, action.meal.thirst);
       });
+      if (!started) this.audio.stopMeal();
+      return started;
     }
 
     if (action.fish) {
@@ -155,7 +159,9 @@ export class Interactor {
     }
 
     if (action.cut) {
-      return this.player.beginCut(CUT_SECONDS, () => this.finishKnifePrep(item));
+      const started = this.player.beginCut(CUT_SECONDS, () => this.finishKnifePrep(item));
+      if (started) this.audio.playCut();
+      return started;
     }
 
     if (action.crack) {

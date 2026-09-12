@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import subprocess
 import zipfile
 from io import BytesIO
 from pathlib import Path
@@ -107,6 +108,17 @@ PACKS = [
         ],
         "extract_zip": True,
     },
+    {
+        "slug": "liquid-bottle-drink-set",
+        "page": "https://opengameart.org/content/liquid-bottle-drink-set",
+        "license": "CC0",
+        "author": "qubodup",
+        "files": [
+            "https://opengameart.org/sites/default/files/qubodup-bottle-and-drink-sounds.7z",
+        ],
+        "extract_zip": False,
+        "extract_7z": True,
+    },
 ]
 
 
@@ -139,7 +151,12 @@ def main() -> None:
             data = fetch(url)
             name = url.rsplit("/", 1)[-1]
             sha = hashlib.sha256(data).hexdigest()
-            if pack["extract_zip"] and name.lower().endswith(".zip"):
+            if pack.get("extract_7z") and name.lower().endswith(".7z"):
+                archive = dest / name
+                archive.write_bytes(data)
+                subprocess.run(["7z", "x", "-y", f"-o{dest}", str(archive)], check=True)
+                stored = name
+            elif pack["extract_zip"] and name.lower().endswith(".zip"):
                 with zipfile.ZipFile(BytesIO(data)) as z:
                     z.extractall(dest)
                 stored = name
