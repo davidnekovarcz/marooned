@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import subprocess
 import zipfile
 from io import BytesIO
 from pathlib import Path
@@ -67,6 +68,57 @@ PACKS = [
         ],
         "extract_zip": True,
     },
+    {
+        "slug": "rain-loopable",
+        "page": "https://opengameart.org/content/rain-loopable",
+        "license": "CC0",
+        "author": "Ylmir",
+        "files": [
+            "https://opengameart.org/sites/default/files/Rain%20OGG.zip",
+        ],
+        "extract_zip": True,
+    },
+    {
+        "slug": "fire-crackling",
+        "page": "https://opengameart.org/content/fire-crackling",
+        "license": "CC0",
+        "author": "AntumDeluge",
+        "files": [
+            "https://opengameart.org/sites/default/files/fire-1_0.ogg",
+        ],
+        "extract_zip": False,
+    },
+    {
+        "slug": "fireplace-sound-loop",
+        "page": "https://opengameart.org/content/fireplace-sound-loop",
+        "license": "CC0",
+        "author": "PagDev",
+        "files": [
+            "https://opengameart.org/sites/default/files/fire.wav",
+        ],
+        "extract_zip": False,
+    },
+    {
+        "slug": "water-splash-slime-sfx",
+        "page": "https://opengameart.org/content/40-cc0-water-splash-slime-sfx",
+        "license": "CC0",
+        "author": "rubberduck",
+        "files": [
+            "https://opengameart.org/sites/default/files/water-splash-slime-sfx.zip",
+        ],
+        "extract_zip": True,
+    },
+    {
+        "slug": "liquid-bottle-drink-set",
+        "page": "https://opengameart.org/content/liquid-bottle-drink-set",
+        "license": "CC0",
+        "author": "qubodup",
+        "files": [
+            "https://opengameart.org/sites/default/files/qubodup-bottle-and-drink-sounds.7z",
+        ],
+        "extract_zip": False,
+        "extract_7z": True,
+    },
 ]
 
 
@@ -99,7 +151,12 @@ def main() -> None:
             data = fetch(url)
             name = url.rsplit("/", 1)[-1]
             sha = hashlib.sha256(data).hexdigest()
-            if pack["extract_zip"] and name.lower().endswith(".zip"):
+            if pack.get("extract_7z") and name.lower().endswith(".7z"):
+                archive = dest / name
+                archive.write_bytes(data)
+                subprocess.run(["7z", "x", "-y", f"-o{dest}", str(archive)], check=True)
+                stored = name
+            elif pack["extract_zip"] and name.lower().endswith(".zip"):
                 with zipfile.ZipFile(BytesIO(data)) as z:
                     z.extractall(dest)
                 stored = name

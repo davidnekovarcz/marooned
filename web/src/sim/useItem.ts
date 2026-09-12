@@ -1,13 +1,22 @@
+import * as THREE from "three";
 import {
   BREAK_SECONDS,
+  BUILD_SECONDS,
+  COOK_SECONDS,
   CUT_SECONDS,
+  DRINK_POND_SECONDS,
   EAT_ACTION_SECONDS,
+  FISH_SECONDS,
+  LEAN_TO_FIBER,
+  LEAN_TO_STICKS,
+  LIGHT_SECONDS,
 } from "@/web/src/constants";
 import { writeFoodState } from "@/web/src/food";
 import type { MealKind } from "@/web/src/audio";
 import type { Needs } from "@/web/src/needs";
 import type { GridPlayer } from "@/web/src/actor/player";
 import { Actions, type ResolvedAction } from "@/web/src/sim/actions";
+import { Camp, countNearby, takeNearby } from "@/web/src/sim/camp";
 import { Item, type SpawnFn } from "@/web/src/world/item";
 import { isHeldFood, type PocketSlot } from "@/web/src/world/kinds";
 
@@ -15,7 +24,28 @@ export type UseItemAudio = {
   playMeal: (kind: MealKind) => void;
   stopMeal: () => void;
   playPickup: () => void;
+  playSplash: () => void;
+  playDrink: () => void;
+  playCut: () => void;
+  playBuild: () => void;
+  playLight: () => void;
+  playCook: () => void;
 };
+
+function tintCooked(root: THREE.Object3D): void {
+  root.traverse((obj) => {
+    const mesh = obj as THREE.Mesh;
+    if (!mesh.isMesh) return;
+    const src = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+    const next = src.map((mat) => {
+      const clone = mat.clone();
+      const colored = clone as THREE.MeshStandardMaterial;
+      if (colored.color) colored.color.setHex(0xc56a28);
+      return clone;
+    });
+    mesh.material = Array.isArray(mesh.material) ? next : next[0]!;
+  });
+}
 
 export class Interactor {
   constructor(
@@ -25,6 +55,7 @@ export class Interactor {
     private audio: UseItemAudio,
     private spawn: SpawnFn,
     private actions: Actions,
+    private camp: Camp,
     private onRemoved?: (item: Item) => void,
   ) {}
 
@@ -56,6 +87,63 @@ export class Interactor {
       return true;
     }
 
+    if (action.pond) {
+      this.audio.playDrink();
+      const started = this.player.beginWork(DRINK_POND_SECONDS, () => {
+        this.audio.stopMeal();
+        if (action.meal) this.needs.feed(action.meal.hunger, action.meal.thirst);
+      });
+      if (!started) this.audio.stopMeal();
+      return started;
+    }
+
+    if (action.fish) {
+      this.audio.playSplash();
+      return this.player.beginWork(FISH_SECONDS, () => this.catchFish());
+    }
+
+    if (action.light) {
+      const hearth = this.camp.nearestHearth(this.player.cellX, this.player.cellZ);
+      if (!hearth || hearth.lit) return false;
+      this.player.faceToward(hearth.item.mesh.position.x, hearth.item.mesh.position.z);
+      return this.player.beginWork(LIGHT_SECONDS, () => {
+        this.camp.light(hearth);
+        this.audio.playLight();
+      });
+    }
+
+    if (action.cook) {
+      if (this.player.heldKind !== "fish" || !this.player.heldMesh) return false;
+      const mesh = this.player.heldMesh;
+      return this.player.beginWork(COOK_SECONDS, () => {
+        if (this.player.heldKind !== "fish" || this.player.heldMesh !== mesh) return;
+        tintCooked(mesh);
+        this.player.inventory.relabelHeld("fishCooked");
+        writeFoodState(mesh, "ready", "fresh");
+        this.audio.playCook();
+      });
+    }
+
+    if (action.build) {
+      if (this.player.heldKind !== "hammer") return false;
+      const x = this.player.cellX;
+      const z = this.player.cellZ;
+      if (
+        countNearby("stick", this.player, this.items, x, z) < LEAN_TO_STICKS ||
+        countNearby("fiber", this.player, this.items, x, z) < LEAN_TO_FIBER
+      ) {
+        return false;
+      }
+      this.audio.playBuild();
+      return this.player.beginWork(BUILD_SECONDS, () => {
+        takeNearby("stick", LEAN_TO_STICKS, this.player, this.items, x, z, this.onRemoved);
+        takeNearby("fiber", LEAN_TO_FIBER, this.player, this.items, x, z, this.onRemoved);
+        const placed = this.spawn("leanTo", x, z, { yaw: this.player.mesh.rotation.y + Math.PI });
+        if (placed) this.camp.addShelter(x, z);
+        this.audio.playBuild();
+      });
+    }
+
     if (!item) return false;
     this.player.faceToward(item.mesh.position.x, item.mesh.position.z);
 
@@ -71,7 +159,9 @@ export class Interactor {
     }
 
     if (action.cut) {
-      return this.player.beginCut(CUT_SECONDS, () => this.finishKnifePrep(item));
+      const started = this.player.beginCut(CUT_SECONDS, () => this.finishKnifePrep(item));
+      if (started) this.audio.playCut();
+      return started;
     }
 
     if (action.crack) {
@@ -111,6 +201,19 @@ export class Interactor {
       return;
     }
     this.player.swapPocket(command);
+  }
+
+  private catchFish(): void {
+    const item = this.spawn("fish", this.player.cellX, this.player.cellZ);
+    if (!item) return;
+    item.applyFoodState("ready", "fresh");
+    const started = this.player.pickup(item.mesh, "fish");
+    if (!started) return;
+    if (started.dropped) this.dropToWorld(started.dropped);
+    const i = this.items.indexOf(item);
+    if (i >= 0) this.items.splice(i, 1);
+    this.onRemoved?.(item);
+    this.audio.playSplash();
   }
 
   private dropToWorld(dropped: { mesh: Item["mesh"]; kind: NonNullable<GridPlayer["heldKind"]> }): void {

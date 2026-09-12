@@ -26,7 +26,7 @@ export type LootSites = {
   bush: Cell[];
 };
 
-export type LootKind = FoodKind | ToolKind;
+export type LootKind = FoodKind | ToolKind | "stick" | "stone" | "fiber";
 
 type SiteKey = keyof LootSites;
 
@@ -39,7 +39,7 @@ type FoodSpec = {
 };
 
 type ToolSpec = {
-  kind: ToolKind;
+  kind: ToolKind | "stick" | "stone" | "fiber";
   count: number;
   sites: SiteKey[];
 };
@@ -60,9 +60,15 @@ const FOOD: FoodSpec[] = [
 const TOOLS: ToolSpec[] = [
   { kind: "knife", count: 1, sites: ["wreck", "boat", "hut"] },
   { kind: "hammer", count: 1, sites: ["wreck", "hut", "boat"] },
-  { kind: "shovel", count: 1, sites: ["hut", "wreck"] },
+  { kind: "shovel", count: 1, sites: ["hut", "forest"] },
   { kind: "axe", count: 1, sites: ["forest", "hut"] },
   { kind: "torch", count: 1, sites: ["hut", "boat"] },
+];
+
+const RESOURCES: ToolSpec[] = [
+  { kind: "stick", count: 8, sites: ["forest", "grove", "boat"] },
+  { kind: "stone", count: 5, sites: ["wreck", "forest", "hut"] },
+  { kind: "fiber", count: 6, sites: ["bush", "palm"] },
 ];
 
 /** Timers only — freshness/prep live on Item. */
@@ -125,6 +131,7 @@ export class Loot {
     private sites: LootSites,
     private items: Item[],
     private spawn: SpawnFn,
+    private keepOff: Cell | null = null,
   ) {
     for (const spec of FOOD) {
       for (let i = 0; i < spec.cap; i++) {
@@ -145,7 +152,7 @@ export class Loot {
         });
       }
     }
-    for (const spec of TOOLS) {
+    for (const spec of [...TOOLS, ...RESOURCES]) {
       for (let i = 0; i < spec.count; i++) {
         const live: Live = {
           kind: spec.kind,
@@ -154,7 +161,7 @@ export class Loot {
           respawn: true,
           cell: null,
           state: "waiting",
-          age: TOOL_RESPAWN_SECONDS,
+          age: TOOLS.some((it) => it.kind === spec.kind) ? TOOL_RESPAWN_SECONDS : 0,
           item: null,
         };
         this.lives.push(live);
@@ -252,6 +259,13 @@ export class Loot {
       if (avoid && cell.x === avoid.x && cell.z === avoid.z) return false;
       if (strict && occupied.has(keyOf(cell))) return false;
       if (!far(cell)) return false;
+      if (
+        live.kind === "shovel" &&
+        this.keepOff &&
+        Math.max(Math.abs(cell.x - this.keepOff.x), Math.abs(cell.z - this.keepOff.z)) < 8
+      ) {
+        return false;
+      }
       return true;
     };
     const tryPick = (strict: boolean): Cell | null => {

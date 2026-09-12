@@ -14,6 +14,8 @@ export const FOOD_KINDS = [
   "tomato",
   "mushroomTan",
   "mushroomRed",
+  "fish",
+  "fishCooked",
 ] as const;
 
 export type FoodKind = (typeof FOOD_KINDS)[number];
@@ -57,7 +59,7 @@ export function itemLabelParts(
   freshness: Freshness = "fresh",
 ): ItemLabelParts {
   const nounKey = `item.${kind}`;
-  if (freshness === "rotten") {
+  if (freshness === "rotten" && isFoodKind(kind)) {
     if (prep === "half") return { nounKey, prepKey: "food.prep.half", stateKey: "food.state.rotten" };
     if (prep === "peeled") return { nounKey, prepKey: "food.prep.peeled", stateKey: "food.state.rotten" };
     if (prep === "sliced") return { nounKey, prepKey: "food.prep.sliced", stateKey: "food.state.rotten" };
@@ -72,5 +74,6 @@ export function itemLabelParts(
   if (kind === "coconutHalf") return { nounKey, prepKey: "food.prep.half" };
   if (kind === "pineapple" && prep === "peeled") return { nounKey, prepKey: "food.prep.peeled" };
   if (kind === "watermelon" && prep === "sliced") return { nounKey, prepKey: "food.prep.sliced" };
+  if (kind === "fishCooked") return { nounKey };
   return { nounKey };
 }

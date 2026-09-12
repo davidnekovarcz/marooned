@@ -8,7 +8,7 @@ import type { ResolvedAction } from "@/web/src/sim/actions";
 const session = useSessionStore();
 const ui = useUiStore();
 
-const visible = computed(() => session.alive && Boolean(ui.actionId));
+const visible = computed(() => session.alive && Boolean(ui.actionId || ui.promptKind));
 
 const name = computed(() => {
   if (!ui.promptKind) return t("gear.empty");

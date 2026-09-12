@@ -86,5 +86,19 @@
         "sha256": "5d4002eea42f278e76543bb36e8ddd2cb978588a13271984191d8228f5d26768"
       }
     ]
+  },
+  {
+    "slug": "liquid-bottle-drink-set",
+    "page": "https://opengameart.org/content/liquid-bottle-drink-set",
+    "license": "CC0",
+    "author": "qubodup",
+    "files": [
+      {
+        "url": "https://opengameart.org/sites/default/files/qubodup-bottle-and-drink-sounds.7z",
+        "file": "qubodup-bottle-and-drink-sounds.7z",
+        "bytes": 3470987,
+        "sha256": "6d2b9dade6ff4c20cbe2b2a7c405cd219b901bfce7045b28f5ba8b8683c7a5e7"
+      }
+    ]
   }
 ]

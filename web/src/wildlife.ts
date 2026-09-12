@@ -6,10 +6,14 @@ import { cellIndex, inBounds, isLand } from "@/web/src/island";
 import { loadFbx, loadGltfFile, prepareTemplate } from "@/web/src/loaders";
 import { ANIMAL_URLS, FISH_URLS, WILD_URLS } from "@/web/src/models";
 import { mulberry32 } from "@/web/src/rng";
-import { fitToSpec, type SizeSpec, ANIMAL_SIZE } from "@/web/src/scale";
+import { type SizeSpec, ANIMAL_SIZE } from "@/web/src/scale";
 
 const LAND_STEP = 0.95;
 const FISH_STEP = 1.2;
+const LAND_EACH = 2;
+const FISH_EACH = 2;
+const SPREAD = 12;
+const HELPER_MESH = /PoleTarget|^IK|FFB?\.|Ctrl|shadow/i;
 const DIRS: [number, number][] = [
   [1, 0],
   [-1, 0],
@@ -23,7 +27,10 @@ const DIRS: [number, number][] = [
 
 type Template = { root: THREE.Object3D; clips: THREE.AnimationClip[] };
 
+export type WildlifeKind = "fox" | "pig" | "deer" | "sheep" | "llama";
+
 type Critter = {
+  kind: WildlifeKind | "fish";
   root: THREE.Object3D;
   mixer: THREE.AnimationMixer;
   idle: THREE.AnimationAction;
@@ -57,10 +64,38 @@ function inPondCell(x: number, z: number): boolean {
   return Math.hypot(x + 0.5 - POND_X, z + 0.5 - POND_Z) <= POND_RADIUS + 0.6;
 }
 
+function eachBodyMesh(root: THREE.Object3D, visit: (mesh: THREE.Mesh) => void): void {
+  root.traverse((obj) => {
+    const mesh = obj as THREE.Mesh;
+    if (!mesh.isMesh || HELPER_MESH.test(mesh.name)) return;
+    visit(mesh);
+  });
+}
+
+function bodyBox(root: THREE.Object3D): THREE.Box3 {
+  const box = new THREE.Box3();
+  let any = false;
+  root.updateMatrixWorld(true);
+  eachBodyMesh(root, (mesh) => {
+    const skinned = mesh as THREE.SkinnedMesh;
+    if (skinned.isSkinnedMesh) skinned.skeleton.update();
+    box.expandByObject(mesh);
+    any = true;
+  });
+  if (!any) box.setFromObject(root);
+  return box;
+}
+
+function fitBody(root: THREE.Object3D, spec: SizeSpec): void {
+  const size = bodyBox(root).getSize(new THREE.Vector3());
+  const current = spec.axis === "height" ? size.y : Math.max(size.x, size.y, size.z);
+  if (current < 1e-4) return;
+  root.scale.multiplyScalar(Math.max(spec.meters, spec.min ?? 0) / current);
+  root.updateMatrixWorld(true);
+}
+
 function plant(obj: THREE.Object3D, y: number): void {
-  obj.updateMatrixWorld(true);
-  const box = new THREE.Box3().setFromObject(obj);
-  obj.position.y += y - box.min.y;
+  obj.position.y += y - bodyBox(obj).min.y;
 }
 
 function plantCenter(obj: THREE.Object3D, y: number): void {
@@ -87,39 +122,59 @@ function paintFish(root: THREE.Object3D, color: number): void {
   });
 }
 
-function fixGltfMaterials(root: THREE.Object3D): void {
+/** FBX farm animals often ship with opacity 0 / FrontSide, so only the shadow remains. */
+function paintCritter(root: THREE.Object3D, fallback: number): void {
   root.traverse((obj) => {
     const mesh = obj as THREE.Mesh;
     if (!mesh.isMesh) return;
+    if (/shadow/i.test(mesh.name)) {
+      mesh.visible = false;
+      mesh.castShadow = false;
+      return;
+    }
+    mesh.visible = true;
     mesh.castShadow = true;
     mesh.receiveShadow = true;
     mesh.frustumCulled = false;
-    const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
-    for (const mat of materials) {
-      mat.transparent = false;
-      mat.opacity = 1;
-      mat.side = THREE.FrontSide;
-      mat.depthWrite = true;
-      mat.depthTest = true;
-      if ('visible' in mat) (mat as any).visible = true;
-    }
+    const srcs = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+    const next = srcs.map((raw) => {
+      const src = raw as THREE.MeshStandardMaterial;
+      const mapped = Boolean(src.map);
+      const hex = src.color && src.color.getHex() > 0x202020 ? src.color.getHex() : fallback;
+      return new THREE.MeshLambertMaterial({
+        color: mapped ? 0xffffff : hex,
+        map: src.map ?? null,
+        side: THREE.DoubleSide,
+        transparent: false,
+        opacity: 1,
+        depthWrite: true,
+      });
+    });
+    mesh.material = Array.isArray(mesh.material) ? next : next[0]!;
   });
 }
 
 async function templateFromFbx(url: string, spec: SizeSpec): Promise<Template> {
   const fbx = await loadFbx(url);
   prepareTemplate(fbx);
-  fitToSpec(fbx, spec);
+  fitBody(fbx, spec);
   return { root: fbx, clips: fbx.animations };
 }
 
 async function templateFromGltf(url: string, spec: SizeSpec): Promise<Template> {
   const loaded = await loadGltfFile(url);
-  fitToSpec(loaded.root, spec);
+  fitBody(loaded.root, spec);
   return { root: loaded.root, clips: loaded.animations };
 }
 
-function spawn(template: Template, x: number, z: number, y: number, aquatic: boolean): Critter {
+function spawn(
+  template: Template,
+  kind: Critter["kind"],
+  x: number,
+  z: number,
+  y: number,
+  aquatic: boolean,
+): Critter {
   const root = cloneSkinned(template.root);
   root.traverse((obj) => {
     obj.frustumCulled = false;
@@ -142,7 +197,10 @@ function spawn(template: Template, x: number, z: number, y: number, aquatic: boo
     walk.play();
     walk.setEffectiveWeight(0);
   }
+  mixer.update(0);
+  if (!aquatic) plant(root, y);
   return {
+    kind,
     root,
     mixer,
     idle,
@@ -170,7 +228,7 @@ function pickCell(
   cells: [number, number][],
   ok: (x: number, z: number) => boolean,
 ): [number, number] | null {
-  for (let i = 0; i < 40; i++) {
+  for (let i = 0; i < 80; i++) {
     const cell = cells[Math.floor(rng() * cells.length)];
     if (!cell) continue;
     if (ok(cell[0], cell[1])) return cell;
@@ -182,7 +240,10 @@ export async function spawnWildlife(
   scene: THREE.Scene,
   biomes: Uint8Array,
   blocked: Uint8Array,
-): Promise<{ update: (dt: number) => void }> {
+): Promise<{
+  update: (dt: number) => void;
+  nearest: (cellX: number, cellZ: number, max?: number) => WildlifeKind | null;
+}> {
   const rng = mulberry32(`${SEED}-wildlife`);
   const group = new THREE.Group();
   group.name = "wildlife";
@@ -197,47 +258,62 @@ export async function spawnWildlife(
     }
   }
 
-  const [pig, fox, deer, fish1, fish2, fish3] = await Promise.all([
+  const [pig, sheep, llama, fox, deer, fish1, fish2, fish3] = await Promise.all([
     templateFromFbx(ANIMAL_URLS.pig, ANIMAL_SIZE.pig),
+    templateFromFbx(ANIMAL_URLS.sheep, ANIMAL_SIZE.sheep),
+    templateFromFbx(ANIMAL_URLS.llama, ANIMAL_SIZE.llama),
     templateFromGltf(WILD_URLS.fox, ANIMAL_SIZE.fox),
     templateFromGltf(WILD_URLS.deer, ANIMAL_SIZE.deer),
     templateFromFbx(FISH_URLS.fish1, { ...ANIMAL_SIZE.fish1, layFlat: true }),
     templateFromFbx(FISH_URLS.fish2, { ...ANIMAL_SIZE.fish2, layFlat: true }),
     templateFromFbx(FISH_URLS.fish3, { ...ANIMAL_SIZE.fish3, layFlat: true }),
   ]);
-  fixGltfMaterials(fox.root);
-  fixGltfMaterials(deer.root);
+  paintCritter(pig.root, 0xe39aa4);
+  paintCritter(sheep.root, 0xf2ebe0);
+  paintCritter(llama.root, 0xc4a06a);
+  paintCritter(fox.root, 0xc45a1a);
+  paintCritter(deer.root, 0x9a6230);
   paintFish(fish1.root, 0xc45a3a);
   paintFish(fish2.root, 0x3a6ec8);
   paintFish(fish3.root, 0xe07020);
 
   const critters: Critter[] = [];
-  const placeLand = (template: Template, count: number) => {
-    for (let n = 0; n < count; n++) {
-      const cell = pickCell(rng, grass, (x, z) => canEnter(biomes, blocked, x, z) && isLand(biomes[cellIndex(x, z)] as Biome));
+  const used: [number, number][] = [];
+  const free = (x: number, z: number) =>
+    used.every(([ux, uz]) => Math.max(Math.abs(x - ux), Math.abs(z - uz)) >= SPREAD);
+  const placeLand = (template: Template, kind: WildlifeKind) => {
+    for (let n = 0; n < LAND_EACH; n++) {
+      const cell = pickCell(
+        rng,
+        grass,
+        (x, z) =>
+          free(x, z) && canEnter(biomes, blocked, x, z) && isLand(biomes[cellIndex(x, z)] as Biome),
+      );
       if (!cell) continue;
-      const critter = spawn(template, cell[0], cell[1], GROUND_Y, false);
+      used.push(cell);
+      const critter = spawn(template, kind, cell[0], cell[1], GROUND_Y, false);
       group.add(critter.root);
       critters.push(critter);
     }
   };
-  const placeFish = (template: Template, count: number) => {
-    for (let n = 0; n < count; n++) {
+  const placeFish = (template: Template) => {
+    for (let n = 0; n < FISH_EACH; n++) {
       const cell = pickCell(rng, pond, (x, z) => inPondCell(x, z));
       if (!cell) continue;
-      const critter = spawn(template, cell[0], cell[1], WATER_Y + 0.28, true);
+      const critter = spawn(template, "fish", cell[0], cell[1], WATER_Y + 0.28, true);
       group.add(critter.root);
       critters.push(critter);
     }
   };
 
-  placeLand(pig, 3);
-  // Sheep/llama FBX cast shadows but meshes invisible — skip spawn; assets kept in models/scale.
-  placeLand(fox, 2);
-  placeLand(deer, 1);
-  placeFish(fish1, 3);
-  placeFish(fish2, 3);
-  placeFish(fish3, 2);
+  placeLand(pig, "pig");
+  placeLand(sheep, "sheep");
+  placeLand(llama, "llama");
+  placeLand(fox, "fox");
+  placeLand(deer, "deer");
+  placeFish(fish1);
+  placeFish(fish2);
+  placeFish(fish3);
 
   scene.add(group);
 
@@ -246,6 +322,19 @@ export async function spawnWildlife(
   const waterOk = (x: number, z: number) => inPondCell(x, z);
 
   return {
+    nearest: (cellX: number, cellZ: number, max = 2): WildlifeKind | null => {
+      let best: WildlifeKind | null = null;
+      let bestD = max;
+      for (const critter of critters) {
+        if (critter.kind === "fish") continue;
+        const d = Math.max(Math.abs(cellX - critter.cellX), Math.abs(cellZ - critter.cellZ));
+        if (d <= bestD) {
+          best = critter.kind;
+          bestD = d;
+        }
+      }
+      return best;
+    },
     update: (dt: number) => {
       for (const critter of critters) {
         critter.mixer.update(dt);

@@ -1,0 +1,8 @@
+fireplace-sound-loop
+Author: PagDev
+License: CC0
+Source: https://opengameart.org/content/fireplace-sound-loop
+Creative Commons CC0 — public domain. Attribution not required.
+
+The original fire.wav is 10 MB; the game uses a transcoded loop at assets/audio/fire.ogg.
+Re-download: https://opengameart.org/sites/default/files/fire.wav

@@ -60,7 +60,20 @@
     "arrow": "Arrow",
     "bridge": "Bridge",
     "lilypad": "Lily pad",
-    "torch": "Torch"
+    "torch": "Torch",
+    "fishingPole": "Fishing pole",
+    "stick": "Stick",
+    "stone": "Stone",
+    "fiber": "Fronds",
+    "leanTo": "Lean-to",
+    "pond": "Fresh water",
+    "shore": "Shore",
+    "fox": "Fox",
+    "pig": "Pig",
+    "deer": "Deer",
+    "sheep": "Sheep",
+    "llama": "Llama",
+    "fishCooked": "Cooked fish"
   },
   "food": {
     "prep": {
@@ -75,19 +88,27 @@
     }
   },
   "action": {
-    "eat": "Eat [SPACE]",
-    "drink": "Drink [SPACE]",
-    "peel": "Peel [SPACE]",
-    "slice": "Slice [SPACE]",
-    "split": "Split [SPACE]",
-    "open": "Open [SPACE]",
-    "pickup": "Pick up [SPACE]",
+    "eat": "Eat",
+    "drink": "Drink",
+    "peel": "Peel",
+    "slice": "Slice",
+    "split": "Split",
+    "open": "Open",
+    "pickup": "Pick up",
     "drop": "Drop [G]",
+    "fish": "Fish",
+    "light": "Light fire",
+    "cook": "Cook",
+    "build": "Raise lean-to",
     "blocked": {
       "rotten": "too rotten to eat",
-      "needKnife": "need a knife",
-      "needHammer": "need a hammer",
-      "needKnifeOrHammer": "need a knife or hammer"
+      "needKnife": "needs a knife",
+      "needHammer": "needs a hammer",
+      "needKnifeOrHammer": "needs a knife or hammer",
+      "needFire": "needs a fire",
+      "needMats": "needs sticks and fronds",
+      "needPole": "needs a fishing pole",
+      "tooWet": "too wet to light"
     }
   },
   "gear": {
@@ -111,6 +132,7 @@
       "thirst": "thirst",
       "hunger": "hunger",
       "temperature": "temperature",
+      "wetness": "wetness",
       "health": "health"
     }
   },

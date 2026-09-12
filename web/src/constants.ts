@@ -24,9 +24,11 @@ export const ZOOM_CELLS_OUT = ISLAND_RADIUS;
 export const ZOOM_CELLS_START = 16;
 export const ZOOM_CELLS_PER_SEC = 28;
 /** Night fog pulls near/far in by this factor (1 = day distance). */
-export const FOG_NIGHT_SCALE = 0.4;
+export const FOG_NIGHT_SCALE = 0.22;
 /** Extra dawn haze on top of the zoom fog. */
 export const FOG_DAWN_SCALE = 0.76;
+/** Extra close fog while raining. */
+export const FOG_RAIN_SCALE = 0.62;
 export const SEED = "marooned-mvp-1";
 /** Distance falloff always. Stereo L/R from facing / side only if true. */
 export const SOUND_3D = false;
@@ -60,8 +62,16 @@ export const HUNGER_DRAIN_RUN = 1 / (7 * 60);
 
 /** Sprint in daylight: empty→hot in this many seconds. */
 export const TEMP_HEAT_RUN_DAY = 1 / 28;
-/** Idle at night: comfortable→cold in this many seconds. */
-export const TEMP_COOL_IDLE_NIGHT = 1 / 50;
+/** Idle at night: settle toward night comfort in about this many seconds. */
+export const TEMP_COOL_IDLE_NIGHT = 1 / 70;
+/** Clear night is chilly, not freezing. */
+export const TEMP_NIGHT_COMFORT = 0.34;
+/** Soaked clothes pull toward this in daylight. */
+export const TEMP_WET_DAY_FLOOR = 0.36;
+/** Soaked at night (no storm): shivering, not hypothermia. */
+export const TEMP_WET_NIGHT_FLOOR = 0.2;
+/** Soaked in an unsheltered night storm. */
+export const TEMP_WET_STORM_FLOOR = 0.12;
 /** Idle in daylight: return to 50% in about this many seconds from full heat. */
 export const TEMP_IDLE_DAY_RECOVER = 1 / 55;
 /** Walking: slower drift back to 50%. */
@@ -113,6 +123,41 @@ export const BREAK_SECONDS = 2.2;
 export const HEALTH_POISON_DRAIN = 1 / 8;
 /** Extra cooling while swimming inland water. */
 export const TEMP_SWIM_COOL = 1 / 35;
+/** Wet clothes pull temperature toward the wet floor (not through it). */
+export const TEMP_WET_DAY = 1 / 80;
+export const TEMP_WET_NIGHT = 1 / 55;
+/** Fire warmth: empty→comfortable in this many seconds at full radius. */
+export const TEMP_FIRE_WARM = 1 / 14;
+/** Held torch: slow night warmth. */
+export const TEMP_TORCH_WARM = 1 / 55;
+
+/** Rain soaks clothes empty→wet in this many seconds in a full shower. */
+export const WET_RAIN = 1 / 22;
+/** Swimming soaks faster. */
+export const WET_SWIM = 1 / 10;
+export const WET_FIRE_DRY = 1 / 9;
+export const WET_TORCH_DRY = 1 / 36;
+export const WET_SUN_DRY = 1 / 70;
+/** Clear night still dries you — leftover rain should not last until dawn. */
+export const WET_NIGHT_DRY = 1 / 110;
+export const WET_SHELTER_DRY = 1 / 40;
+/** Hypothermia: extra health drain when freezing and soaked (about 8 minutes empty). */
+export const HEALTH_COLD_WET_DRAIN = 1 / (8 * 60);
+
+export const DRINK_POND_THIRST = 0.32;
+export const DRINK_POND_SECONDS = 2.4;
+export const FISH_SECONDS = 4.6;
+export const FISH_HUNGER = 0.12;
+export const FISH_COOKED_HUNGER = 0.38;
+export const FISH_COOKED_THIRST = 0.08;
+export const LIGHT_SECONDS = 1.8;
+export const COOK_SECONDS = 2.6;
+export const BUILD_SECONDS = 3.4;
+export const LEAN_TO_STICKS = 2;
+export const LEAN_TO_FIBER = 1;
+export const HEARTH_WARM_CELLS = 3;
+export const HEARTH_USE_CELLS = 2;
+export const SHELTER_CELLS = 1;
 
 /** Fresh fruit sits this many island-hours before it rots. */
 export const LOOT_FRESH_HOURS = 4;

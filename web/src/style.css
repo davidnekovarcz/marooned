@@ -175,6 +175,11 @@ button.gear-slot:hover {
   color: #dce6f5;
 }
 
+#hud-weather[data-sky="rain"],
+#hud-weather[data-sky="storm"] {
+  color: #c5d8ee;
+}
+
 #hud-weather svg {
   display: block;
   width: 100%;
@@ -234,6 +239,23 @@ button.gear-slot:hover {
 
 .need[data-need="thirst"][data-tone="ok"] .need-fill {
   background: #4aa7e0;
+}
+
+/* Dry = cloth, not an empty thirst bar. Water rises as you soak. */
+.need[data-need="wetness"] {
+  background: rgba(86, 64, 42, 0.72);
+}
+
+.need[data-need="wetness"][data-tone="ok"] .need-fill {
+  background: rgba(180, 214, 232, 0.35);
+}
+
+.need[data-need="wetness"][data-tone="warn"] .need-fill {
+  background: #6eb4dc;
+}
+
+.need[data-need="wetness"][data-tone="alert"] .need-fill {
+  background: #3d86c2;
 }
 
 .need[data-need="hunger"][data-tone="ok"] .need-fill {

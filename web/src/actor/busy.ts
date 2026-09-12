@@ -3,7 +3,7 @@ import type { PlayerGait, PlayerVisual } from "@/web/src/playerModel";
 
 const PICK_AT = 0.32;
 
-export type LockKind = "meal" | "cut" | "break";
+export type LockKind = "meal" | "cut" | "break" | "work";
 
 function smooth01(t: number): number {
   const u = Math.min(1, Math.max(0, t));
@@ -71,6 +71,17 @@ export class BusyAction {
     if (held) held.visible = true;
   }
 
+  beginWork(seconds: number, onDone: () => void, held: THREE.Object3D | null): void {
+    this.busy = true;
+    this.lock = "work";
+    this.lockT = 0;
+    this.lockSeconds = seconds;
+    this.meal = null;
+    this.grabbed = true;
+    this.onCutDone = onDone;
+    if (held) held.visible = true;
+  }
+
   tick(
     dt: number,
     visual: PlayerVisual,
@@ -80,7 +91,7 @@ export class BusyAction {
     this.lockT += dt;
     if (this.lock === "meal") {
       visual.setCrouch(0);
-      if (this.meal) {
+      if (this.meal && !this.mealKeep) {
         const u = Math.min(1, this.lockT / Math.max(0.001, this.lockSeconds));
         this.meal.scale.copy(this.mealScale).multiplyScalar(Math.max(0.08, 1 - u));
       }
@@ -128,6 +139,7 @@ export class BusyAction {
       ended?.();
     }
     if (lock === "cut" && finished) this.onCutDone?.();
+    if (lock === "work" && finished) this.onCutDone?.();
     this.meal = null;
     this.grabbed = false;
     this.busy = false;

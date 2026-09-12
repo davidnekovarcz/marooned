@@ -45,6 +45,10 @@ import logLargeUrl from "@/assets/model/survival/TreeLog.glb?url";
 import bedrollUrl from "@/assets/model/survival/Bedroll.glb?url";
 import bucketUrl from "@/assets/model/survival/Bucket.glb?url";
 import tinderUrl from "@/assets/model/survival/Box.glb?url";
+import stickUrl from "@/assets/model/survival/ResourceWood.glb?url";
+import stoneUrl from "@/assets/model/survival/ResourceStone.glb?url";
+import leanToUrl from "@/assets/model/survival/TentCanvas.glb?url";
+import fiberUrl from "@/assets/model/GrassLeafs.glb?url";
 
 import fishingBoatUrl from "@/assets/model/watercraft/BoatFishingSmall.glb?url";
 
@@ -90,6 +94,27 @@ import cloth3Url from "@/assets/audio/cloth3.ogg?url";
 import chopUrl from "@/assets/audio/chop.ogg?url";
 import eat01Url from "@/assets/audio/eat01.ogg?url";
 import eat04Url from "@/assets/audio/eat04.ogg?url";
+import wave1Url from "@/assets/audio/wave1.ogg?url";
+import wave2Url from "@/assets/audio/wave2.ogg?url";
+import wave3Url from "@/assets/audio/wave3.ogg?url";
+import riverUrl from "@/assets/audio/river.ogg?url";
+import rainUrl from "@/assets/audio/rain.ogg?url";
+import rainSoftUrl from "@/assets/audio/rainSoft.ogg?url";
+import fireUrl from "@/assets/audio/fire.ogg?url";
+import crackleUrl from "@/assets/audio/crackle.ogg?url";
+import splash1Url from "@/assets/audio/splash1.ogg?url";
+import splash2Url from "@/assets/audio/splash2.ogg?url";
+import splash3Url from "@/assets/audio/splash3.ogg?url";
+import bubble1Url from "@/assets/audio/bubble1.ogg?url";
+import bubble2Url from "@/assets/audio/bubble2.ogg?url";
+import plankUrl from "@/assets/audio/plank.ogg?url";
+import potUrl from "@/assets/audio/pot.ogg?url";
+import drink2Url from "@/assets/audio/drink2.ogg?url";
+import drink3Url from "@/assets/audio/drink3.ogg?url";
+import drink4Url from "@/assets/audio/drink4.ogg?url";
+import drink5Url from "@/assets/audio/drink5.ogg?url";
+import knifeSliceUrl from "@/assets/audio/knifeSlice.ogg?url";
+import knifeSlice2Url from "@/assets/audio/knifeSlice2.ogg?url";
 
 export const MODEL_URLS = {
   palm: palmUrl,
@@ -137,6 +162,10 @@ export const MODEL_URLS = {
   bedroll: bedrollUrl,
   bucket: bucketUrl,
   tinder: tinderUrl,
+  stick: stickUrl,
+  stone: stoneUrl,
+  fiber: fiberUrl,
+  leanTo: leanToUrl,
   fishingBoat: fishingBoatUrl,
   coconut: coconutUrl,
   coconutHalf: coconutHalfUrl,
@@ -186,6 +215,18 @@ export const SOUND_URLS = {
   cloths: [cloth1Url, cloth2Url, cloth3Url],
   chops: [chopUrl],
   eats: [eat01Url, eat04Url],
+  waves: [wave1Url, wave2Url, wave3Url],
+  river: riverUrl,
+  rain: rainUrl,
+  rainSoft: rainSoftUrl,
+  fire: fireUrl,
+  crackle: crackleUrl,
+  splashes: [splash1Url, splash2Url, splash3Url],
+  bubbles: [bubble1Url, bubble2Url],
+  plank: plankUrl,
+  pot: potUrl,
+  drinks: [drink2Url, drink3Url, drink4Url, drink5Url],
+  slices: [knifeSliceUrl, knifeSlice2Url],
 } as const;
 
 export type ModelKind = keyof typeof MODEL_URLS;

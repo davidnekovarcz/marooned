@@ -1,7 +1,7 @@
 import { isFoodKind } from "@/web/src/food";
 import type { ModelKind } from "@/web/src/models";
 
-export type WorldKind = ModelKind | "lilypad" | "torch" | "tomato";
+export type WorldKind = ModelKind | "lilypad" | "torch" | "tomato" | "fishCooked" | "fishingPole";
 
 export type HeldKind =
   | "knife"
@@ -9,7 +9,11 @@ export type HeldKind =
   | "axe"
   | "shovel"
   | "torch"
+  | "fishingPole"
   | "tinder"
+  | "stick"
+  | "stone"
+  | "fiber"
   | "coconut"
   | "coconutHalf"
   | "orange"
@@ -19,7 +23,9 @@ export type HeldKind =
   | "watermelon"
   | "tomato"
   | "mushroomTan"
-  | "mushroomRed";
+  | "mushroomRed"
+  | "fish"
+  | "fishCooked";
 
 export type PocketSlot = "left" | "right";
 

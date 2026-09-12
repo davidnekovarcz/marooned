@@ -18,10 +18,12 @@ import {
   cellIndex,
   inBounds,
   isLand,
+  isOceanCell,
   nearestCell,
 } from "@/web/src/island";
 import { loadGlb, loadObj } from "@/web/src/loaders";
 import type { Cell, LootSites } from "@/web/src/sim/loot";
+import { makeFishingPole } from "@/web/src/world/fishingPole";
 import { Item } from "@/web/src/world/item";
 import { LILY_URL, MODEL_URLS, TOMATO_URL, TORCH_URL, type ModelKind } from "@/web/src/models";
 import { mulberry32 } from "@/web/src/rng";
@@ -44,7 +46,7 @@ for (let dz = -2; dz <= 2; dz++) {
   }
 }
 
-type PlaceKind = ModelKind | "lilypad" | "torch" | "tomato";
+type PlaceKind = ModelKind | "lilypad" | "torch" | "tomato" | "fishCooked" | "fishingPole";
 
 export type AudioAnchor = { id: string; position: THREE.Vector3 };
 
@@ -54,7 +56,7 @@ export type ScatterResult = {
   items: Item[];
   lootSites: LootSites;
   spawn: (
-    kind: ModelKind | "torch" | "tomato",
+    kind: ModelKind | "torch" | "tomato" | "fishCooked" | "fishingPole",
     x: number,
     z: number,
     extra?: { yaw?: number; dx?: number; dz?: number },
@@ -76,7 +78,7 @@ function placeAtCell(
 ): void {
   obj.position.set(x * CELL + CELL / 2, 0, z * CELL + CELL / 2);
   obj.rotation.y = yaw;
-  const spec = specFor(kind);
+    const spec = specFor(kind === "fishCooked" ? "fish" : kind);
   fitAndPlant(obj, { ...spec, meters: spec.meters * vary, min: spec.min ? spec.min * vary : undefined }, y);
 }
 
@@ -174,6 +176,7 @@ export async function scatterProps(
   templates.lilypad = await loadObj(LILY_URL);
   templates.torch = await loadObj(TORCH_URL, 0x6a4a32);
   templates.tomato = await loadObj(TOMATO_URL, 0xc43b2b);
+  templates.fishingPole = makeFishingPole();
 
   const grass: [number, number][] = [];
   const land: [number, number][] = [];
@@ -212,7 +215,8 @@ export async function scatterProps(
     extra?: { tiltX?: number; tiltZ?: number; y?: number; dx?: number; dz?: number; vary?: boolean },
   ): THREE.Object3D | null => {
     if (!inBounds(x, z)) return null;
-    const src = templates[kind];
+    const srcKey: PlaceKind = kind === "fishCooked" ? "fish" : kind;
+    const src = templates[srcKey];
     if (!src) return null;
     const clone = src.clone(true);
     const vary = extra?.vary === false ? 1 : 0.92 + rng() * 0.16;
@@ -223,8 +227,18 @@ export async function scatterProps(
     if (extra?.tiltZ) clone.rotation.z += extra.tiltZ;
     if (extra?.tiltX || extra?.tiltZ) sitOnGround(clone);
     group.add(clone);
+    if (kind === "campfire" || kind === "campfireStones") nestLogs(clone, x, z, yaw);
     items.push(new Item(kind, x, z, clone));
     return clone;
+  };
+
+  const nestLogs = (ring: THREE.Object3D, x: number, z: number, yaw: number): void => {
+    const src = templates.campfireLogs;
+    if (!src) return;
+    const logs = src.clone(true);
+    placeAtCell(logs, "campfireLogs", x, z, yaw, GROUND_Y, 0.72);
+    group.add(logs);
+    ring.attach(logs);
   };
 
   const wreck = nearestCell(
@@ -234,7 +248,7 @@ export async function scatterProps(
     (b) => b === Biome.Sand,
   );
   if (wreck) {
-    markRect(blocked, wreck.x, wreck.z, 3, 2);
+    markRect(blocked, wreck.x, wreck.z, 1, 1);
     add("wreck", wreck.x, wreck.z, 0.4, { tiltZ: 0.28 });
     add("crate", wreck.x + 2, wreck.z + 1, rng() * 6);
     add("barrel", wreck.x - 2, wreck.z, rng() * 6);
@@ -244,7 +258,8 @@ export async function scatterProps(
     add("bottle", wreck.x + 2, wreck.z, rng() * 6);
     add("bottle", wreck.x - 1, wreck.z - 2, rng() * 6);
     add("flag", wreck.x - 2, wreck.z + 1, 0.2);
-    lootSites.wreck.push(...collectAround(biomes, blocked, wreck.x, wreck.z, 3, 2, 2));
+    add("fishingPole", wreck.x + 2, wreck.z - 1, rng() * 2);
+    lootSites.wreck.push(...collectAround(biomes, blocked, wreck.x, wreck.z, 1, 1, 2));
     audioAnchors.push({ id: "wreck", position: worldPos(wreck.x, wreck.z) });
   }
 
@@ -281,6 +296,9 @@ export async function scatterProps(
     add("bedroll", hut.x + 1, hut.z - 1, rng() * 3);
     add("bucket", hut.x - 1, hut.z + 1, rng() * 4);
     add("tinder", hut.x + 1, hut.z + 1, rng() * 2);
+    add("stick", hut.x - 3, hut.z, rng() * 2);
+    add("stick", hut.x + 3, hut.z + 1, rng() * 2);
+    add("fiber", hut.x + 2, hut.z + 1, rng() * 3);
     add("bow", hut.x + 1, hut.z + 2, 0.7);
     add("arrow", hut.x + 2, hut.z + 2, 1.2);
     lootSites.hut.push(...collectAround(biomes, blocked, hut.x, hut.z, 2, 2, 2));
@@ -412,7 +430,21 @@ export async function scatterProps(
   tryPlace("bushDetailed", grass, 22, (x, z) => !inForest(x, z), "none", collectBush);
   tryPlace("natureLog", grass, 3, (x, z) => inForest(x, z), "walk");
   tryPlace("logLarge", grass, 2, (x, z) => inForest(x, z), "walk");
-  tryPlace("campfireStones", sand, 2, () => true, "none");
+
+  const oceanNearby = (x: number, z: number, range = 2): boolean => {
+    for (let dz = -range; dz <= range; dz++) {
+      for (let dx = -range; dx <= range; dx++) {
+        if (isOceanCell(x + dx, z + dz, biomes)) return true;
+      }
+    }
+    return false;
+  };
+  const forestRim = (x: number, z: number): boolean => {
+    const d = Math.hypot(x - forestX, z - forestZ);
+    return d >= 7 && d <= 12;
+  };
+  tryPlace("campfireStones", grass, 1, (x, z) => forestRim(x, z), "walk");
+  tryPlace("campfireStones", sand, 1, (x, z) => !oceanNearby(x, z, 2), "walk");
 
   for (let z = forestZ - 12; z <= forestZ + 12; z++) {
     for (let x = forestX - 12; x <= forestX + 12; x++) {
@@ -441,7 +473,7 @@ export async function scatterProps(
 
   scene.add(group);
   const spawn = (
-    kind: ModelKind | "torch" | "tomato",
+    kind: ModelKind | "torch" | "tomato" | "fishCooked" | "fishingPole",
     x: number,
     z: number,
     extra?: { yaw?: number; dx?: number; dz?: number },

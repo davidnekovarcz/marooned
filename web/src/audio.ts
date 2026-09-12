@@ -4,46 +4,11 @@ import type { CoastField } from "@/web/src/island";
 import { cellIndex } from "@/web/src/island";
 import { SOUND_URLS } from "@/web/src/models";
 import type { GridPlayer } from "@/web/src/actor/player";
+import type { Camp } from "@/web/src/sim/camp";
 
 const LANDMARK_HEAR = 20 * CELL;
 const OCEAN_HEAR = 42 * CELL;
 const REF_DISTANCE = 3 * CELL;
-
-function makeWaveBuffer(ctx: AudioContext): AudioBuffer {
-  const seconds = 4;
-  const rate = ctx.sampleRate;
-  const buffer = ctx.createBuffer(1, Math.floor(rate * seconds), rate);
-  const data = buffer.getChannelData(0);
-  let prev = 0;
-  for (let i = 0; i < data.length; i++) {
-    const t = i / data.length;
-    const white = Math.random() * 2 - 1;
-    prev = prev * 0.88 + white * 0.12;
-    const swell = 0.55 + 0.28 * Math.sin(t * Math.PI * 2) + 0.17 * Math.sin(t * Math.PI * 2 * 1.6 + 0.9);
-    const fade = Math.min(t * 18, (1 - t) * 18, 1);
-    data[i] = prev * swell * fade * 0.5;
-  }
-  return buffer;
-}
-
-/** Dirt/shovel strike — was pond splash; keep for dig interact later (not ambient). */
-export function makeShovelBuffer(ctx: AudioContext): AudioBuffer {
-  const seconds = 0.45;
-  const rate = ctx.sampleRate;
-  const n = Math.floor(rate * seconds);
-  const buffer = ctx.createBuffer(1, n, rate);
-  const data = buffer.getChannelData(0);
-  let prev = 0;
-  for (let i = 0; i < n; i++) {
-    const t = i / rate;
-    const u = t / seconds;
-    const white = Math.random() * 2 - 1;
-    prev = prev * 0.72 + white * 0.28;
-    const env = Math.exp(-u * 7) * Math.sin(Math.min(1, u * 18) * Math.PI * 0.5);
-    data[i] = prev * env * 0.4;
-  }
-  return buffer;
-}
 
 async function loadBuffer(ctx: AudioContext, url: string): Promise<AudioBuffer> {
   const res = await fetch(url);
@@ -69,7 +34,6 @@ function spatialize(
   sound.position.copy(position);
 }
 
-/** Keep distance attenuation; with SOUND_3D off, pin the source in front so it never pans L/R. */
 function applySpatial(
   sound: THREE.PositionalAudio,
   source: THREE.Vector3,
@@ -133,15 +97,37 @@ function attachRandomOneShots(
   return sound;
 }
 
+function playOne(sound: THREE.Audio, buf: AudioBuffer | null, volume: number): void {
+  if (!buf) return;
+  if (sound.isPlaying) sound.stop();
+  sound.setBuffer(buf);
+  sound.setVolume(volume);
+  sound.play();
+}
+
 export type MealKind = "drink" | "eat";
+
+export type IslandAudio = {
+  update: (rain: number, sheltered: boolean) => void;
+  playMeal: (kind: MealKind) => void;
+  stopMeal: () => void;
+  playPickup: () => void;
+  playSplash: () => void;
+  playDrink: () => void;
+  playCut: () => void;
+  playBuild: () => void;
+  playLight: () => void;
+  playCook: () => void;
+};
 
 export function setupIslandAudio(
   scene: THREE.Scene,
   player: GridPlayer,
   anchors: { id: string; position: THREE.Vector3 }[],
   coast: CoastField,
+  camp: Camp,
   onUnlocked?: () => void,
-): { update: () => void; playMeal: (kind: MealKind) => void; stopMeal: () => void; playPickup: () => void } {
+): IslandAudio {
   const listener = new THREE.AudioListener();
   player.mesh.add(listener);
 
@@ -150,36 +136,54 @@ export function setupIslandAudio(
   const tracked: { sound: THREE.PositionalAudio; source: THREE.Vector3 }[] = [];
   const mealSound = new THREE.Audio(listener);
   const rustleSound = new THREE.Audio(listener);
+  const oneShot = new THREE.Audio(listener);
+  const rainSound = new THREE.Audio(listener);
+  const rainSoftSound = new THREE.Audio(listener);
+  const fireSounds: THREE.PositionalAudio[] = [];
   let eatBufs: AudioBuffer[] = [];
+  let drinkBufs: AudioBuffer[] = [];
+  let sliceBufs: AudioBuffer[] = [];
   let rustleBuf: AudioBuffer | null = null;
+  let splashBufs: AudioBuffer[] = [];
+  let chopBuf: AudioBuffer | null = null;
+  let plankBuf: AudioBuffer | null = null;
+  let potBuf: AudioBuffer | null = null;
+  let clothBuf: AudioBuffer | null = null;
+  let rainReady = false;
   let mealActive = false;
+  let mealKind: MealKind = "eat";
   let eatIndex = 0;
   let mealTimer = 0;
   let pendingMeal = false;
+  let cutTimer = 0;
 
-  const playNextEatClip = () => {
-    if (!mealActive || eatBufs.length === 0) return;
-    const buf = eatBufs[eatIndex % eatBufs.length]!;
+  const mealBufs = (): AudioBuffer[] => (mealKind === "drink" ? drinkBufs : eatBufs);
+
+  const playNextMealClip = () => {
+    const bufs = mealBufs();
+    if (!mealActive || bufs.length === 0) return;
+    const buf = bufs[eatIndex % bufs.length]!;
     eatIndex += 1;
     if (mealSound.isPlaying) mealSound.stop();
     mealSound.setBuffer(buf);
-    mealSound.setVolume(0.62);
+    mealSound.setVolume(mealKind === "drink" ? 0.8 : 0.62);
     mealSound.play();
     window.clearTimeout(mealTimer);
     mealTimer = window.setTimeout(() => {
-      if (mealActive) playNextEatClip();
+      if (mealActive) playNextMealClip();
     }, Math.max(50, buf.duration * 1000));
   };
 
-  const startMeal = () => {
-    if (eatBufs.length === 0) {
+  const startMeal = (kind: MealKind) => {
+    mealKind = kind;
+    if (mealBufs().length === 0) {
       pendingMeal = true;
       return;
     }
     pendingMeal = false;
     mealActive = true;
     eatIndex = 0;
-    playNextEatClip();
+    playNextMealClip();
   };
 
   const unlock = async () => {
@@ -188,15 +192,33 @@ export function setupIslandAudio(
     await listener.context.resume();
 
     const ctx = listener.context as AudioContext;
-    const [creaks, cloths, chops, eats] = await Promise.all([
-      Promise.all(SOUND_URLS.creaks.map((u) => loadBuffer(ctx, u))),
-      Promise.all(SOUND_URLS.cloths.map((u) => loadBuffer(ctx, u))),
-      Promise.all(SOUND_URLS.chops.map((u) => loadBuffer(ctx, u))),
-      Promise.all(SOUND_URLS.eats.map((u) => loadBuffer(ctx, u))),
-    ]);
-    const waves = makeWaveBuffer(ctx);
+    const [creaks, cloths, chops, eats, waves, splashes, drinks, slices, river, rain, rainSoft, fire, crackle, plank, pot] =
+      await Promise.all([
+        Promise.all(SOUND_URLS.creaks.map((u) => loadBuffer(ctx, u))),
+        Promise.all(SOUND_URLS.cloths.map((u) => loadBuffer(ctx, u))),
+        Promise.all(SOUND_URLS.chops.map((u) => loadBuffer(ctx, u))),
+        Promise.all(SOUND_URLS.eats.map((u) => loadBuffer(ctx, u))),
+        Promise.all(SOUND_URLS.waves.map((u) => loadBuffer(ctx, u))),
+        Promise.all(SOUND_URLS.splashes.map((u) => loadBuffer(ctx, u))),
+        Promise.all(SOUND_URLS.drinks.map((u) => loadBuffer(ctx, u))),
+        Promise.all(SOUND_URLS.slices.map((u) => loadBuffer(ctx, u))),
+        loadBuffer(ctx, SOUND_URLS.river),
+        loadBuffer(ctx, SOUND_URLS.rain),
+        loadBuffer(ctx, SOUND_URLS.rainSoft),
+        loadBuffer(ctx, SOUND_URLS.fire),
+        loadBuffer(ctx, SOUND_URLS.crackle),
+        loadBuffer(ctx, SOUND_URLS.plank),
+        loadBuffer(ctx, SOUND_URLS.pot),
+      ]);
     eatBufs = eats;
+    drinkBufs = drinks;
+    sliceBufs = slices;
     rustleBuf = cloths[0] ?? null;
+    clothBuf = cloths[1] ?? cloths[0] ?? null;
+    splashBufs = splashes;
+    chopBuf = chops[0] ?? null;
+    plankBuf = plank;
+    potBuf = pot;
 
     const group = new THREE.Group();
     group.name = "audio";
@@ -206,9 +228,23 @@ export function setupIslandAudio(
       tracked.push({ sound, source });
     };
 
-    oceanSound = attachLoop(listener, waves, oceanSource, 0.5, OCEAN_HEAR);
-    track(oceanSound, oceanSource);
-    oceanSound.play();
+    const swell = waves[0] ?? waves[1];
+    if (swell) {
+      oceanSound = attachLoop(listener, swell, oceanSource, 0.48, OCEAN_HEAR);
+      track(oceanSound, oceanSource);
+      oceanSound.play();
+    }
+    if (waves.length > 1) {
+      track(attachRandomOneShots(listener, waves.slice(1), oceanSource, 0.38, [3, 9], OCEAN_HEAR), oceanSource);
+    }
+
+    rainSound.setBuffer(rain);
+    rainSound.setLoop(true);
+    rainSound.setVolume(0);
+    rainSoftSound.setBuffer(rainSoft);
+    rainSoftSound.setLoop(true);
+    rainSoftSound.setVolume(0);
+    rainReady = true;
 
     for (const a of anchors) {
       const source = a.position.clone();
@@ -216,12 +252,24 @@ export function setupIslandAudio(
         track(attachRandomOneShots(listener, creaks, source, 0.55, [2.5, 8], LANDMARK_HEAR), source);
       } else if (a.id === "hut" || a.id === "boat") {
         track(attachRandomOneShots(listener, chops, source, 0.32, [4, 12], LANDMARK_HEAR), source);
+      } else if (a.id === "pond") {
+        const riverSound = attachLoop(listener, river, source, 0.4, 22 * CELL);
+        track(riverSound, source);
+        riverSound.play();
       }
     }
 
-    scene.add(group);
+    for (let i = 0; i < 4; i++) {
+      const fireSound = new THREE.PositionalAudio(listener);
+      fireSound.setBuffer(i === 0 ? fire : crackle);
+      fireSound.setLoop(true);
+      spatialize(fireSound, new THREE.Vector3(), 0, 16 * CELL);
+      group.add(fireSound);
+      fireSounds.push(fireSound);
+    }
 
-    if (pendingMeal) startMeal();
+    scene.add(group);
+    if (pendingMeal) startMeal(mealKind);
     onUnlocked?.();
   };
 
@@ -229,30 +277,58 @@ export function setupIslandAudio(
   window.addEventListener("keydown", unlock);
 
   return {
-    update: () => {
-      if (!oceanSound) return;
-      const i = cellIndex(player.cellX, player.cellZ);
-      oceanSource.set(coast.nearX[i]! * CELL + CELL / 2, 0.8, coast.nearZ[i]! * CELL + CELL / 2);
+    update: (rainAmt: number, sheltered: boolean) => {
+      if (oceanSound) {
+        const i = cellIndex(player.cellX, player.cellZ);
+        oceanSource.set(coast.nearX[i]! * CELL + CELL / 2, 0.8, coast.nearZ[i]! * CELL + CELL / 2);
+      }
       for (const item of tracked) applySpatial(item.sound, item.source, listener);
+
+      if (rainReady) {
+        const wetVol = rainAmt * (sheltered ? 0.22 : 0.7);
+        const softVol = rainAmt * (sheltered ? 0.12 : 0.28);
+        if (rainAmt > 0.04) {
+          if (!rainSound.isPlaying) rainSound.play();
+          if (!rainSoftSound.isPlaying) rainSoftSound.play();
+        }
+        rainSound.setVolume(wetVol);
+        rainSoftSound.setVolume(softVol);
+        if (oceanSound) oceanSound.setVolume(0.48 + rainAmt * 0.22);
+      }
+
+      const lit = camp.hearths.filter((h) => h.lit);
+      for (let i = 0; i < fireSounds.length; i++) {
+        const sound = fireSounds[i]!;
+        const hearth = lit[i];
+        if (!hearth) {
+          if (sound.isPlaying) sound.stop();
+          continue;
+        }
+        applySpatial(sound, camp.worldPos(hearth), listener);
+        sound.setVolume(0.55);
+        if (!sound.isPlaying) sound.play();
+      }
     },
-    playMeal: (_kind) => {
-      // Same loaded eat_01 / eat_04 clips for every fruit (incl. coconut half).
-      void _kind;
-      startMeal();
-    },
-    /** Cut chew when the meal lock ends so silence and movement return together. */
+    playMeal: (kind) => startMeal(kind),
     stopMeal: () => {
       mealActive = false;
       pendingMeal = false;
       window.clearTimeout(mealTimer);
       if (mealSound.isPlaying) mealSound.stop();
     },
-    playPickup: () => {
-      if (!rustleBuf) return;
-      if (rustleSound.isPlaying) rustleSound.stop();
-      rustleSound.setBuffer(rustleBuf);
-      rustleSound.setVolume(0.4);
-      rustleSound.play();
+    playPickup: () => playOne(rustleSound, rustleBuf, 0.4),
+    playSplash: () => playOne(oneShot, pick(splashBufs) ?? null, 0.55),
+    playDrink: () => startMeal("drink"),
+    playCut: () => {
+      const first = pick(sliceBufs) ?? null;
+      playOne(oneShot, first, 0.7);
+      window.clearTimeout(cutTimer);
+      cutTimer = window.setTimeout(() => {
+        playOne(oneShot, pick(sliceBufs) ?? first, 0.62);
+      }, 850);
     },
+    playBuild: () => playOne(oneShot, plankBuf ?? chopBuf, 0.62),
+    playLight: () => playOne(oneShot, clothBuf, 0.5),
+    playCook: () => playOne(oneShot, potBuf, 0.55),
   };
 }

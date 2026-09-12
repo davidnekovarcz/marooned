@@ -105,7 +105,13 @@ function mixSky(t: number, out: THREE.Color): THREE.Color {
   return out.copy(dusk).lerp(SKY_NIGHT, u);
 }
 
-export function applyDayNight(scene: THREE.Scene, lights: DayLights, t: number): void {
+export function applyDayNight(
+  scene: THREE.Scene,
+  lights: DayLights,
+  t: number,
+  rain = 0,
+  flash = 0,
+): void {
   const elev = sunElevation(t);
   const angle = (t - 0.25) * Math.PI * 2;
   const orbit = 70;
@@ -124,13 +130,21 @@ export function applyDayNight(scene: THREE.Scene, lights: DayLights, t: number):
 
   const sunUp = elev > 0.04;
   const moonUp = elev < -0.04;
-  lights.sun.intensity = sunUp ? 0.45 + elev * 1.55 : 0;
+  const rainDim = 1 - rain * 0.72;
+  lights.sun.intensity = sunUp ? (0.45 + elev * 1.55) * rainDim : 0;
   lights.sun.castShadow = sunUp;
-  lights.moon.intensity = moonUp ? 0.08 + Math.min(1, -elev) * 0.16 : 0;
+  lights.moon.intensity = moonUp ? 0.03 + Math.min(1, -elev) * 0.06 : 0;
   lights.moon.castShadow = moonUp && !sunUp;
 
   const duskAmt = THREE.MathUtils.clamp(1 - Math.abs(elev) / 0.35, 0, 1);
   mixSky(t, _sky);
+  if (rain > 0.02) {
+    const storm = new THREE.Color(0x4a5c6e);
+    _sky.lerp(storm, THREE.MathUtils.clamp(rain * 0.85, 0, 0.85));
+  }
+  if (flash > 0.02) {
+    _sky.lerp(new THREE.Color(0xe8f0ff), flash);
+  }
   scene.background = _sky;
   if (scene.fog instanceof THREE.Fog) scene.fog.color.copy(_sky);
 
@@ -139,5 +153,6 @@ export function applyDayNight(scene: THREE.Scene, lights: DayLights, t: number):
   _hemiGround.copy(HEMI_GROUND_NOON).lerp(HEMI_GROUND_NIGHT, night);
   lights.hemi.color.copy(_hemiSky);
   lights.hemi.groundColor.copy(_hemiGround);
-  lights.hemi.intensity = THREE.MathUtils.lerp(1.15, 0.08, night);
+  const hemiNight = THREE.MathUtils.lerp(1.15, 0.018, night);
+  lights.hemi.intensity = hemiNight * (1 - rain * 0.35) + flash * 2.4;
 }

@@ -4,6 +4,7 @@ import {
   CELL,
   FOG_DAWN_SCALE,
   FOG_NIGHT_SCALE,
+  FOG_RAIN_SCALE,
   ISLAND_RADIUS,
   ZOOM_CELLS_IN,
   ZOOM_CELLS_OUT,
@@ -38,6 +39,7 @@ export function applyZoomFog(
   dist: number,
   cells: number,
   dayT: number,
+  rain = 0,
 ): void {
   camera.far = Math.max(420, dist + ISLAND_RADIUS * 3);
   camera.updateProjectionMatrix();
@@ -54,7 +56,10 @@ export function applyZoomFog(
   const elev = sunElevation(dayT);
   const night = THREE.MathUtils.clamp(-elev, 0, 1);
   const dawn = elev > 0 ? THREE.MathUtils.clamp(1 - elev / 0.28, 0, 1) : 0;
-  const vis = THREE.MathUtils.lerp(1, FOG_NIGHT_SCALE, night) * THREE.MathUtils.lerp(1, FOG_DAWN_SCALE, dawn);
+  const vis =
+    THREE.MathUtils.lerp(1, FOG_NIGHT_SCALE, night) *
+    THREE.MathUtils.lerp(1, FOG_DAWN_SCALE, dawn) *
+    THREE.MathUtils.lerp(1, FOG_RAIN_SCALE, rain);
   scene.fog.near = near * vis;
   scene.fog.far = Math.max(near * vis + 8, far * vis);
 }

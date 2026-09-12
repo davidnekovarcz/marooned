@@ -8,6 +8,7 @@ import {
   HUNGER_DRAIN_IDLE,
   HUNGER_DRAIN_RUN,
   HUNGER_DRAIN_WALK,
+  HEALTH_COLD_WET_DRAIN,
   HEALTH_DRAIN_PER_EMPTY,
   HEALTH_POISON_DRAIN,
   HEALTH_RESTORE,
@@ -17,16 +18,31 @@ import {
   TEMP_COLD_HUNGER_MULT,
   TEMP_COOL_IDLE_NIGHT,
   TEMP_DRIFT,
+  TEMP_FIRE_WARM,
   TEMP_HEAT_RUN_DAY,
   TEMP_IDLE_DAY_RECOVER,
   TEMP_HOT,
   TEMP_HOT_BLINK_THIRST_MULT,
   TEMP_HOT_ENERGY_MULT,
   TEMP_HOT_THIRST_MULT,
+  TEMP_NIGHT_COMFORT,
   TEMP_SWIM_COOL,
+  TEMP_TORCH_WARM,
+  TEMP_WET_DAY,
+  TEMP_WET_DAY_FLOOR,
+  TEMP_WET_NIGHT,
+  TEMP_WET_NIGHT_FLOOR,
+  TEMP_WET_STORM_FLOOR,
   THIRST_DRAIN_IDLE,
   THIRST_DRAIN_RUN,
   THIRST_DRAIN_WALK,
+  WET_FIRE_DRY,
+  WET_NIGHT_DRY,
+  WET_RAIN,
+  WET_SHELTER_DRY,
+  WET_SUN_DRY,
+  WET_SWIM,
+  WET_TORCH_DRY,
 } from "@/web/src/constants";
 import type { PlayerGait } from "@/web/src/playerModel";
 
@@ -36,7 +52,17 @@ export type NeedsState = {
   thirst: number;
   hunger: number;
   temperature: number;
+  wetness: number;
   health: number;
+};
+
+export type NeedsClimate = {
+  daytime: boolean;
+  rain: number;
+  sheltered: boolean;
+  fire: number;
+  torch: boolean;
+  swimming: boolean;
 };
 
 function clamp01(n: number): number {
@@ -52,6 +78,7 @@ export class Needs {
   thirst = 0.5;
   hunger = 0.5;
   temperature = 0.5;
+  wetness = 0;
   health = 1;
   canSprint = true;
   private pendingHunger = 0;
@@ -74,19 +101,20 @@ export class Needs {
       thirst: this.thirst,
       hunger: this.hunger,
       temperature: this.temperature,
+      wetness: this.wetness,
       health: this.health,
     };
   }
 
-  private towardComfort(dt: number, rate: number): void {
-    const d = 0.5 - this.temperature;
+  private towardComfort(dt: number, rate: number, target = 0.5): void {
+    const d = target - this.temperature;
     const step = rate * dt;
-    if (Math.abs(d) <= step) this.temperature = 0.5;
+    if (Math.abs(d) <= step) this.temperature = target;
     else this.temperature += Math.sign(d) * step;
   }
 
-  /** Shade vs sun is later — for now daytime is the whole island. */
-  tick(gait: PlayerGait, dt: number, daytime: boolean): void {
+  tick(gait: PlayerGait, dt: number, climate: NeedsClimate): void {
+    const { daytime, rain, sheltered, fire, torch, swimming } = climate;
     const hot = this.temperature >= TEMP_HOT;
     const cold = this.temperature <= TEMP_COLD;
     const hungerMult = cold ? TEMP_COLD_HUNGER_MULT : 1;
@@ -102,25 +130,46 @@ export class Needs {
       this.energy -= ENERGY_DRAIN_RUN * energyMult * dt;
       this.thirst -= THIRST_DRAIN_RUN * thirstMult * dt;
       this.hunger -= HUNGER_DRAIN_RUN * hungerMult * dt;
-      if (daytime) this.temperature += TEMP_HEAT_RUN_DAY * dt;
-      else this.towardComfort(dt, TEMP_DRIFT);
     } else if (gait === "walk") {
       this.energy += ENERGY_RECOVER_WALK * dt;
       this.thirst -= THIRST_DRAIN_WALK * thirstMult * dt;
       this.hunger -= HUNGER_DRAIN_WALK * hungerMult * dt;
-      this.towardComfort(dt, TEMP_DRIFT);
     } else if (gait === "swim") {
       this.energy += ENERGY_RECOVER_WALK * 0.45 * dt;
       this.thirst -= THIRST_DRAIN_WALK * thirstMult * dt;
       this.hunger -= HUNGER_DRAIN_WALK * hungerMult * dt;
-      this.temperature -= TEMP_SWIM_COOL * dt;
     } else {
       this.energy += ENERGY_RECOVER_IDLE * dt;
       this.thirst -= THIRST_DRAIN_IDLE * thirstMult * dt;
       this.hunger -= HUNGER_DRAIN_IDLE * hungerMult * dt;
-      if (!daytime) this.temperature -= TEMP_COOL_IDLE_NIGHT * dt;
-      else this.towardComfort(dt, TEMP_IDLE_DAY_RECOVER);
     }
+
+    if (swimming) this.wetness += WET_SWIM * dt;
+    else if (rain > 0.05 && !sheltered) this.wetness += WET_RAIN * rain * dt;
+    if (fire > 0) this.wetness -= WET_FIRE_DRY * fire * dt;
+    else if (torch) this.wetness -= WET_TORCH_DRY * dt;
+    else if (sheltered) this.wetness -= WET_SHELTER_DRY * dt;
+    else if (rain < 0.08) this.wetness -= (daytime ? WET_SUN_DRY : WET_NIGHT_DRY) * dt;
+
+    const wet = clamp01(this.wetness);
+    let target = daytime ? 0.5 : TEMP_NIGHT_COMFORT;
+    if (wet > 0.05) {
+      const stormSoak = !daytime && rain > 0.3 && !sheltered && fire <= 0 && wet >= 0.65;
+      const floor = daytime ? TEMP_WET_DAY_FLOOR : stormSoak ? TEMP_WET_STORM_FLOOR : TEMP_WET_NIGHT_FLOOR;
+      target -= (target - floor) * wet;
+    }
+    if (fire > 0) {
+      this.towardComfort(dt, TEMP_FIRE_WARM * fire, Math.max(target, 0.64));
+    } else if (torch && !daytime) {
+      this.towardComfort(dt, TEMP_TORCH_WARM, Math.max(target, 0.42));
+    } else {
+      const chilling = this.temperature > target;
+      const wetRate = wet * (daytime ? TEMP_WET_DAY : TEMP_WET_NIGHT);
+      const climateRate = gait === "idle" && !daytime ? TEMP_COOL_IDLE_NIGHT : daytime ? TEMP_IDLE_DAY_RECOVER : TEMP_DRIFT;
+      this.towardComfort(dt, chilling ? Math.max(climateRate, wetRate) : climateRate, target);
+    }
+    if (gait === "run" && daytime) this.temperature += TEMP_HEAT_RUN_DAY * dt;
+    else if (gait === "swim") this.temperature -= TEMP_SWIM_COOL * dt;
 
     const restore = EAT_RESTORE_RATE * dt;
     const hungerGain = Math.min(this.pendingHunger, restore);
@@ -133,6 +182,7 @@ export class Needs {
     this.thirst = clamp01(this.thirst);
     this.hunger = clamp01(this.hunger);
     this.temperature = clamp01(this.temperature);
+    this.wetness = clamp01(this.wetness);
     if (this.poisoned) {
       this.health -= HEALTH_POISON_DRAIN * dt;
     } else {
@@ -140,6 +190,9 @@ export class Needs {
       if (emptyNeeds > 0) this.health -= HEALTH_DRAIN_PER_EMPTY * emptyNeeds * dt;
       else if (this.thirst >= HUD_BAND_MID && this.hunger >= HUD_BAND_MID) {
         this.health += HEALTH_RESTORE * dt;
+      }
+      if (this.temperature <= 0.12 && this.wetness >= 0.85 && !daytime && fire <= 0) {
+        this.health -= HEALTH_COLD_WET_DRAIN * dt;
       }
     }
     this.health = clamp01(this.health);

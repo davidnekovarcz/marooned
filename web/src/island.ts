@@ -82,10 +82,51 @@ export function isOceanCell(x: number, z: number, biomes: Uint8Array): boolean {
   return biomes[cellIndex(x, z)] === Biome.Water && cellCenterDist(x, z) >= ISLAND_RADIUS;
 }
 
+const NEIGHBOR8: [number, number][] = [
+  [1, 0],
+  [-1, 0],
+  [0, 1],
+  [0, -1],
+  [1, 1],
+  [1, -1],
+  [-1, 1],
+  [-1, -1],
+];
+
+function landTouches(x: number, z: number, biomes: Uint8Array, pred: (nx: number, nz: number) => boolean): boolean {
+  if (!inBounds(x, z)) return false;
+  if (!isLand(biomes[cellIndex(x, z)] as Biome)) return false;
+  for (const [dx, dz] of NEIGHBOR8) {
+    const nx = x + dx;
+    const nz = z + dz;
+    if (!inBounds(nx, nz)) continue;
+    if (pred(nx, nz)) return true;
+  }
+  return false;
+}
+
+/** Pond, river, or open sea next to this land cell (including diagonals). */
+export function isShore(x: number, z: number, biomes: Uint8Array): boolean {
+  return landTouches(x, z, biomes, (nx, nz) => biomes[cellIndex(nx, nz)] === Biome.Water);
+}
+
 /** Pond and river — not the open sea. */
 export function isInlandWater(x: number, z: number, biomes: Uint8Array): boolean {
   if (!inBounds(x, z)) return false;
   return biomes[cellIndex(x, z)] === Biome.Water && !isOceanCell(x, z, biomes);
+}
+
+/** Dry bank of the pond or river — kneel and drink without swimming. */
+export function isPondShore(x: number, z: number, biomes: Uint8Array): boolean {
+  if (!inBounds(x, z)) return false;
+  if (!isLand(biomes[cellIndex(x, z)] as Biome)) return false;
+  for (let dz = -2; dz <= 2; dz++) {
+    for (let dx = -2; dx <= 2; dx++) {
+      if (dx === 0 && dz === 0) continue;
+      if (isInlandWater(x + dx, z + dz, biomes)) return true;
+    }
+  }
+  return false;
 }
 
 export type CoastField = {
