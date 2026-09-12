@@ -14,11 +14,13 @@ export function formatItemLabel(kind: string, prep?: FoodPrep, freshness: Freshn
 }
 
 export function formatActionLabel(action: ResolvedAction): string {
+  const verb = t(`action.${action.id}`);
   if (action.blocked) {
     if (action.blocked === "rotten") return t("food.state.rotten");
-    return t(`action.${action.id}`) + " (" + t(`action.blocked.${action.blocked}`) + ")";
+    return `${verb} (${t(`action.blocked.${action.blocked}`)})`;
   }
-  return t(`action.${action.id}`);
+  if (action.id === "drop") return verb;
+  return `${verb} [SPACE]`;
 }
 
 export function formatDeathTime(gameHours: number): string {
