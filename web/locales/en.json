@@ -71,6 +71,8 @@
     "fox": "Fox",
     "pig": "Pig",
     "deer": "Deer",
+    "sheep": "Sheep",
+    "llama": "Llama",
     "fishCooked": "Cooked fish"
   },
   "food": {

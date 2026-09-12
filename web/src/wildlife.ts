@@ -23,7 +23,7 @@ const DIRS: [number, number][] = [
 
 type Template = { root: THREE.Object3D; clips: THREE.AnimationClip[] };
 
-export type WildlifeKind = "fox" | "pig" | "deer";
+export type WildlifeKind = "fox" | "pig" | "deer" | "sheep" | "llama";
 
 type Critter = {
   kind: WildlifeKind | "fish";
@@ -90,22 +90,37 @@ function paintFish(root: THREE.Object3D, color: number): void {
   });
 }
 
-function fixGltfMaterials(root: THREE.Object3D): void {
+/** FBX farm animals often ship with opacity 0 / FrontSide, so only the shadow remains. */
+function paintCritter(root: THREE.Object3D, fallback: number): void {
   root.traverse((obj) => {
     const mesh = obj as THREE.Mesh;
     if (!mesh.isMesh) return;
+    if (/shadow/i.test(mesh.name)) {
+      mesh.visible = false;
+      mesh.castShadow = false;
+      return;
+    }
+    mesh.visible = true;
     mesh.castShadow = true;
     mesh.receiveShadow = true;
     mesh.frustumCulled = false;
-    const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
-    for (const mat of materials) {
-      mat.transparent = false;
-      mat.opacity = 1;
-      mat.side = THREE.FrontSide;
-      mat.depthWrite = true;
-      mat.depthTest = true;
-      if ('visible' in mat) (mat as any).visible = true;
-    }
+    const srcs = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+    const next = srcs.map((raw) => {
+      const src = raw as THREE.MeshStandardMaterial;
+      const mapped = Boolean(src.map);
+      const vertexColors = Boolean(mesh.geometry.getAttribute("color"));
+      const hex = src.color && src.color.getHex() > 0x101010 ? src.color.getHex() : fallback;
+      return new THREE.MeshLambertMaterial({
+        color: mapped || vertexColors ? 0xffffff : hex,
+        map: src.map ?? null,
+        vertexColors,
+        side: THREE.DoubleSide,
+        transparent: false,
+        opacity: 1,
+        depthWrite: true,
+      });
+    });
+    mesh.material = Array.isArray(mesh.material) ? next : next[0]!;
   });
 }
 
@@ -211,16 +226,21 @@ export async function spawnWildlife(
     }
   }
 
-  const [pig, fox, deer, fish1, fish2, fish3] = await Promise.all([
+  const [pig, sheep, llama, fox, deer, fish1, fish2, fish3] = await Promise.all([
     templateFromFbx(ANIMAL_URLS.pig, ANIMAL_SIZE.pig),
+    templateFromFbx(ANIMAL_URLS.sheep, ANIMAL_SIZE.sheep),
+    templateFromFbx(ANIMAL_URLS.llama, ANIMAL_SIZE.llama),
     templateFromGltf(WILD_URLS.fox, ANIMAL_SIZE.fox),
     templateFromGltf(WILD_URLS.deer, ANIMAL_SIZE.deer),
     templateFromFbx(FISH_URLS.fish1, { ...ANIMAL_SIZE.fish1, layFlat: true }),
     templateFromFbx(FISH_URLS.fish2, { ...ANIMAL_SIZE.fish2, layFlat: true }),
     templateFromFbx(FISH_URLS.fish3, { ...ANIMAL_SIZE.fish3, layFlat: true }),
   ]);
-  fixGltfMaterials(fox.root);
-  fixGltfMaterials(deer.root);
+  paintCritter(pig.root, 0xe39aa4);
+  paintCritter(sheep.root, 0xf2ebe0);
+  paintCritter(llama.root, 0xc4a06a);
+  paintCritter(fox.root, 0xc45a1a);
+  paintCritter(deer.root, 0x6b3a1f);
   paintFish(fish1.root, 0xc45a3a);
   paintFish(fish2.root, 0x3a6ec8);
   paintFish(fish3.root, 0xe07020);
@@ -246,7 +266,8 @@ export async function spawnWildlife(
   };
 
   placeLand(pig, "pig", 3);
-  // Sheep/llama FBX cast shadows but meshes invisible — skip spawn; assets kept in models/scale.
+  placeLand(sheep, "sheep", 2);
+  placeLand(llama, "llama", 1);
   placeLand(fox, "fox", 2);
   placeLand(deer, "deer", 1);
   placeFish(fish1, 3);
