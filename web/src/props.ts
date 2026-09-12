@@ -248,7 +248,7 @@ export async function scatterProps(
     (b) => b === Biome.Sand,
   );
   if (wreck) {
-    markRect(blocked, wreck.x, wreck.z, 3, 2);
+    markRect(blocked, wreck.x, wreck.z, 1, 1);
     add("wreck", wreck.x, wreck.z, 0.4, { tiltZ: 0.28 });
     add("crate", wreck.x + 2, wreck.z + 1, rng() * 6);
     add("barrel", wreck.x - 2, wreck.z, rng() * 6);
@@ -258,7 +258,8 @@ export async function scatterProps(
     add("bottle", wreck.x + 2, wreck.z, rng() * 6);
     add("bottle", wreck.x - 1, wreck.z - 2, rng() * 6);
     add("flag", wreck.x - 2, wreck.z + 1, 0.2);
-    lootSites.wreck.push(...collectAround(biomes, blocked, wreck.x, wreck.z, 3, 2, 2));
+    add("fishingPole", wreck.x + 2, wreck.z - 1, rng() * 2);
+    lootSites.wreck.push(...collectAround(biomes, blocked, wreck.x, wreck.z, 1, 1, 2));
     audioAnchors.push({ id: "wreck", position: worldPos(wreck.x, wreck.z) });
   }
 
@@ -274,7 +275,6 @@ export async function scatterProps(
     add("rowBoat", boat.x - 3, boat.z + 1, 0.8, { tiltZ: 0.22 });
     add("mastRopes", boat.x + 1, boat.z + 2, rng() * 3);
     add("fishStand", boat.x - 2, boat.z - 2, 0.4);
-    add("fishingPole", boat.x - 1, boat.z - 2, rng() * 2);
     add("fish", boat.x, boat.z + 2, rng() * 6);
     lootSites.boat.push(...collectAround(biomes, blocked, boat.x, boat.z, 2, 2, 2));
     audioAnchors.push({ id: "boat", position: worldPos(boat.x, boat.z) });
