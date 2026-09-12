@@ -271,6 +271,8 @@ export class Game {
           ui.actionBlocked = undefined;
           ui.nearbyItemId = null;
           ui.promptKind = animal;
+          ui.promptPrep = undefined;
+          ui.promptFreshness = undefined;
         }
       }
 

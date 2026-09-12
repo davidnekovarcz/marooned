@@ -59,7 +59,7 @@ export function itemLabelParts(
   freshness: Freshness = "fresh",
 ): ItemLabelParts {
   const nounKey = `item.${kind}`;
-  if (freshness === "rotten") {
+  if (freshness === "rotten" && isFoodKind(kind)) {
     if (prep === "half") return { nounKey, prepKey: "food.prep.half", stateKey: "food.state.rotten" };
     if (prep === "peeled") return { nounKey, prepKey: "food.prep.peeled", stateKey: "food.state.rotten" };
     if (prep === "sliced") return { nounKey, prepKey: "food.prep.sliced", stateKey: "food.state.rotten" };
