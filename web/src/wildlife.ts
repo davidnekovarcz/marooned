@@ -6,10 +6,14 @@ import { cellIndex, inBounds, isLand } from "@/web/src/island";
 import { loadFbx, loadGltfFile, prepareTemplate } from "@/web/src/loaders";
 import { ANIMAL_URLS, FISH_URLS, WILD_URLS } from "@/web/src/models";
 import { mulberry32 } from "@/web/src/rng";
-import { fitToSpec, type SizeSpec, ANIMAL_SIZE } from "@/web/src/scale";
+import { type SizeSpec, ANIMAL_SIZE } from "@/web/src/scale";
 
 const LAND_STEP = 0.95;
 const FISH_STEP = 1.2;
+const LAND_EACH = 2;
+const FISH_EACH = 2;
+const SPREAD = 12;
+const HELPER_MESH = /PoleTarget|^IK|FFB?\.|Ctrl|shadow/i;
 const DIRS: [number, number][] = [
   [1, 0],
   [-1, 0],
@@ -60,10 +64,38 @@ function inPondCell(x: number, z: number): boolean {
   return Math.hypot(x + 0.5 - POND_X, z + 0.5 - POND_Z) <= POND_RADIUS + 0.6;
 }
 
+function eachBodyMesh(root: THREE.Object3D, visit: (mesh: THREE.Mesh) => void): void {
+  root.traverse((obj) => {
+    const mesh = obj as THREE.Mesh;
+    if (!mesh.isMesh || HELPER_MESH.test(mesh.name)) return;
+    visit(mesh);
+  });
+}
+
+function bodyBox(root: THREE.Object3D): THREE.Box3 {
+  const box = new THREE.Box3();
+  let any = false;
+  root.updateMatrixWorld(true);
+  eachBodyMesh(root, (mesh) => {
+    const skinned = mesh as THREE.SkinnedMesh;
+    if (skinned.isSkinnedMesh) skinned.skeleton.update();
+    box.expandByObject(mesh);
+    any = true;
+  });
+  if (!any) box.setFromObject(root);
+  return box;
+}
+
+function fitBody(root: THREE.Object3D, spec: SizeSpec): void {
+  const size = bodyBox(root).getSize(new THREE.Vector3());
+  const current = spec.axis === "height" ? size.y : Math.max(size.x, size.y, size.z);
+  if (current < 1e-4) return;
+  root.scale.multiplyScalar(Math.max(spec.meters, spec.min ?? 0) / current);
+  root.updateMatrixWorld(true);
+}
+
 function plant(obj: THREE.Object3D, y: number): void {
-  obj.updateMatrixWorld(true);
-  const box = new THREE.Box3().setFromObject(obj);
-  obj.position.y += y - box.min.y;
+  obj.position.y += y - bodyBox(obj).min.y;
 }
 
 function plantCenter(obj: THREE.Object3D, y: number): void {
@@ -108,12 +140,10 @@ function paintCritter(root: THREE.Object3D, fallback: number): void {
     const next = srcs.map((raw) => {
       const src = raw as THREE.MeshStandardMaterial;
       const mapped = Boolean(src.map);
-      const vertexColors = Boolean(mesh.geometry.getAttribute("color"));
-      const hex = src.color && src.color.getHex() > 0x101010 ? src.color.getHex() : fallback;
+      const hex = src.color && src.color.getHex() > 0x202020 ? src.color.getHex() : fallback;
       return new THREE.MeshLambertMaterial({
-        color: mapped || vertexColors ? 0xffffff : hex,
+        color: mapped ? 0xffffff : hex,
         map: src.map ?? null,
-        vertexColors,
         side: THREE.DoubleSide,
         transparent: false,
         opacity: 1,
@@ -127,13 +157,13 @@ function paintCritter(root: THREE.Object3D, fallback: number): void {
 async function templateFromFbx(url: string, spec: SizeSpec): Promise<Template> {
   const fbx = await loadFbx(url);
   prepareTemplate(fbx);
-  fitToSpec(fbx, spec);
+  fitBody(fbx, spec);
   return { root: fbx, clips: fbx.animations };
 }
 
 async function templateFromGltf(url: string, spec: SizeSpec): Promise<Template> {
   const loaded = await loadGltfFile(url);
-  fitToSpec(loaded.root, spec);
+  fitBody(loaded.root, spec);
   return { root: loaded.root, clips: loaded.animations };
 }
 
@@ -167,6 +197,8 @@ function spawn(
     walk.play();
     walk.setEffectiveWeight(0);
   }
+  mixer.update(0);
+  if (!aquatic) plant(root, y);
   return {
     kind,
     root,
@@ -196,7 +228,7 @@ function pickCell(
   cells: [number, number][],
   ok: (x: number, z: number) => boolean,
 ): [number, number] | null {
-  for (let i = 0; i < 40; i++) {
+  for (let i = 0; i < 80; i++) {
     const cell = cells[Math.floor(rng() * cells.length)];
     if (!cell) continue;
     if (ok(cell[0], cell[1])) return cell;
@@ -240,23 +272,32 @@ export async function spawnWildlife(
   paintCritter(sheep.root, 0xf2ebe0);
   paintCritter(llama.root, 0xc4a06a);
   paintCritter(fox.root, 0xc45a1a);
-  paintCritter(deer.root, 0x6b3a1f);
+  paintCritter(deer.root, 0x9a6230);
   paintFish(fish1.root, 0xc45a3a);
   paintFish(fish2.root, 0x3a6ec8);
   paintFish(fish3.root, 0xe07020);
 
   const critters: Critter[] = [];
-  const placeLand = (template: Template, kind: WildlifeKind, count: number) => {
-    for (let n = 0; n < count; n++) {
-      const cell = pickCell(rng, grass, (x, z) => canEnter(biomes, blocked, x, z) && isLand(biomes[cellIndex(x, z)] as Biome));
+  const used: [number, number][] = [];
+  const free = (x: number, z: number) =>
+    used.every(([ux, uz]) => Math.max(Math.abs(x - ux), Math.abs(z - uz)) >= SPREAD);
+  const placeLand = (template: Template, kind: WildlifeKind) => {
+    for (let n = 0; n < LAND_EACH; n++) {
+      const cell = pickCell(
+        rng,
+        grass,
+        (x, z) =>
+          free(x, z) && canEnter(biomes, blocked, x, z) && isLand(biomes[cellIndex(x, z)] as Biome),
+      );
       if (!cell) continue;
+      used.push(cell);
       const critter = spawn(template, kind, cell[0], cell[1], GROUND_Y, false);
       group.add(critter.root);
       critters.push(critter);
     }
   };
-  const placeFish = (template: Template, count: number) => {
-    for (let n = 0; n < count; n++) {
+  const placeFish = (template: Template) => {
+    for (let n = 0; n < FISH_EACH; n++) {
       const cell = pickCell(rng, pond, (x, z) => inPondCell(x, z));
       if (!cell) continue;
       const critter = spawn(template, "fish", cell[0], cell[1], WATER_Y + 0.28, true);
@@ -265,14 +306,14 @@ export async function spawnWildlife(
     }
   };
 
-  placeLand(pig, "pig", 3);
-  placeLand(sheep, "sheep", 2);
-  placeLand(llama, "llama", 1);
-  placeLand(fox, "fox", 2);
-  placeLand(deer, "deer", 1);
-  placeFish(fish1, 3);
-  placeFish(fish2, 3);
-  placeFish(fish3, 2);
+  placeLand(pig, "pig");
+  placeLand(sheep, "sheep");
+  placeLand(llama, "llama");
+  placeLand(fox, "fox");
+  placeLand(deer, "deer");
+  placeFish(fish1);
+  placeFish(fish2);
+  placeFish(fish3);
 
   scene.add(group);
 
