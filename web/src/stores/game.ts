@@ -15,6 +15,7 @@ export const useSessionStore = defineStore("session", {
     clock: "08:00",
     survivedHours: 0,
     alive: true,
+    afk: false,
     sky: "sun" as "sun" | "moon" | "rain" | "storm",
   }),
 });

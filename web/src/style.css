@@ -205,6 +205,14 @@ button.gear-slot:hover {
   animation: hud-blink-pulse 0.72s ease-in-out infinite;
 }
 
+#hud-needs[data-afk] {
+  animation: none;
+}
+
+#hud-needs[data-afk] .need {
+  opacity: 1;
+}
+
 .need {
   position: relative;
   width: 44px;

@@ -194,6 +194,7 @@ export class Game {
       items: scattered.items,
       weather,
       livedSeconds: saved?.alive ? saved.livedSeconds : 0,
+      afk: false,
     });
 
     const offset = offsetForZoom(camera, zoom.cells);
@@ -314,6 +315,7 @@ export class Game {
       zoom.update(dt, input.zoomDir);
       player.canSprint = needs.canSprint;
       if (input.moveDir()) lastInputAt = Date.now();
+      afk = player.alive && (Date.now() - lastInputAt) / 1000 >= AFK_SECONDS;
       player.update(dt);
       wildlife.update(dt);
       const hosting = !room || room.isHost;
@@ -349,14 +351,16 @@ export class Game {
       const sheltered = camp.covered(player.cellX, player.cellZ);
       const fireWarmth = camp.warmthAt(player.cellX, player.cellZ);
       const torchHeld = player.heldKind === "torch";
-      needs.tick(player.gait, dt, {
-        daytime,
-        rain: weather.intensity,
-        sheltered,
-        fire: fireWarmth,
-        torch: torchHeld,
-        swimming: player.inWater(),
-      });
+      if (!afk) {
+        needs.tick(player.gait, dt, {
+          daytime,
+          rain: weather.intensity,
+          sheltered,
+          fire: fireWarmth,
+          torch: torchHeld,
+          swimming: player.inWater(),
+        });
+      }
       applyDayNight(scene, lights, day.t, weather.intensity, weather.flash);
       ocean.update(clock.elapsedTime, weather.intensity);
       islandAudio.update(weather.intensity, sheltered);
@@ -613,6 +617,7 @@ export class Game {
         items: scattered.items,
         weather,
         livedSeconds,
+        afk,
       });
       applyHealthLook(needs.health);
       const chips = [{ object: player.mesh, name: character.name, afk, alive: player.alive }];
@@ -670,6 +675,7 @@ export class Game {
       items: Item[];
       weather: Weather;
       livedSeconds: number;
+      afk: boolean;
     },
   ): void {
     const snap = ctx.needs.snapshot();
@@ -678,6 +684,7 @@ export class Game {
       clock: ctx.day.clockLabel(),
       survivedHours: livedHoursFromSeconds(ctx.livedSeconds),
       alive: ctx.player.alive,
+      afk: ctx.afk,
       sky: ctx.weather.sky(isDaytime(ctx.day.t)),
     });
     needsStore.$patch(snap);
