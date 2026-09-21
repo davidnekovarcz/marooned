@@ -142,6 +142,19 @@ export class Room {
     }
   }
 
+  async loadWorld(): Promise<NetWorld | null> {
+    try {
+      const snap = await get(ref(this.db, `rooms/${this.roomId}/world`));
+      const val = snap.val() as NetWorld | null;
+      if (!val || typeof val !== "object" || !Array.isArray(val.items) || !val.weather) return null;
+      this.world = val;
+      return val;
+    } catch (err) {
+      console.warn("loadWorld failed", err);
+      return null;
+    }
+  }
+
   async loadSurvivor(): Promise<NetSurvivor | null> {
     try {
       const snap = await get(ref(this.db, `rooms/${this.roomId}/survivors/${this.uid}`));

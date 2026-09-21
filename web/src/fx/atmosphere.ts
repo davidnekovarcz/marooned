@@ -69,7 +69,7 @@ export class Atmosphere {
   private readonly steam: Cloud;
   private readonly flies: Cloud;
   private readonly glints: Cloud;
-  private readonly torchLight: THREE.PointLight;
+  private readonly torchLights: THREE.PointLight[] = [];
   private readonly torchFill: THREE.PointLight;
   private readonly fireLights: THREE.PointLight[] = [];
   private readonly rainTex: THREE.CanvasTexture;
@@ -160,8 +160,6 @@ export class Atmosphere {
       3,
     );
 
-    this.torchLight = new THREE.PointLight(0xffc078, 0, 18, 1.1);
-    this.torchLight.castShadow = false;
     this.torchFill = new THREE.PointLight(0xffb45a, 0, 32, 1);
     this.torchFill.castShadow = false;
     this.group.add(
@@ -170,12 +168,15 @@ export class Atmosphere {
       this.steam.points,
       this.flies.points,
       this.glints.points,
-      this.torchLight,
       this.torchFill,
     );
     this.scene.add(this.group);
 
     for (let i = 0; i < 4; i++) {
+      const torch = new THREE.PointLight(0xffc078, 0, 18, 1.1);
+      torch.castShadow = false;
+      this.torchLights.push(torch);
+      this.group.add(torch);
       const light = new THREE.PointLight(0xff4a10, 0, 26, 1.3);
       light.castShadow = false;
       this.fireLights.push(light);
@@ -217,7 +218,7 @@ export class Atmosphere {
   update(
     dt: number,
     player: THREE.Vector3,
-    torch: THREE.Vector3 | null,
+    torches: readonly THREE.Vector3[],
     elapsed: number,
     flash: number,
     dayT = 0,
@@ -227,7 +228,7 @@ export class Atmosphere {
     this.updateSteam(dt, player);
     this.updateFlies(dt, player, elapsed);
     this.updateGlints(elapsed);
-    this.updateLights(torch, elapsed, flash, dayT);
+    this.updateLights(torches, elapsed, flash, dayT);
     if (this.island) {
       const w = this.wet;
       this.island.color.setRGB(1 - w * 0.38, 1 - w * 0.28, 1 - w * 0.18);
@@ -383,17 +384,25 @@ export class Atmosphere {
     mat.size = 0.16 + Math.sin(elapsed * 7) * 0.03;
   }
 
-  private updateLights(torch: THREE.Vector3 | null, elapsed: number, flash: number, dayT: number): void {
-    if (torch) {
-      const flicker = 8.6 + Math.sin(elapsed * 17) * 0.9 + Math.sin(elapsed * 41) * 0.45;
-      this.torchLight.position.copy(torch);
-      this.torchLight.position.y += 0.22;
-      this.torchLight.intensity = flicker + flash * 0.6;
-      this.torchFill.position.copy(torch);
+  private updateLights(torches: readonly THREE.Vector3[], elapsed: number, flash: number, dayT: number): void {
+    for (let i = 0; i < this.torchLights.length; i++) {
+      const light = this.torchLights[i]!;
+      const pos = torches[i];
+      if (!pos) {
+        light.intensity = 0;
+        continue;
+      }
+      const flicker = 8.6 + Math.sin(elapsed * 17 + i) * 0.9 + Math.sin(elapsed * 41 + i) * 0.45;
+      light.position.copy(pos);
+      light.position.y += 0.22;
+      light.intensity = flicker + flash * 0.6;
+    }
+    const fillAt = torches[0];
+    if (fillAt) {
+      this.torchFill.position.copy(fillAt);
       this.torchFill.position.y += 0.12;
       this.torchFill.intensity = 2.5 + flash * 0.35;
     } else {
-      this.torchLight.intensity = 0;
       this.torchFill.intensity = 0;
     }
     // Noon sun already lights the sand; keep embers as a local orange pool.

@@ -56,6 +56,8 @@ import { Item } from "@/web/src/world/item";
 import type { HeldKind } from "@/web/src/world/kinds";
 
 const _torch = new THREE.Vector3();
+const _torches: THREE.Vector3[] = [];
+const _remoteTorches = [new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3()];
 
 export class Game {
   static async start(): Promise<void> {
@@ -143,6 +145,11 @@ export class Game {
     const camp = new Camp();
     camp.scan(scattered.items);
     const weather = new Weather();
+    const day = new DayClock();
+    const savedWorld = room ? await room.loadWorld() : null;
+    if (savedWorld) {
+      applyNetWorld(savedWorld, scattered.items, scattered.spawn, camp, day, weather, (item) => loot.onRemoved(item));
+    }
     const atmosphere = new Atmosphere(scene);
     atmosphere.attachIsland(islandMesh);
     atmosphere.bindCamp(camp);
@@ -152,7 +159,6 @@ export class Game {
     });
     const needs = new Needs();
     if (saved) needs.restore(saved.needs);
-    const day = new DayClock();
     const zoom = new CameraZoom();
     const actions = new Actions();
     smokePromptPriority();
@@ -332,12 +338,42 @@ export class Game {
       atmosphere.setWetGround(Math.max(weather.intensity * 0.85, needs.wetness * 0.35));
       atmosphere.setSteam(needs.wetness > 0.25 && fireWarmth > 0.2);
       atmosphere.setFireflies(weather.fireflies(!daytime));
-      let torchPos: THREE.Vector3 | null = null;
+      if (room) {
+        const seen = new Set<string>();
+        for (const net of room.remotes) {
+          seen.add(net.uid);
+          let remote = remotes.get(net.uid);
+          if (!remote) {
+            remote = new RemotePlayer(net.uid);
+            remotes.set(net.uid, remote);
+          }
+          void remote.ensure(scene, net.appearance);
+          remote.apply(net, dt);
+        }
+        for (const [uid, remote] of remotes) {
+          if (seen.has(uid)) continue;
+          remote.dispose();
+          remotes.delete(uid);
+        }
+      }
+      _torches.length = 0;
       if (torchHeld && player.heldMesh) {
         player.heldMesh.getWorldPosition(_torch);
-        torchPos = _torch;
+        _torches.push(_torch);
       }
-      atmosphere.update(dt, player.mesh.position, torchPos, clock.elapsedTime, weather.flash, day.t);
+      if (room) {
+        let remoteTorchI = 0;
+        for (const net of room.remotes) {
+          if (net.heldKind !== "torch" || remoteTorchI >= _remoteTorches.length) continue;
+          const visual = remotes.get(net.uid)?.visual;
+          if (!visual) continue;
+          const pos = _remoteTorches[remoteTorchI++]!;
+          pos.copy(visual.root.position);
+          pos.y += 1.1;
+          _torches.push(pos);
+        }
+      }
+      atmosphere.update(dt, player.mesh.position, _torches, clock.elapsedTime, weather.flash, day.t);
 
       if (!player.alive || player.busy) {
         currentItem = null;
@@ -507,22 +543,6 @@ export class Game {
           } else if (grant?.cook && player.heldKind === "fish") {
             player.inventory.relabelHeld("fishCooked");
           }
-        }
-        const seen = new Set<string>();
-        for (const net of room.remotes) {
-          seen.add(net.uid);
-          let remote = remotes.get(net.uid);
-          if (!remote) {
-            remote = new RemotePlayer(net.uid);
-            remotes.set(net.uid, remote);
-          }
-          void remote.ensure(scene, net.appearance);
-          remote.apply(net, dt);
-        }
-        for (const [uid, remote] of remotes) {
-          if (seen.has(uid)) continue;
-          remote.dispose();
-          remotes.delete(uid);
         }
       }
 
