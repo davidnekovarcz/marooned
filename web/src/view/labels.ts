@@ -19,7 +19,6 @@ export function formatActionLabel(action: ResolvedAction): string {
     if (action.blocked === "rotten") return t("food.state.rotten");
     return `${verb} (${t(`action.blocked.${action.blocked}`)})`;
   }
-  if (action.id === "drop") return verb;
   return `${verb} [SPACE]`;
 }
 

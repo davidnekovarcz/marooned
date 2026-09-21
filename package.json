@@ -1,0 +1,14 @@
+{
+  "name": "marooned",
+  "private": true,
+  "engines": {
+    "node": "22.x"
+  },
+  "scripts": {
+    "build": "npm ci --include=dev --prefix web && npm run build --prefix web && rm -rf web/node_modules assets/vendor",
+    "start": "serve -s web/dist -l tcp://0.0.0.0:$PORT"
+  },
+  "dependencies": {
+    "serve": "^14.2.4"
+  }
+}
