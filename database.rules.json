@@ -28,6 +28,11 @@
         },
         "world": {
           ".write": "auth != null && root.child('rooms').child($room).child('host').val() === auth.uid"
+        },
+        "survivors": {
+          "$uid": {
+            ".write": "auth != null && auth.uid === $uid"
+          }
         }
       }
     }

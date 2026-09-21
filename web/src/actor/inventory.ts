@@ -6,12 +6,22 @@ import type { PlayerVisual } from "@/web/src/playerModel";
 import type { FoodPrep, Freshness } from "@/web/src/food";
 
 export type PocketItem = { kind: HeldKind; mesh: THREE.Object3D };
+export type StowedGear = {
+  kind: HeldKind;
+  prep?: FoodPrep;
+  freshness?: Freshness;
+};
 export type InventorySnapshot = {
   heldKind: HeldKind | null;
   heldPrep?: FoodPrep;
   heldFreshness?: Freshness;
   left: HeldKind | null;
   right: HeldKind | null;
+};
+export type InventoryGear = {
+  held: StowedGear | null;
+  left: StowedGear | null;
+  right: StowedGear | null;
 };
 
 const FOOD_HOLD = { rot: new THREE.Euler(0.4, 0.2, 0.5) };
@@ -101,6 +111,24 @@ export class Inventory {
       left: this.pockets.left?.kind ?? null,
       right: this.pockets.right?.kind ?? null,
     };
+  }
+
+  persistGear(): InventoryGear {
+    return {
+      held: this.stowedOf(this.heldKind, this.tool),
+      left: this.stowedOf(this.pockets.left?.kind ?? null, this.pockets.left?.mesh ?? null),
+      right: this.stowedOf(this.pockets.right?.kind ?? null, this.pockets.right?.mesh ?? null),
+    };
+  }
+
+  private stowedOf(kind: HeldKind | null, mesh: THREE.Object3D | null): StowedGear | null {
+    if (!kind) return null;
+    const prep = typeof mesh?.userData.foodPrep === "string" ? (mesh.userData.foodPrep as FoodPrep) : undefined;
+    const freshness =
+      mesh?.userData.foodFreshness === "rotten" || mesh?.userData.foodFreshness === "fresh"
+        ? (mesh.userData.foodFreshness as Freshness)
+        : undefined;
+    return { kind, ...(prep ? { prep } : {}), ...(freshness ? { freshness } : {}) };
   }
 
   /** Stow the held item into the first empty pocket. */

@@ -1,11 +1,11 @@
 import * as THREE from "three";
-import { randomCharacter, saveCharacter } from "@/web/src/appearance";
+import { randomCharacter, saveCharacter, type Character } from "@/web/src/appearance";
 import { setupIslandAudio } from "@/web/src/audio";
 import { applyZoomFog, CameraZoom, offsetForZoom } from "@/web/src/cameraZoom";
 import { CAMERA_OFFSET, CENTER, DAY_START, DEBUG_GRID, GRID, HUD_BLINK, SEED } from "@/web/src/constants";
 import { applyDayNight, createDayLights, DayClock, isDaytime } from "@/web/src/dayNight";
 import { Atmosphere } from "@/web/src/fx/atmosphere";
-import { buildGridOverlay } from "@/web/src/gridOverlay";
+import { buildGridOverlay, canEnter } from "@/web/src/gridOverlay";
 import { Input } from "@/web/src/input/Input";
 import {
   buildBiomes,
@@ -19,15 +19,24 @@ import {
 } from "@/web/src/island";
 import { Needs } from "@/web/src/needs";
 import { buildOcean } from "@/web/src/ocean";
+import type { StowedGear } from "@/web/src/actor/inventory";
 import { GridPlayer } from "@/web/src/actor/player";
 import { RemotePlayer } from "@/web/src/actor/remotePlayer";
 import { loadPlayerModel } from "@/web/src/playerModel";
 import { scatterProps } from "@/web/src/props";
 import { Actions, type ResolvedAction } from "@/web/src/sim/actions";
 import { applyHostIntent } from "@/web/src/net/hostIntents";
-import { PLAYER_HZ, WORLD_HZ, type NetIntent } from "@/web/src/net/protocol";
+import { PLAYER_HZ, WORLD_HZ, roomIdFromUrl, type NetIntent } from "@/web/src/net/protocol";
 import { joinRoom, type Room } from "@/web/src/net/room";
-import { applyNetWorld, snapshotWorld, spawnFromSnapshot } from "@/web/src/net/worldSync";
+import {
+  consumeForceRespawn,
+  emptyInventory,
+  loadLocalSurvivor,
+  saveLocalSurvivor,
+  SURVIVOR_HZ,
+  type NetSurvivor,
+} from "@/web/src/net/survivor";
+import { applyNetWorld, snapshotWorld, spawnFromSnapshot, takeCarriedItem } from "@/web/src/net/worldSync";
 import { gatherPromptCandidates, pickPrompt, smokePromptPriority, type PromptChoice } from "@/web/src/sim/prompt";
 import { Camp, countNearby } from "@/web/src/sim/camp";
 import { Loot } from "@/web/src/sim/loot";
@@ -88,9 +97,6 @@ export class Game {
     const islandMesh = buildIslandMesh(biomes);
     scene.add(islandMesh);
 
-    const character = randomCharacter();
-    saveCharacter(character);
-
     const ui = useUiStore();
     const join = await joinRoom();
     if (join.kind === "full") ui.islandFull = true;
@@ -100,8 +106,23 @@ export class Game {
       ui.netHost = room.isHost;
     }
 
+    const persistRoomId = room?.roomId ?? roomIdFromUrl();
+    const respawn = consumeForceRespawn();
+    let saved: NetSurvivor | null = null;
+    if (!respawn) {
+      saved = room ? await room.loadSurvivor() : null;
+      saved = saved ?? loadLocalSurvivor(persistRoomId);
+    }
+
+    const character: Character = saved?.character ?? randomCharacter();
+    saveCharacter(character);
+
     const spawns = findSpawns(biomes);
-    const spawn = room ? (spawns[room.slot] ?? findSpawn(biomes)) : findSpawn(biomes);
+    const slotSpawn = room ? (spawns[room.slot] ?? findSpawn(biomes)) : findSpawn(biomes);
+    let spawn = slotSpawn;
+    if (saved && canEnter(biomes, blocked, saved.cellX, saved.cellZ)) {
+      spawn = { x: saved.cellX, z: saved.cellZ };
+    }
     for (const cell of spawns) blocked[cell.z * GRID + cell.x] = 1;
 
     const worldP = (async () => {
@@ -130,6 +151,7 @@ export class Game {
       ui.audioUnlocked = true;
     });
     const needs = new Needs();
+    if (saved) needs.restore(saved.needs);
     const day = new DayClock();
     const zoom = new CameraZoom();
     const actions = new Actions();
@@ -179,8 +201,61 @@ export class Game {
     const remotes = new Map<string, RemotePlayer>();
     let playerSend = 0;
     let worldSend = 0;
+    let survivorSend = 0;
+    let lastSurvivorJson = "";
     let intentSeq = 0;
     const onRemoved = (item: Item): void => loot.onRemoved(item);
+
+    const equipGear = (gear: StowedGear | null, stow: boolean): void => {
+      if (!gear) return;
+      const item = takeCarriedItem(
+        scattered.spawn,
+        scattered.items,
+        onRemoved,
+        gear.kind,
+        player.cellX,
+        player.cellZ,
+        { prep: gear.prep, freshness: gear.freshness },
+      );
+      if (!item) return;
+      player.inventory.grabHeld(item.mesh, gear.kind);
+      if (stow) player.inventory.stowHeld();
+    };
+    if (saved?.alive) {
+      equipGear(saved.inventory.left, true);
+      equipGear(saved.inventory.right, true);
+      equipGear(saved.inventory.held, false);
+    }
+
+    const persistSurvivor = (alive: boolean, deathHours = 0): void => {
+      const snap = needs.snapshot();
+      const row: NetSurvivor = {
+        character,
+        needs: {
+          energy: snap.energy,
+          thirst: snap.thirst,
+          hunger: snap.hunger,
+          temperature: snap.temperature,
+          wetness: snap.wetness,
+          health: alive ? snap.health : 0,
+        },
+        inventory: alive ? player.inventory.persistGear() : emptyInventory(),
+        cellX: player.cellX,
+        cellZ: player.cellZ,
+        alive,
+        deathHours,
+        updatedAt: Date.now(),
+      };
+      const json = JSON.stringify({ ...row, updatedAt: 0 });
+      if (json === lastSurvivorJson) return;
+      lastSurvivorJson = json;
+      saveLocalSurvivor(persistRoomId, row);
+      if (room) void room.saveSurvivor(row);
+    };
+
+    window.addEventListener("pagehide", () => {
+      persistSurvivor(player.alive && !dead, ui.deathHours);
+    });
 
     const applyHealthLook = (health: number): void => {
       const gray = (1 - health) * 100;
@@ -410,6 +485,12 @@ export class Game {
         }
       }
 
+      survivorSend += dt;
+      if (survivorSend >= 1 / SURVIVOR_HZ) {
+        survivorSend = 0;
+        persistSurvivor(true);
+      }
+
       this.patchStores(session, needsStore, playerStore, inventoryStore, worldStore, ui, {
         day,
         needs,
@@ -426,10 +507,24 @@ export class Game {
         ui.deathHours = day.survivedGameHours();
         document.body.classList.add("dead");
         applyHealthLook(0);
+        persistSurvivor(false, ui.deathHours);
         return;
       }
       requestAnimationFrame(frame);
     };
+
+    if (saved && !saved.alive) {
+      dead = true;
+      player.alive = false;
+      needs.health = 0;
+      ui.dead = true;
+      ui.deathHours = saved.deathHours;
+      document.body.classList.add("dead");
+      applyHealthLook(0);
+      persistSurvivor(false, saved.deathHours);
+    } else {
+      persistSurvivor(true);
+    }
 
     frame();
   };

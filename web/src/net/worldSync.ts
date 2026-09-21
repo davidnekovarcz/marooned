@@ -3,6 +3,7 @@ import type { Camp } from "@/web/src/sim/camp";
 import type { DayClock } from "@/web/src/dayNight";
 import type { Weather } from "@/web/src/sim/weather";
 import { Item, type ItemSnapshot, type SpawnFn } from "@/web/src/world/item";
+import type { HeldKind } from "@/web/src/world/kinds";
 import type { NetWorld } from "@/web/src/net/protocol";
 
 function moveMesh(item: Item): void {
@@ -78,5 +79,29 @@ export function spawnFromSnapshot(spawn: SpawnFn, snap: ItemSnapshot): Item | nu
   const item = spawn(snap.kind as Parameters<SpawnFn>[0], snap.cellX, snap.cellZ, { id: snap.id });
   if (!item) return null;
   if (snap.prep || snap.freshness) item.applyFoodState(snap.prep, snap.freshness);
+  return item;
+}
+
+export function takeCarriedItem(
+  spawn: SpawnFn,
+  items: Item[],
+  onRemoved: (item: Item) => void,
+  kind: HeldKind,
+  cellX: number,
+  cellZ: number,
+  extra?: { prep?: ItemSnapshot["prep"]; freshness?: ItemSnapshot["freshness"] },
+): Item | null {
+  const item = spawnFromSnapshot(spawn, {
+    id: `carry-${kind}-${Math.random().toString(36).slice(2, 8)}`,
+    kind,
+    cellX,
+    cellZ,
+    prep: extra?.prep,
+    freshness: extra?.freshness,
+  });
+  if (!item) return null;
+  const i = items.indexOf(item);
+  if (i >= 0) items.splice(i, 1);
+  onRemoved(item);
   return item;
 }

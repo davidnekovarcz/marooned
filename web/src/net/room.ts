@@ -1,4 +1,5 @@
 import {
+  get,
   onDisconnect,
   onValue,
   ref,
@@ -16,6 +17,7 @@ import {
   type NetPlayer,
   type NetWorld,
 } from "@/web/src/net/protocol";
+import { parseSurvivor, type NetSurvivor } from "@/web/src/net/survivor";
 
 export type JoinResult =
   | { kind: "solo" }
@@ -109,6 +111,24 @@ export class Room {
     if (!this.isHost) return;
     await set(ref(this.db, `rooms/${this.roomId}/grants/${uid}`), grant);
     await set(ref(this.db, `rooms/${this.roomId}/intents/${uid}`), null);
+  }
+
+  async loadSurvivor(): Promise<NetSurvivor | null> {
+    try {
+      const snap = await get(ref(this.db, `rooms/${this.roomId}/survivors/${this.uid}`));
+      return parseSurvivor(snap.val());
+    } catch (err) {
+      console.warn("loadSurvivor failed", err);
+      return null;
+    }
+  }
+
+  async saveSurvivor(row: NetSurvivor): Promise<void> {
+    try {
+      await set(ref(this.db, `rooms/${this.roomId}/survivors/${this.uid}`), row);
+    } catch (err) {
+      console.warn("saveSurvivor failed", err);
+    }
   }
 
   dispose(): void {

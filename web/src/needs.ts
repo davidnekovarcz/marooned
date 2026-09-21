@@ -106,6 +106,17 @@ export class Needs {
     };
   }
 
+  restore(state: Partial<Omit<NeedsState, "energyMax">>): void {
+    if (typeof state.energy === "number") this.energy = clamp01(state.energy);
+    if (typeof state.thirst === "number") this.thirst = clamp01(state.thirst);
+    if (typeof state.hunger === "number") this.hunger = clamp01(state.hunger);
+    if (typeof state.temperature === "number") this.temperature = clamp01(state.temperature);
+    if (typeof state.wetness === "number") this.wetness = clamp01(state.wetness);
+    if (typeof state.health === "number") this.health = clamp01(state.health);
+    this.energy = Math.min(energyMaxFromFood(this.thirst, this.hunger), this.energy);
+    this.canSprint = this.energy >= ENERGY_SPRINT_RESUME;
+  }
+
   private towardComfort(dt: number, rate: number, target = 0.5): void {
     const d = target - this.temperature;
     const step = rate * dt;
