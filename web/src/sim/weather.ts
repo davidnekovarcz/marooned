@@ -87,7 +87,7 @@ export class Weather {
   secondsUntilRain(dayT: number, elapsed = 0): number {
     const hour = hourOf(dayT);
     let day = dayIndexOf(elapsed);
-    let remaining = hour;
+    const remaining = hour;
     for (let ahead = 0; ahead < 8; ahead += 1) {
       const windows = windowsForDay(day);
       for (const w of windows) {

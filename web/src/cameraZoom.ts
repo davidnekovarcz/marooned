@@ -50,8 +50,8 @@ export function applyZoomFog(
     1,
   );
   // t=0 zoomed in: fog starts beyond the close view. t=1 zoomed out: haze over the island.
-  let near = THREE.MathUtils.lerp(dist * 2.4, dist * 0.22, t);
-  let far = THREE.MathUtils.lerp(dist * 9, dist * 1.05, t);
+  const near = THREE.MathUtils.lerp(dist * 2.4, dist * 0.22, t);
+  const far = THREE.MathUtils.lerp(dist * 9, dist * 1.05, t);
 
   const elev = sunElevation(dayT);
   const night = THREE.MathUtils.clamp(-elev, 0, 1);
