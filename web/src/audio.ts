@@ -108,7 +108,7 @@ function playOne(sound: THREE.Audio, buf: AudioBuffer | null, volume: number): v
 export type MealKind = "drink" | "eat";
 
 export type IslandAudio = {
-  update: (rain: number, sheltered: boolean) => void;
+  update: (rain: number, sheltered: boolean, quiet?: boolean) => void;
   playMeal: (kind: MealKind) => void;
   stopMeal: () => void;
   playPickup: () => void;
@@ -277,7 +277,14 @@ export function setupIslandAudio(
   window.addEventListener("keydown", unlock);
 
   return {
-    update: (rainAmt: number, sheltered: boolean) => {
+    update: (rainAmt: number, sheltered: boolean, quiet = false) => {
+      const ctx = listener.context;
+      if (quiet) {
+        if (ctx.state === "running") void ctx.suspend();
+        return;
+      }
+      if (rainReady && ctx.state === "suspended") void ctx.resume();
+
       if (oceanSound) {
         const i = cellIndex(player.cellX, player.cellZ);
         oceanSource.set(coast.nearX[i]! * CELL + CELL / 2, 0.8, coast.nearZ[i]! * CELL + CELL / 2);

@@ -432,7 +432,7 @@ export class Game {
       }
       applyDayNight(scene, lights, day.t, weather.intensity, weather.flash);
       ocean.update(clock.elapsedTime, weather.intensity);
-      islandAudio.update(weather.intensity, sheltered);
+      islandAudio.update(weather.intensity, sheltered, afk);
       const camOffset = offsetForZoom(camera, zoom.cells);
       applyZoomFog(scene, camera, camOffset.length(), zoom.cells, day.t, weather.intensity);
       player.followCamera(camera, camOffset);
