@@ -26,6 +26,10 @@ export type JoinResult =
 
 type SlotRow = { uid: string; connectedAt: number };
 
+function toRtdb<T>(value: T): T {
+  return JSON.parse(JSON.stringify(value)) as T;
+}
+
 export class Room {
   hostUid: string | null = null;
   private players: Record<string, NetPlayer> = {};
@@ -95,22 +99,47 @@ export class Room {
   }
 
   async publishPlayer(player: NetPlayer): Promise<void> {
-    await set(ref(this.db, `rooms/${this.roomId}/players/${this.uid}`), player);
+    try {
+      await set(ref(this.db, `rooms/${this.roomId}/players/${this.uid}`), toRtdb(player));
+    } catch (err) {
+      console.warn("publishPlayer failed", err);
+    }
   }
 
   async publishWorld(world: NetWorld): Promise<void> {
     if (!this.isHost) return;
-    await set(ref(this.db, `rooms/${this.roomId}/world`), world);
+    try {
+      await set(ref(this.db, `rooms/${this.roomId}/world`), toRtdb(world));
+    } catch (err) {
+      console.warn("publishWorld failed", err);
+    }
   }
 
   async sendIntent(intent: NetIntent): Promise<void> {
-    await set(ref(this.db, `rooms/${this.roomId}/intents/${this.uid}`), intent);
+    try {
+      await set(ref(this.db, `rooms/${this.roomId}/intents/${this.uid}`), toRtdb(intent));
+    } catch (err) {
+      console.warn("sendIntent failed", err);
+    }
   }
 
   async sendGrant(uid: string, grant: NetGrant): Promise<void> {
     if (!this.isHost) return;
-    await set(ref(this.db, `rooms/${this.roomId}/grants/${uid}`), grant);
-    await set(ref(this.db, `rooms/${this.roomId}/intents/${uid}`), null);
+    try {
+      await set(ref(this.db, `rooms/${this.roomId}/grants/${uid}`), toRtdb(grant));
+      await set(ref(this.db, `rooms/${this.roomId}/intents/${uid}`), null);
+    } catch (err) {
+      console.warn("sendGrant failed", err);
+    }
+  }
+
+  async clearIntent(uid: string): Promise<void> {
+    if (!this.isHost) return;
+    try {
+      await set(ref(this.db, `rooms/${this.roomId}/intents/${uid}`), null);
+    } catch (err) {
+      console.warn("clearIntent failed", err);
+    }
   }
 
   async loadSurvivor(): Promise<NetSurvivor | null> {
@@ -125,7 +154,7 @@ export class Room {
 
   async saveSurvivor(row: NetSurvivor): Promise<void> {
     try {
-      await set(ref(this.db, `rooms/${this.roomId}/survivors/${this.uid}`), row);
+      await set(ref(this.db, `rooms/${this.roomId}/survivors/${this.uid}`), toRtdb(row));
     } catch (err) {
       console.warn("saveSurvivor failed", err);
     }

@@ -204,6 +204,7 @@ export class Game {
     let survivorSend = 0;
     let lastSurvivorJson = "";
     let intentSeq = 0;
+    const lastIntentSeq = new Map<string, number>();
     const onRemoved = (item: Item): void => loot.onRemoved(item);
 
     const equipGear = (gear: StowedGear | null, stow: boolean): void => {
@@ -446,8 +447,15 @@ export class Game {
         if (room.isHost) {
           for (const intent of room.consumeIntents()) {
             if (intent.uid === room.uid) continue;
+            const prev = lastIntentSeq.get(intent.uid) ?? 0;
+            if (intent.seq <= prev) {
+              void room.clearIntent(intent.uid);
+              continue;
+            }
+            lastIntentSeq.set(intent.uid, intent.seq);
             const grant = applyHostIntent(intent, scattered.items, camp, scattered.spawn, onRemoved);
             if (grant) void room.sendGrant(intent.uid, grant);
+            else void room.clearIntent(intent.uid);
           }
           worldSend += dt;
           if (worldSend >= 1 / WORLD_HZ) {
@@ -464,8 +472,9 @@ export class Game {
               if (i >= 0) scattered.items.splice(i, 1);
               loot.onRemoved(spawned);
             }
+          } else if (grant?.cook && player.heldKind === "fish") {
+            player.inventory.relabelHeld("fishCooked");
           }
-          if (grant?.cook && player.heldKind === "fish") player.inventory.relabelHeld("fishCooked");
         }
         const seen = new Set<string>();
         for (const net of room.remotes) {

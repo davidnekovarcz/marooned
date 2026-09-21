@@ -7,6 +7,25 @@ function itemAt(items: Item[], id: string | null | undefined): Item | null {
   return items.find((it) => it.id === id) ?? null;
 }
 
+function itemForPickup(items: Item[], intent: NetIntent): Item | null {
+  const kind = intent.action?.pickup;
+  const byId = itemAt(items, intent.itemId);
+  if (byId && cellDist(intent.cellX, intent.cellZ, byId.cellX, byId.cellZ) <= 1) {
+    if (!kind || byId.kind === kind) return byId;
+  }
+  if (!kind) return null;
+  let best: Item | null = null;
+  let bestDist = Infinity;
+  for (const it of items) {
+    if (it.kind !== kind) continue;
+    const d = cellDist(intent.cellX, intent.cellZ, it.cellX, it.cellZ);
+    if (d > 1 || d >= bestDist) continue;
+    best = it;
+    bestDist = d;
+  }
+  return best;
+}
+
 function takeItem(items: Item[], item: Item, onRemoved: (item: Item) => void): void {
   item.mesh.removeFromParent();
   const i = items.indexOf(item);
@@ -34,9 +53,8 @@ export function applyHostIntent(
   if (!intent.interact || !action) return null;
 
   if (action.pickup) {
-    const item = itemAt(items, intent.itemId);
-    if (!item) return { seq: intent.seq };
-    if (cellDist(intent.cellX, intent.cellZ, item.cellX, item.cellZ) > 1) return { seq: intent.seq };
+    const item = itemForPickup(items, intent);
+    if (!item) return null;
     const snap = item.snapshot();
     takeItem(items, item, onRemoved);
     return { seq: intent.seq, pickup: snap };

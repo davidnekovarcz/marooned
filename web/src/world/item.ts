@@ -56,14 +56,15 @@ export class Item {
   }
 
   snapshot(): ItemSnapshot {
-    return {
+    const snap: ItemSnapshot = {
       id: this.id,
       kind: this.kind,
       cellX: this.cellX,
       cellZ: this.cellZ,
-      prep: this.prep,
-      freshness: this.freshness,
     };
+    if (this.prep) snap.prep = this.prep;
+    if (this.freshness) snap.freshness = this.freshness;
+    return snap;
   }
 }
 
