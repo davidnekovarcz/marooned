@@ -27,28 +27,25 @@ run_typescript_check() {
         return 0
     fi
     
-    echo "${YELLOW}📝 Running TypeScript check...${NC}"
-
-    if [ -f "package.json" ] && npm run tsc --dry-run >/dev/null 2>&1; then
-        TSC_OUTPUT=$(npm run tsc 2>&1)
-        TSC_EXIT_CODE=$?
-    elif command -v npx >/dev/null 2>&1; then
+    if command -v npx >/dev/null 2>&1; then
+        echo "${YELLOW}📝 Running TypeScript check...${NC}"
+        
         TSC_OUTPUT=$(npx tsc --noEmit 2>&1)
         TSC_EXIT_CODE=$?
-    else
-        return 0
+        
+        if [ $TSC_EXIT_CODE -eq 0 ]; then
+            echo "${GREEN}✅ TypeScript check passed${NC}"
+            return 0
+        else
+            echo "${RED}❌ TypeScript check failed${NC}"
+            echo "${RED}TypeScript errors:${NC}"
+            echo "$TSC_OUTPUT"
+            echo "${RED}Please fix TypeScript errors before committing.${NC}"
+            return 1
+        fi
     fi
-
-    if [ $TSC_EXIT_CODE -eq 0 ]; then
-        echo "${GREEN}✅ TypeScript check passed${NC}"
-        return 0
-    fi
-
-    echo "${RED}❌ TypeScript check failed${NC}"
-    echo "${RED}TypeScript errors:${NC}"
-    echo "$TSC_OUTPUT"
-    echo "${RED}Please fix TypeScript errors before committing.${NC}"
-    return 1
+    
+    return 0
 }
 
 # Function to run linting
@@ -165,9 +162,7 @@ detect_project_type() {
     fi
     
     # Check for TypeScript project
-    if [ -f "tsconfig.json" ] || [ -f "tsconfig.app.json" ] || [ -f "tsconfig.node.json" ] \
-        || [ -f "web/tsconfig.json" ] \
-        || { [ -f "package.json" ] && npm run tsc --dry-run >/dev/null 2>&1; }; then
+    if [ -f "tsconfig.json" ] || [ -f "tsconfig.app.json" ] || [ -f "tsconfig.node.json" ]; then
         is_typescript_project=true
     fi
     

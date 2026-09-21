@@ -55,11 +55,6 @@ check_files_for_sensitive_data() {
         if git diff --cached --numstat "$file" 2>/dev/null | grep -q "^-"; then
             continue
         fi
-
-        # This file is the pattern list; its regexes look like secrets
-        if [[ "$file" == *"security-check.sh" ]]; then
-            continue
-        fi
         
         # Skip package-lock.json and similar lock files from Google refresh token check
         # (they contain legitimate hash values that can match the pattern)
