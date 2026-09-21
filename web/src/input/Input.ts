@@ -1,14 +1,15 @@
 import type { PocketSlot } from "@/web/src/world/kinds";
 
+/** Camera-relative grid steps for the SW isometric view (screen up = world +X+Z). */
 const DIRS: Record<string, { x: number; z: number }> = {
-  KeyW: { x: 0, z: 1 },
-  ArrowUp: { x: 0, z: 1 },
-  KeyS: { x: 0, z: -1 },
-  ArrowDown: { x: 0, z: -1 },
-  KeyA: { x: 1, z: 0 },
-  ArrowLeft: { x: 1, z: 0 },
-  KeyD: { x: -1, z: 0 },
-  ArrowRight: { x: -1, z: 0 },
+  KeyW: { x: 1, z: 1 },
+  ArrowUp: { x: 1, z: 1 },
+  KeyS: { x: -1, z: -1 },
+  ArrowDown: { x: -1, z: -1 },
+  KeyA: { x: 1, z: -1 },
+  ArrowLeft: { x: 1, z: -1 },
+  KeyD: { x: -1, z: 1 },
+  ArrowRight: { x: -1, z: 1 },
 };
 
 const SHIFT = new Set(["ShiftLeft", "ShiftRight"]);
@@ -62,12 +63,20 @@ export class Input {
     });
   }
 
-  moveCodes(): Iterable<string> {
-    return this.pressed;
-  }
-
-  dirFor(code: string): { x: number; z: number } | undefined {
-    return DIRS[code];
+  /** Combined WASD / arrows, each axis clamped to -1 / 0 / +1. */
+  moveDir(): { x: number; z: number } | null {
+    let x = 0;
+    let z = 0;
+    for (const code of this.pressed) {
+      const dir = DIRS[code];
+      if (!dir) continue;
+      x += dir.x;
+      z += dir.z;
+    }
+    x = Math.max(-1, Math.min(1, x));
+    z = Math.max(-1, Math.min(1, z));
+    if (x === 0 && z === 0) return null;
+    return { x, z };
   }
 
   consumeInteract(): boolean {

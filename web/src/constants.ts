@@ -17,6 +17,11 @@ export const SWIM_SINK = 0.52;
 export const WALK_ANIM_SCALE = 0.72;
 /** Run-clip playback while sprinting. */
 export const RUN_ANIM_SCALE = 1.05;
+/** Stick to the body on the slower walk steps so the camera does not bob. */
+export const CAMERA_LERP_WALK = 0.22;
+/** Trail the sprint the way walk used to — a bit of lag on short steps. */
+export const CAMERA_LERP_RUN = 0.07;
+export const CAMERA_LERP = 0.12;
 export const CAMERA_OFFSET = { x: -18, y: 24, z: -18 } as const;
 export const ZOOM_CELLS_IN = 10;
 /** Horizontal span ≈ half the island (radius cells). */

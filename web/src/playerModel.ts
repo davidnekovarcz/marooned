@@ -9,10 +9,26 @@ const TARGET_HEIGHT = 1.6;
 const FADE = 0.14;
 const HELPER_BONE = /Ctrl|IK|Roll|_end$/;
 const FOOT_BONES = ["LeftFoot", "RightFoot", "LeftToes", "RightToes"] as const;
-const CROUCH_DROP = 0.32;
-const CROUCH_PITCH = 0.38;
+const CROUCH_DROP = 0.28;
 const _overlayQ = new THREE.Quaternion();
 const _overlayE = new THREE.Euler();
+const _targetQ = new THREE.Quaternion();
+
+type BoneBend = { name: string; x: number; y: number; z: number };
+
+/** Bind-relative squat. No arm Z twist — that precessed on the idle clip. */
+const CROUCH_BENDS: BoneBend[] = [
+  { name: "Hips", x: 0.42, y: 0, z: 0 },
+  { name: "Spine", x: 0.22, y: 0, z: 0 },
+  { name: "LeftUpLeg", x: -0.7, y: 0, z: 0 },
+  { name: "RightUpLeg", x: -0.7, y: 0, z: 0 },
+  { name: "LeftLeg", x: 0.95, y: 0, z: 0 },
+  { name: "RightLeg", x: 0.95, y: 0, z: 0 },
+  { name: "LeftArm", x: 0.5, y: 0, z: 0 },
+  { name: "RightArm", x: 0.5, y: 0, z: 0 },
+  { name: "LeftForeArm", x: 0.35, y: 0, z: 0 },
+  { name: "RightForeArm", x: 0.35, y: 0, z: 0 },
+];
 
 export type PlayerGait = "idle" | "walk" | "run" | "swim";
 
@@ -149,6 +165,32 @@ function overlayBone(
   bone.quaternion.multiply(_overlayQ);
 }
 
+function cacheBindQuats(model: THREE.Object3D, bends: BoneBend[]): Map<string, THREE.Quaternion> {
+  const binds = new Map<string, THREE.Quaternion>();
+  for (const spec of bends) {
+    const bone = model.getObjectByName(spec.name);
+    if (bone) binds.set(spec.name, bone.quaternion.clone());
+  }
+  return binds;
+}
+
+function applyCrouchFromBind(
+  model: THREE.Object3D,
+  binds: Map<string, THREE.Quaternion>,
+  amount: number,
+): void {
+  if (amount <= 0) return;
+  for (const spec of CROUCH_BENDS) {
+    const bone = model.getObjectByName(spec.name);
+    const bind = binds.get(spec.name);
+    if (!bone || !bind) continue;
+    _overlayE.set(spec.x, spec.y, spec.z, "XYZ");
+    _overlayQ.setFromEuler(_overlayE);
+    _targetQ.copy(bind).multiply(_overlayQ);
+    bone.quaternion.copy(bind).slerp(_targetQ, amount);
+  }
+}
+
 export async function loadPlayerModel(appearance: Appearance): Promise<PlayerVisual> {
   const [model, idleFbx, runFbx, rawMap] = await Promise.all([
     loadFbx(PLAYER_URLS.model),
@@ -186,6 +228,7 @@ export async function loadPlayerModel(appearance: Appearance): Promise<PlayerVis
   idle.play();
   mixer.update(0);
   plantFeet(model);
+  const crouchBinds = cacheBindQuats(model, CROUCH_BENDS);
 
   const restY = model.position.y;
   const restPitch = model.rotation.x;
@@ -235,17 +278,9 @@ export async function loadPlayerModel(appearance: Appearance): Promise<PlayerVis
       swim += (swimTarget - swim) * 0.18;
       if (Math.abs(swimTarget - swim) < 0.002) swim = swimTarget;
       model.position.y = restY - CROUCH_DROP * crouch - SWIM_SINK * swim;
-      model.rotation.x = restPitch + CROUCH_PITCH * crouch + 0.55 * swim;
-      overlayBone(model, "Hips", 0.42, 0, 0, crouch);
-      overlayBone(model, "Spine", 0.28, 0, 0, crouch);
-      overlayBone(model, "LeftUpLeg", -0.7, 0, 0, crouch);
-      overlayBone(model, "RightUpLeg", -0.7, 0, 0, crouch);
-      overlayBone(model, "LeftLeg", 0.95, 0, 0, crouch);
-      overlayBone(model, "RightLeg", 0.95, 0, 0, crouch);
-      overlayBone(model, "LeftArm", 0.75, 0, 0.55, crouch);
-      overlayBone(model, "RightArm", 0.75, 0, -0.55, crouch);
-      overlayBone(model, "LeftForeArm", 0.45, 0, 0, crouch);
-      overlayBone(model, "RightForeArm", 0.45, 0, 0, crouch);
+      model.rotation.x = restPitch + 0.55 * swim;
+      if (gait === "idle") idle.setEffectiveWeight(1 - crouch);
+      applyCrouchFromBind(model, crouchBinds, crouch);
       const paddle = Math.sin(mixer.time * 5.2) * swim;
       overlayBone(model, "LeftArm", 0.35 + paddle * 0.55, 0, 0.7, swim);
       overlayBone(model, "RightArm", 0.35 - paddle * 0.55, 0, -0.7, swim);
