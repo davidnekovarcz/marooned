@@ -62,12 +62,20 @@ export class Input {
     });
   }
 
-  moveCodes(): Iterable<string> {
-    return this.pressed;
-  }
-
-  dirFor(code: string): { x: number; z: number } | undefined {
-    return DIRS[code];
+  /** Combined WASD / arrows, each axis clamped to -1 / 0 / +1. */
+  moveDir(): { x: number; z: number } | null {
+    let x = 0;
+    let z = 0;
+    for (const code of this.pressed) {
+      const dir = DIRS[code];
+      if (!dir) continue;
+      x += dir.x;
+      z += dir.z;
+    }
+    x = Math.max(-1, Math.min(1, x));
+    z = Math.max(-1, Math.min(1, z));
+    if (x === 0 && z === 0) return null;
+    return { x, z };
   }
 
   consumeInteract(): boolean {

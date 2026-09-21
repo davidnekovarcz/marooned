@@ -1,5 +1,13 @@
 import * as THREE from "three";
-import { CELL, STEP_SECONDS_RUN, STEP_SECONDS_SWIM, STEP_SECONDS_WALK } from "@/web/src/constants";
+import {
+  CAMERA_LERP,
+  CAMERA_LERP_RUN,
+  CAMERA_LERP_WALK,
+  CELL,
+  STEP_SECONDS_RUN,
+  STEP_SECONDS_SWIM,
+  STEP_SECONDS_WALK,
+} from "@/web/src/constants";
 import { BusyAction } from "@/web/src/actor/busy";
 import { Inventory } from "@/web/src/actor/inventory";
 import { canEnter } from "@/web/src/gridOverlay";
@@ -184,29 +192,39 @@ export class GridPlayer {
       this.snap();
     }
 
-    for (const code of this.input.moveCodes()) {
-      const dir = this.input.dirFor(code);
-      if (!dir) continue;
+    const dir = this.input.moveDir();
+    if (dir && this.canStep(dir.x, dir.z)) {
       const nx = this.cellX + dir.x;
       const nz = this.cellZ + dir.z;
-      if (!canEnter(this.biomes, this.blocked, nx, nz)) continue;
+      const diagonal = dir.x !== 0 && dir.z !== 0;
       const intoWater = isInlandWater(nx, nz, this.biomes);
       this.destWater = intoWater;
-      this.stepSeconds = intoWater
+      const pace = intoWater
         ? STEP_SECONDS_SWIM
         : this.input.sprinting && this.canSprint
           ? STEP_SECONDS_RUN
           : STEP_SECONDS_WALK;
+      this.stepSeconds = diagonal ? pace * Math.SQRT2 : pace;
       this.from.copy(this.mesh.position);
       this.to.set(nx * CELL + CELL / 2, 0, nz * CELL + CELL / 2);
       this.t = 0;
       this.moving = true;
       this.mesh.lookAt(this.to.x, 0, this.to.z);
       this.visual.setGait(this.refreshGait(this.input.sprinting));
-      break;
     }
 
     if (!this.moving) this.visual.setGait(this.refreshGait(this.input.sprinting));
+  }
+
+  private canStep(dx: number, dz: number): boolean {
+    const nx = this.cellX + dx;
+    const nz = this.cellZ + dz;
+    if (!canEnter(this.biomes, this.blocked, nx, nz)) return false;
+    if (dx !== 0 && dz !== 0) {
+      if (!canEnter(this.biomes, this.blocked, this.cellX + dx, this.cellZ)) return false;
+      if (!canEnter(this.biomes, this.blocked, this.cellX, this.cellZ + dz)) return false;
+    }
+    return true;
   }
 
   followCamera(camera: THREE.PerspectiveCamera, offset: THREE.Vector3): void {
@@ -216,7 +234,9 @@ export class GridPlayer {
       this.mesh.position.y + offset.y,
       this.mesh.position.z + offset.z,
     );
-    camera.position.lerp(target, 0.12);
+    const lerp =
+      this.gait === "walk" ? CAMERA_LERP_WALK : this.gait === "run" ? CAMERA_LERP_RUN : CAMERA_LERP;
+    camera.position.lerp(target, lerp);
     camera.lookAt(this.mesh.position.x, lookY, this.mesh.position.z);
   }
 }
