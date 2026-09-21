@@ -4,6 +4,43 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Marooned — island walk</title>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+
+      var CONSENT_KEY = "marooned.cookie-consent";
+      var EEA_UK_CH = [
+        "AT","BE","BG","HR","CY","CZ","DK","EE","FI","FR","DE","GR","HU","IE","IT",
+        "LV","LT","LU","MT","NL","PL","PT","RO","SK","SI","ES","SE","IS","LI","NO","GB","CH",
+      ];
+      var adsDenied = {
+        ad_storage: "denied",
+        ad_user_data: "denied",
+        ad_personalization: "denied",
+      };
+
+      gtag("consent", "default", Object.assign({
+        analytics_storage: "denied",
+        region: EEA_UK_CH,
+      }, adsDenied));
+      gtag("consent", "default", Object.assign({
+        analytics_storage: "granted",
+      }, adsDenied));
+
+      try {
+        var saved = localStorage.getItem(CONSENT_KEY);
+        if (saved === "granted" || saved === "denied") {
+          gtag("consent", "update", Object.assign({
+            analytics_storage: saved,
+          }, adsDenied));
+        }
+      } catch (e) {}
+    </script>
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-5V4HHNCL87"></script>
+    <script>
+      gtag("js", new Date());
+      gtag("config", "G-5V4HHNCL87", { anonymize_ip: true });
+    </script>
   </head>
   <body class="gate">
     <div id="ui"></div>
@@ -40,5 +77,56 @@
       </div>
     </div>
     <script type="module" src="/src/main.ts"></script>
+    <div id="cookie-banner" hidden>
+      <p>We use a cookie to count visits (Google Analytics). No ads.</p>
+      <div class="cookie-actions">
+        <button type="button" id="cookie-accept">Accept</button>
+        <button type="button" id="cookie-decline">Decline</button>
+      </div>
+    </div>
+    <script>
+      (function () {
+        var TZ =
+          /^(Europe\/|Atlantic\/(Azores|Canary|Faroe|Madeira|Reykjavik)|Arctic\/Longyearbyen|Africa\/(Ceuta|Melilla))/;
+        var localeEu = /^(AT|BE|BG|HR|CY|CZ|DK|EE|FI|FR|DE|GR|HU|IE|IT|LV|LT|LU|MT|NL|PL|PT|RO|SK|SI|ES|SE|IS|LI|NO|GB|UK|CH)$/i;
+
+        function inEu() {
+          try {
+            var tz = Intl.DateTimeFormat().resolvedOptions().timeZone || "";
+            if (TZ.test(tz)) return true;
+          } catch (e) {}
+          var langs = [].concat(navigator.languages || [], navigator.language || "");
+          for (var i = 0; i < langs.length; i++) {
+            var part = String(langs[i]).split(/[-_]/)[1];
+            if (part && localeEu.test(part)) return true;
+          }
+          return false;
+        }
+
+        var saved = null;
+        try {
+          saved = localStorage.getItem(CONSENT_KEY);
+        } catch (e) {}
+        if (saved === "granted" || saved === "denied" || !inEu()) return;
+
+        var banner = document.getElementById("cookie-banner");
+        banner.hidden = false;
+        function choose(choice) {
+          try {
+            localStorage.setItem(CONSENT_KEY, choice);
+          } catch (e) {}
+          gtag("consent", "update", Object.assign({
+            analytics_storage: choice,
+          }, adsDenied));
+          banner.hidden = true;
+        }
+        document.getElementById("cookie-accept").onclick = function () {
+          choose("granted");
+        };
+        document.getElementById("cookie-decline").onclick = function () {
+          choose("denied");
+        };
+      })();
+    </script>
   </body>
 </html>

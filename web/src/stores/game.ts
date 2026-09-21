@@ -71,6 +71,9 @@ export const useUiStore = defineStore("ui", {
     deathHours: 0,
     pocketQueued: null as PocketCommand | null,
     interactQueued: false,
+    islandFull: false,
+    netRoom: null as string | null,
+    netHost: false,
   }),
   actions: {
     queuePocket(command: PocketCommand) {

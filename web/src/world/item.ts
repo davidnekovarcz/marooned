@@ -19,7 +19,7 @@ export type SpawnFn = (
   kind: ModelKind | "torch" | "tomato" | "fishCooked" | "fishingPole",
   x: number,
   z: number,
-  extra?: { yaw?: number; dx?: number; dz?: number },
+  extra?: { yaw?: number; dx?: number; dz?: number; id?: string },
 ) => Item | null;
 
 let nextId = 1;
@@ -35,9 +35,16 @@ export class Item {
     public mesh: Object3D,
     public prep?: FoodPrep,
     public freshness?: Freshness,
+    id?: string,
   ) {
-    this.id = `item-${nextId}`;
-    nextId += 1;
+    if (id) {
+      this.id = id;
+      const n = Number(/^item-(\d+)$/.exec(id)?.[1]);
+      if (Number.isFinite(n)) nextId = Math.max(nextId, n + 1);
+    } else {
+      this.id = `item-${nextId}`;
+      nextId += 1;
+    }
     if (isFoodKind(kind)) this.applyFoodState();
   }
 
@@ -49,14 +56,15 @@ export class Item {
   }
 
   snapshot(): ItemSnapshot {
-    return {
+    const snap: ItemSnapshot = {
       id: this.id,
       kind: this.kind,
       cellX: this.cellX,
       cellZ: this.cellZ,
-      prep: this.prep,
-      freshness: this.freshness,
     };
+    if (this.prep) snap.prep = this.prep;
+    if (this.freshness) snap.freshness = this.freshness;
+    return snap;
   }
 }
 

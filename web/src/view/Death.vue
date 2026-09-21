@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import { t } from "@/web/src/i18n";
+import { markForceRespawn } from "@/web/src/net/survivor";
 import { useUiStore } from "@/web/src/stores/game";
 import { formatDeathTime } from "@/web/src/view/labels";
 
@@ -8,6 +9,7 @@ const ui = useUiStore();
 const message = computed(() => formatDeathTime(ui.deathHours));
 
 function respawn(): void {
+  markForceRespawn();
   window.location.reload();
 }
 </script>

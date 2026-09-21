@@ -61,6 +61,12 @@ export class GridPlayer {
     this.snap();
   }
 
+  placeAt(x: number, z: number): void {
+    this.cellX = x;
+    this.cellZ = z;
+    this.snap();
+  }
+
   inWater(): boolean {
     return isInlandWater(this.cellX, this.cellZ, this.biomes);
   }

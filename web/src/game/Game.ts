@@ -1,27 +1,49 @@
 import * as THREE from "three";
-import { randomCharacter, saveCharacter } from "@/web/src/appearance";
+import { randomCharacter, saveCharacter, type Character } from "@/web/src/appearance";
 import { setupIslandAudio } from "@/web/src/audio";
 import { applyZoomFog, CameraZoom, offsetForZoom } from "@/web/src/cameraZoom";
 import { CAMERA_OFFSET, CENTER, DAY_START, DEBUG_GRID, GRID, HUD_BLINK, SEED } from "@/web/src/constants";
 import { applyDayNight, createDayLights, DayClock, isDaytime } from "@/web/src/dayNight";
 import { Atmosphere } from "@/web/src/fx/atmosphere";
-import { buildGridOverlay } from "@/web/src/gridOverlay";
+import { buildGridOverlay, canEnter } from "@/web/src/gridOverlay";
 import { Input } from "@/web/src/input/Input";
 import {
   buildBiomes,
   buildCoastField,
   buildIslandMesh,
   findSpawn,
+  findSpawns,
   isInlandWater,
   isPondShore,
   isShore,
 } from "@/web/src/island";
 import { Needs } from "@/web/src/needs";
 import { buildOcean } from "@/web/src/ocean";
+import type { StowedGear } from "@/web/src/actor/inventory";
 import { GridPlayer } from "@/web/src/actor/player";
+import { RemotePlayer } from "@/web/src/actor/remotePlayer";
 import { loadPlayerModel } from "@/web/src/playerModel";
 import { scatterProps } from "@/web/src/props";
 import { Actions, type ResolvedAction } from "@/web/src/sim/actions";
+import { applyHostIntent } from "@/web/src/net/hostIntents";
+import { PLAYER_HZ, WORLD_HZ, roomIdFromUrl, type NetIntent } from "@/web/src/net/protocol";
+import { joinRoom, type Room } from "@/web/src/net/room";
+import {
+  consumeForceRespawn,
+  emptyInventory,
+  loadLocalSurvivor,
+  saveLocalSurvivor,
+  SURVIVOR_HZ,
+  type NetSurvivor,
+} from "@/web/src/net/survivor";
+import {
+  applyNetWorld,
+  snapshotWorld,
+  spawnFromSnapshot,
+  takeCarriedItem,
+  type ClaimedHearth,
+  type ClaimedPickup,
+} from "@/web/src/net/worldSync";
 import { gatherPromptCandidates, pickPrompt, smokePromptPriority, type PromptChoice } from "@/web/src/sim/prompt";
 import { Camp, countNearby } from "@/web/src/sim/camp";
 import { Loot } from "@/web/src/sim/loot";
@@ -38,8 +60,11 @@ import {
 import { mountUi } from "@/web/src/view/mount";
 import { spawnWildlife } from "@/web/src/wildlife";
 import { Item } from "@/web/src/world/item";
+import type { HeldKind } from "@/web/src/world/kinds";
 
 const _torch = new THREE.Vector3();
+const _torches: THREE.Vector3[] = [];
+const _remoteTorches = [new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3()];
 
 export class Game {
   static async start(): Promise<void> {
@@ -81,17 +106,39 @@ export class Game {
     const islandMesh = buildIslandMesh(biomes);
     scene.add(islandMesh);
 
-    const character = randomCharacter();
+    const ui = useUiStore();
+    const join = await joinRoom();
+    if (join.kind === "full") ui.islandFull = true;
+    const room: Room | null = join.kind === "joined" ? join.room : null;
+    if (room) {
+      ui.netRoom = room.roomId;
+      ui.netHost = room.isHost;
+    }
+
+    const persistRoomId = room?.roomId ?? roomIdFromUrl();
+    const respawn = consumeForceRespawn();
+    let saved: NetSurvivor | null = null;
+    if (!respawn) {
+      saved = room ? await room.loadSurvivor() : null;
+      saved = saved ?? loadLocalSurvivor(persistRoomId);
+    }
+
+    const character: Character = saved?.character ?? randomCharacter();
     saveCharacter(character);
 
-    const spawn = findSpawn(biomes);
-    blocked[spawn.z * GRID + spawn.x] = 1;
+    const spawns = findSpawns(biomes);
+    const slotSpawn = room ? (spawns[room.slot] ?? findSpawn(biomes)) : findSpawn(biomes);
+    let spawn = slotSpawn;
+    if (saved && canEnter(biomes, blocked, saved.cellX, saved.cellZ)) {
+      spawn = { x: saved.cellX, z: saved.cellZ };
+    }
+    for (const cell of spawns) blocked[cell.z * GRID + cell.x] = 1;
 
     const worldP = (async () => {
       const scattered = await scatterProps(scene, biomes, blocked);
       const loot = new Loot(scattered.lootSites, scattered.items, scattered.spawn, spawn);
       const wildlife = await spawnWildlife(scene, biomes, blocked);
-      blocked[spawn.z * GRID + spawn.x] = 0;
+      for (const cell of spawns) blocked[cell.z * GRID + cell.x] = 0;
       if (DEBUG_GRID) scene.add(buildGridOverlay(biomes, blocked));
       return { scattered, loot, wildlife };
     })();
@@ -105,16 +152,20 @@ export class Game {
     const camp = new Camp();
     camp.scan(scattered.items);
     const weather = new Weather();
+    const day = new DayClock();
+    const savedWorld = room ? await room.loadWorld() : null;
+    if (savedWorld) {
+      applyNetWorld(savedWorld, scattered.items, scattered.spawn, camp, day, weather, (item) => loot.onRemoved(item));
+    }
     const atmosphere = new Atmosphere(scene);
     atmosphere.attachIsland(islandMesh);
     atmosphere.bindCamp(camp);
 
-    const ui = useUiStore();
     const islandAudio = setupIslandAudio(scene, player, scattered.audioAnchors, coast, camp, () => {
       ui.audioUnlocked = true;
     });
     const needs = new Needs();
-    const day = new DayClock();
+    if (saved) needs.restore(saved.needs);
     const zoom = new CameraZoom();
     const actions = new Actions();
     smokePromptPriority();
@@ -160,6 +211,67 @@ export class Game {
     let dead = false;
     let currentItem: Item | null = null;
     let currentAction: ResolvedAction | null = null;
+    const remotes = new Map<string, RemotePlayer>();
+    let playerSend = 0;
+    let worldSend = 0;
+    let survivorSend = 0;
+    let lastSurvivorJson = "";
+    let intentSeq = 0;
+    const lastIntentSeq = new Map<string, number>();
+    const claimedPickups: ClaimedPickup[] = [];
+    const claimedHearths: ClaimedHearth[] = [];
+    const onRemoved = (item: Item): void => loot.onRemoved(item);
+
+    const equipGear = (gear: StowedGear | null, stow: boolean): void => {
+      if (!gear) return;
+      const item = takeCarriedItem(
+        scattered.spawn,
+        scattered.items,
+        onRemoved,
+        gear.kind,
+        player.cellX,
+        player.cellZ,
+        { prep: gear.prep, freshness: gear.freshness },
+      );
+      if (!item) return;
+      player.inventory.grabHeld(item.mesh, gear.kind);
+      if (stow) player.inventory.stowHeld();
+    };
+    if (saved?.alive) {
+      equipGear(saved.inventory.left, true);
+      equipGear(saved.inventory.right, true);
+      equipGear(saved.inventory.held, false);
+    }
+
+    const persistSurvivor = (alive: boolean, deathHours = 0): void => {
+      const snap = needs.snapshot();
+      const row: NetSurvivor = {
+        character,
+        needs: {
+          energy: snap.energy,
+          thirst: snap.thirst,
+          hunger: snap.hunger,
+          temperature: snap.temperature,
+          wetness: snap.wetness,
+          health: alive ? snap.health : 0,
+        },
+        inventory: alive ? player.inventory.persistGear() : emptyInventory(),
+        cellX: player.cellX,
+        cellZ: player.cellZ,
+        alive,
+        deathHours,
+        updatedAt: Date.now(),
+      };
+      const json = JSON.stringify({ ...row, updatedAt: 0 });
+      if (json === lastSurvivorJson) return;
+      lastSurvivorJson = json;
+      saveLocalSurvivor(persistRoomId, row);
+      if (room) void room.saveSurvivor(row);
+    };
+
+    window.addEventListener("pagehide", () => {
+      persistSurvivor(player.alive && !dead, ui.deathHours);
+    });
 
     const applyHealthLook = (health: number): void => {
       const gray = (1 - health) * 100;
@@ -196,9 +308,35 @@ export class Game {
       player.canSprint = needs.canSprint;
       player.update(dt);
       wildlife.update(dt);
-      loot.update(dt, player.cellX, player.cellZ);
-      weather.update(dt, day.t, day.elapsed);
-      if (weather.raining) camp.douseExposed();
+      const hosting = !room || room.isHost;
+      if (hosting) {
+        loot.update(dt, player.cellX, player.cellZ);
+        weather.update(dt, day.t, day.elapsed);
+        if (weather.raining) camp.douseExposed();
+        day.update(dt);
+      } else if (room) {
+        const world = room.latestWorld();
+        if (world) {
+          try {
+            applyNetWorld(
+              world,
+              scattered.items,
+              scattered.spawn,
+              camp,
+              day,
+              weather,
+              onRemoved,
+              claimedPickups,
+              claimedHearths,
+            );
+          } catch (err) {
+            console.warn("applyNetWorld failed", err);
+          }
+        } else {
+          day.update(dt);
+          weather.update(dt, day.t, day.elapsed);
+        }
+      }
       const daytime = isDaytime(day.t);
       const sheltered = camp.covered(player.cellX, player.cellZ);
       const fireWarmth = camp.warmthAt(player.cellX, player.cellZ);
@@ -211,7 +349,6 @@ export class Game {
         torch: torchHeld,
         swimming: player.inWater(),
       });
-      day.update(dt);
       applyDayNight(scene, lights, day.t, weather.intensity, weather.flash);
       ocean.update(clock.elapsedTime, weather.intensity);
       islandAudio.update(weather.intensity, sheltered);
@@ -223,12 +360,42 @@ export class Game {
       atmosphere.setWetGround(Math.max(weather.intensity * 0.85, needs.wetness * 0.35));
       atmosphere.setSteam(needs.wetness > 0.25 && fireWarmth > 0.2);
       atmosphere.setFireflies(weather.fireflies(!daytime));
-      let torchPos: THREE.Vector3 | null = null;
+      if (room) {
+        const seen = new Set<string>();
+        for (const net of room.remotes) {
+          seen.add(net.uid);
+          let remote = remotes.get(net.uid);
+          if (!remote) {
+            remote = new RemotePlayer(net.uid);
+            remotes.set(net.uid, remote);
+          }
+          void remote.ensure(scene, net.appearance);
+          remote.apply(net, dt);
+        }
+        for (const [uid, remote] of remotes) {
+          if (seen.has(uid)) continue;
+          remote.dispose();
+          remotes.delete(uid);
+        }
+      }
+      _torches.length = 0;
       if (torchHeld && player.heldMesh) {
         player.heldMesh.getWorldPosition(_torch);
-        torchPos = _torch;
+        _torches.push(_torch);
       }
-      atmosphere.update(dt, player.mesh.position, torchPos, clock.elapsedTime, weather.flash, day.t);
+      if (room) {
+        let remoteTorchI = 0;
+        for (const net of room.remotes) {
+          if (net.heldKind !== "torch" || remoteTorchI >= _remoteTorches.length) continue;
+          const visual = remotes.get(net.uid)?.visual;
+          if (!visual) continue;
+          const pos = _remoteTorches[remoteTorchI++]!;
+          pos.copy(visual.root.position);
+          pos.y += 1.1;
+          _torches.push(pos);
+        }
+      }
+      atmosphere.update(dt, player.mesh.position, _torches, clock.elapsedTime, weather.flash, day.t);
 
       if (!player.alive || player.busy) {
         currentItem = null;
@@ -274,14 +441,155 @@ export class Game {
       }
 
       const pocket = input.consumePocket() ?? ui.consumePocket();
-      if (pocket) interactor.pocket(pocket);
+      if (pocket) {
+        if (room && !room.isHost && pocket === "drop") {
+          const kind = player.heldKind;
+          const dropped = player.dropHeld();
+          if (dropped) {
+            dropped.mesh.removeFromParent();
+            intentSeq += 1;
+            const intent: NetIntent = {
+              seq: intentSeq,
+              uid: room.uid,
+              cellX: player.cellX,
+              cellZ: player.cellZ,
+              heldKind: null,
+              pocket: "drop",
+              dropKind: kind ?? dropped.kind,
+            };
+            void room.sendIntent(intent);
+          }
+        } else {
+          interactor.pocket(pocket);
+        }
+      }
       const wantInteract = input.consumeInteract() || ui.consumeInteract();
       if (wantInteract && currentAction && actions.enabled(currentAction)) {
-        if (interactor.perform(currentAction, currentItem)) {
+        const action = currentAction;
+        const target = currentItem;
+        const localOnly = Boolean(action.eatHeld || action.pond);
+        const pickHere = Boolean(action.pickup);
+        const lightHere = Boolean(action.light);
+        if (!room || room.isHost || localOnly || pickHere || lightHere) {
+          if (interactor.perform(action, target)) {
+            if (room && !room.isHost && pickHere && target) {
+              claimedPickups.push({
+                id: target.id,
+                kind: target.kind,
+                cellX: target.cellX,
+                cellZ: target.cellZ,
+              });
+              intentSeq += 1;
+              void room.sendIntent({
+                seq: intentSeq,
+                uid: room.uid,
+                cellX: player.cellX,
+                cellZ: player.cellZ,
+                heldKind: player.heldKind,
+                interact: true,
+                itemId: target.id,
+                action,
+                taken: true,
+              });
+            } else if (room && !room.isHost && lightHere) {
+              if (target) claimedHearths.push({ cellX: target.cellX, cellZ: target.cellZ });
+              intentSeq += 1;
+              void room.sendIntent({
+                seq: intentSeq,
+                uid: room.uid,
+                cellX: player.cellX,
+                cellZ: player.cellZ,
+                heldKind: player.heldKind,
+                interact: true,
+                itemId: target?.id ?? null,
+                action,
+              });
+            }
+            currentItem = null;
+            currentAction = null;
+            ui.actionId = null;
+          }
+        } else {
+          intentSeq += 1;
+          const intent: NetIntent = {
+            seq: intentSeq,
+            uid: room.uid,
+            cellX: player.cellX,
+            cellZ: player.cellZ,
+            heldKind: player.heldKind,
+            interact: true,
+            itemId: target?.id ?? null,
+            action,
+          };
+          void room.sendIntent(intent);
           currentItem = null;
           currentAction = null;
           ui.actionId = null;
         }
+      }
+
+      if (room) {
+        ui.netHost = room.isHost;
+        playerSend += dt;
+        if (playerSend >= 1 / PLAYER_HZ) {
+          playerSend = 0;
+          void room.publishPlayer({
+            uid: room.uid,
+            slot: room.slot,
+            cellX: player.cellX,
+            cellZ: player.cellZ,
+            gait: player.gait,
+            heldKind: player.heldKind,
+            alive: player.alive,
+            name: character.name,
+            appearance: { gender: character.gender, skin: character.skin, clothes: character.clothes },
+          });
+        }
+        if (room.isHost) {
+          for (const intent of room.consumeIntents()) {
+            if (intent.uid === room.uid) continue;
+            const prev = lastIntentSeq.get(intent.uid) ?? 0;
+            if (intent.seq <= prev) {
+              void room.clearIntent(intent.uid);
+              continue;
+            }
+            lastIntentSeq.set(intent.uid, intent.seq);
+            const grant = applyHostIntent(intent, scattered.items, camp, scattered.spawn, onRemoved);
+            if (grant) void room.sendGrant(intent.uid, grant);
+            else void room.clearIntent(intent.uid);
+          }
+          worldSend += dt;
+          if (worldSend >= 1 / WORLD_HZ) {
+            worldSend = 0;
+            try {
+              void room.publishWorld(snapshotWorld(scattered.items, camp, day, weather));
+            } catch (err) {
+              console.warn("snapshotWorld failed", err);
+            }
+          }
+        } else {
+          const grant = room.consumeGrant();
+          if (
+            grant?.pickup &&
+            !claimedPickups.some((claim) => claim.id === grant.pickup?.id || claim.kind === grant.pickup?.kind)
+          ) {
+            const spawned = spawnFromSnapshot(scattered.spawn, grant.pickup);
+            if (spawned) {
+              player.inventory.grabHeld(spawned.mesh, grant.pickup.kind as HeldKind);
+              const i = scattered.items.indexOf(spawned);
+              if (i >= 0) scattered.items.splice(i, 1);
+              loot.onRemoved(spawned);
+            }
+          } else if (grant?.cook && player.heldKind === "fish") {
+            player.inventory.relabelHeld("fishCooked");
+          }
+        }
+      }
+
+      survivorSend += dt;
+      if (survivorSend >= 1 / SURVIVOR_HZ) {
+        survivorSend = 0;
+        persistSurvivor(true);
       }
 
       this.patchStores(session, needsStore, playerStore, inventoryStore, worldStore, ui, {
@@ -300,10 +608,24 @@ export class Game {
         ui.deathHours = day.survivedGameHours();
         document.body.classList.add("dead");
         applyHealthLook(0);
+        persistSurvivor(false, ui.deathHours);
         return;
       }
       requestAnimationFrame(frame);
     };
+
+    if (saved && !saved.alive) {
+      dead = true;
+      player.alive = false;
+      needs.health = 0;
+      ui.dead = true;
+      ui.deathHours = saved.deathHours;
+      document.body.classList.add("dead");
+      applyHealthLook(0);
+      persistSurvivor(false, saved.deathHours);
+    } else {
+      persistSurvivor(true);
+    }
 
     frame();
   };

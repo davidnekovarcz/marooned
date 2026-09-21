@@ -309,20 +309,58 @@ function cellTint(
   else out.copy(sandA).lerp(sandB, u);
 }
 
-export function findSpawn(biomes: Uint8Array): { x: number; z: number } {
+export function findSpawns(biomes: Uint8Array): { x: number; z: number }[] {
+  const ring: { x: number; z: number }[] = [];
+  const lo = ISLAND_RADIUS - BEACH_WIDTH - 2;
+  const hi = ISLAND_RADIUS - BEACH_WIDTH;
   for (let z = 0; z < GRID; z++) {
     for (let x = 0; x < GRID; x++) {
       if (biomes[cellIndex(x, z)] !== Biome.Grass) continue;
       const dist = cellCenterDist(x, z);
-      if (dist >= ISLAND_RADIUS - BEACH_WIDTH - 2 && dist <= ISLAND_RADIUS - BEACH_WIDTH) {
-        return { x, z };
+      if (dist >= lo && dist <= hi) ring.push({ x, z });
+    }
+  }
+  const grass: { x: number; z: number }[] = [];
+  if (!ring.length) {
+    for (let z = 0; z < GRID; z++) {
+      for (let x = 0; x < GRID; x++) {
+        if (biomes[cellIndex(x, z)] === Biome.Grass) grass.push({ x, z });
       }
     }
   }
-  for (let z = 0; z < GRID; z++) {
-    for (let x = 0; x < GRID; x++) {
-      if (biomes[cellIndex(x, z)] === Biome.Grass) return { x, z };
+  const pool = ring.length ? ring : grass;
+  const radius = ISLAND_RADIUS - BEACH_WIDTH - 1;
+  const bearings = [
+    { x: CENTER, z: CENTER - radius },
+    { x: CENTER + radius, z: CENTER },
+    { x: CENTER, z: CENTER + radius },
+    { x: CENTER - radius, z: CENTER },
+  ];
+  const used = new Set<string>();
+  const picks: { x: number; z: number }[] = [];
+  for (const target of bearings) {
+    let best: { x: number; z: number } | null = null;
+    let bestD = Infinity;
+    for (const cell of pool) {
+      const key = `${cell.x},${cell.z}`;
+      if (used.has(key)) continue;
+      const d = (cell.x + 0.5 - target.x) ** 2 + (cell.z + 0.5 - target.z) ** 2;
+      if (d < bestD) {
+        best = cell;
+        bestD = d;
+      }
+    }
+    if (best) {
+      used.add(`${best.x},${best.z}`);
+      picks.push(best);
     }
   }
-  return { x: Math.floor(CENTER), z: Math.floor(CENTER) };
+  while (picks.length < 4) {
+    picks.push(picks[0] ?? { x: Math.floor(CENTER), z: Math.floor(CENTER) });
+  }
+  return picks.slice(0, 4);
+}
+
+export function findSpawn(biomes: Uint8Array): { x: number; z: number } {
+  return findSpawns(biomes)[0] ?? { x: Math.floor(CENTER), z: Math.floor(CENTER) };
 }

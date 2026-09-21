@@ -212,7 +212,7 @@ export async function scatterProps(
     x: number,
     z: number,
     yaw: number,
-    extra?: { tiltX?: number; tiltZ?: number; y?: number; dx?: number; dz?: number; vary?: boolean },
+    extra?: { tiltX?: number; tiltZ?: number; y?: number; dx?: number; dz?: number; vary?: boolean; id?: string },
   ): THREE.Object3D | null => {
     if (!inBounds(x, z)) return null;
     const srcKey: PlaceKind = kind === "fishCooked" ? "fish" : kind;
@@ -228,7 +228,7 @@ export async function scatterProps(
     if (extra?.tiltX || extra?.tiltZ) sitOnGround(clone);
     group.add(clone);
     if (kind === "campfire" || kind === "campfireStones") nestLogs(clone, x, z, yaw);
-    items.push(new Item(kind, x, z, clone));
+    items.push(new Item(kind, x, z, clone, undefined, undefined, extra?.id));
     return clone;
   };
 
@@ -476,12 +476,13 @@ export async function scatterProps(
     kind: ModelKind | "torch" | "tomato" | "fishCooked" | "fishingPole",
     x: number,
     z: number,
-    extra?: { yaw?: number; dx?: number; dz?: number },
+    extra?: { yaw?: number; dx?: number; dz?: number; id?: string },
   ): Item | null => {
     const mesh = add(kind, x, z, extra?.yaw ?? rng() * 6, {
       dx: extra?.dx,
       dz: extra?.dz,
       vary: false,
+      id: extra?.id,
     });
     if (!mesh) return null;
     return items[items.length - 1] ?? null;

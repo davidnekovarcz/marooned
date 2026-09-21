@@ -4,7 +4,7 @@ This file is **instructions for the coding agent** (and a checklist for a human)
 
 **Steps A+B are done** (walkable island + coconut; HUD and inventory have since landed). Do not re-run this as current work.
 
-**Do this slice before HUD, inventory, crafting, multiplayer, or Godot.** (HUD/inventory: done. Crafting, multiplayer, Godot: not yet.)
+**Do this slice before HUD, inventory, crafting, multiplayer, or Godot.** (HUD/inventory: done. Lean-to + cooked fish exist. 4-player Firebase teaser is live. Godot: not yet.)
 
 ### Git (how we land work)
 
@@ -271,4 +271,4 @@ Repo size is large (~0.7 GB vendor). Do not duplicate packs into `web/public`.
 
 ## 7. After this MVP
 
-Steps A+B are done. Next: remaining items in [`../TODOs.md`](../TODOs.md) (wetness, rain, fire, loot, lean-to). Engine revisit (Godot) is allowed once we care about a dedicated server — not before.
+Steps A+B are done. Rain, wetness, fire, torch, fishing, lean-to, and a 4-player room are in. Next: remaining items in [`../TODOs.md`](../TODOs.md) (held items on remotes, say bubbles, house 2–3, wreck events). Engine revisit (Godot) is allowed once we care about a dedicated server — not before.

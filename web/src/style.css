@@ -532,3 +532,55 @@ body.dead #interact {
 #death-respawn:hover {
   background: rgba(244, 247, 242, 0.22);
 }
+
+#cookie-banner {
+  position: fixed;
+  left: 50%;
+  bottom: 1.1rem;
+  transform: translateX(-50%);
+  z-index: 40;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.7rem 1rem;
+  align-items: center;
+  justify-content: center;
+  max-width: min(34rem, 94vw);
+  padding: 0.7rem 0.9rem;
+  border-radius: 8px;
+  background: rgba(18, 22, 18, 0.88);
+  color: #f4efe4;
+  font: 14px/1.35 ui-sans-serif, system-ui, sans-serif;
+  pointer-events: auto;
+}
+
+#cookie-banner[hidden] {
+  display: none;
+}
+
+#cookie-banner p {
+  margin: 0;
+  flex: 1 1 12rem;
+}
+
+.cookie-actions {
+  display: flex;
+  gap: 0.45rem;
+}
+
+#cookie-banner button {
+  padding: 0.35rem 0.7rem;
+  border: 1px solid rgba(244, 239, 228, 0.55);
+  border-radius: 6px;
+  background: rgba(244, 239, 228, 0.12);
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+#cookie-accept {
+  background: rgba(244, 239, 228, 0.22);
+}
+
+#cookie-banner button:hover {
+  background: rgba(244, 239, 228, 0.3);
+}
