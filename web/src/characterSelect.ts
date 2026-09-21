@@ -80,6 +80,17 @@ export function showCharacterSelect(): Promise<Character> {
     leadEl.textContent = t("character.lead");
     leadEl.hidden = false;
   }
+  const nameLabel = document.getElementById("character-name-label");
+  if (nameLabel) nameLabel.textContent = t("character.name");
+  const lookLabel = genderEl.previousElementSibling;
+  if (lookLabel instanceof HTMLElement) lookLabel.textContent = t("character.look");
+  const skinLabel = skinEl.previousElementSibling;
+  if (skinLabel instanceof HTMLElement) skinLabel.textContent = t("character.skin");
+  const clothesLabel = clothesEl.previousElementSibling;
+  if (clothesLabel instanceof HTMLElement) clothesLabel.textContent = t("character.clothes");
+  for (const btn of genderEl.querySelectorAll<HTMLButtonElement>("[data-gender]")) {
+    btn.textContent = t(`character.${btn.dataset.gender === "female" ? "female" : "male"}`);
+  }
   playBtn.textContent = t("character.play");
   randomBtn.textContent = t("character.random");
 

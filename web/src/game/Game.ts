@@ -1,5 +1,6 @@
 import * as THREE from "three";
-import { randomCharacter, saveCharacter, type Character } from "@/web/src/appearance";
+import { loadSavedCharacter, randomCharacter, saveCharacter, type Character } from "@/web/src/appearance";
+import { showCharacterSelect } from "@/web/src/characterSelect";
 import { setupIslandAudio } from "@/web/src/audio";
 import { applyZoomFog, CameraZoom, offsetForZoom } from "@/web/src/cameraZoom";
 import { CAMERA_OFFSET, CENTER, DAY_START, DEBUG_GRID, GRID, HUD_BLINK, SEED, AFK_SECONDS } from "@/web/src/constants";
@@ -124,9 +125,7 @@ export class Game {
       saved = saved ?? loadLocalSurvivor(persistRoomId);
     }
 
-    const character: Character = saved?.character ?? randomCharacter();
-    saveCharacter(character);
-
+    const freshSpawn = respawn || !saved?.alive;
     const spawns = findSpawns(biomes);
     const slotSpawn = room ? (spawns[room.slot] ?? findSpawn(biomes)) : findSpawn(biomes);
     let spawn = slotSpawn;
@@ -143,8 +142,15 @@ export class Game {
       if (DEBUG_GRID) scene.add(buildGridOverlay(biomes, blocked));
       return { scattered, loot, wildlife };
     })();
-    const visualP = loadPlayerModel(character);
-    const [{ scattered, loot, wildlife }, visual] = await Promise.all([worldP, visualP]);
+
+    const character: Character =
+      !freshSpawn && saved?.character
+        ? saved.character
+        : ui.islandFull
+          ? (loadSavedCharacter() ?? randomCharacter())
+          : await showCharacterSelect();
+    saveCharacter(character);
+    const [{ scattered, loot, wildlife }, visual] = await Promise.all([worldP, loadPlayerModel(character)]);
 
     const input = new Input();
     const player = new GridPlayer(biomes, blocked, spawn, visual, input);
