@@ -30,7 +30,7 @@ export async function connectFirebase(): Promise<FirebaseHandles | null> {
   if (!config) return null;
   const app = initializeApp(config);
   const auth = getAuth(app);
-  const db = getDatabase(app);
+  const db = getDatabase(app, config.databaseURL);
   if (!auth.currentUser) await signInAnonymously(auth);
   if (!auth.currentUser) return null;
   handles = { app, auth, db };

@@ -119,39 +119,37 @@ export class Room {
 
 export async function joinRoom(): Promise<JoinResult> {
   if (!firebaseConfigured()) return { kind: "solo" };
-  const fb = await connectFirebase();
-  if (!fb?.auth.currentUser) return { kind: "solo" };
-  const uid = fb.auth.currentUser.uid;
-  const roomId = roomIdFromUrl();
-  const slotsRef = ref(fb.db, `rooms/${roomId}/slots`);
-  const tx = await runTransaction(slotsRef, (current: Record<string, SlotRow> | null) => {
-    const slots = { ...(current ?? {}) };
+  try {
+    const fb = await connectFirebase();
+    if (!fb?.auth.currentUser) return { kind: "solo" };
+    const uid = fb.auth.currentUser.uid;
+    const roomId = roomIdFromUrl();
+    let slot = -1;
     for (let i = 0; i < ROOM_SLOT_COUNT; i++) {
-      if (slots[String(i)]?.uid === uid) return slots;
-    }
-    for (let i = 0; i < ROOM_SLOT_COUNT; i++) {
-      if (!slots[String(i)]?.uid) {
-        slots[String(i)] = { uid, connectedAt: Date.now() };
-        return slots;
+      const slotRef = ref(fb.db, `rooms/${roomId}/slots/${i}`);
+      const tx = await runTransaction(slotRef, (current: SlotRow | null) => {
+        if (current?.uid && current.uid !== uid) return;
+        return { uid, connectedAt: Date.now() };
+      });
+      if (tx.committed && (tx.snapshot.val() as SlotRow | null)?.uid === uid) {
+        slot = i;
+        break;
       }
     }
-    return current;
-  });
-  const slots = (tx.snapshot.val() as Record<string, SlotRow> | null) ?? {};
-  let slot = -1;
-  for (let i = 0; i < ROOM_SLOT_COUNT; i++) {
-    if (slots[String(i)]?.uid === uid) slot = i;
-  }
-  if (slot < 0) return { kind: "full" };
+    if (slot < 0) return { kind: "full" };
 
-  const room = new Room(fb.db, roomId, uid, slot);
-  const slotRef = ref(fb.db, `rooms/${roomId}/slots/${slot}`);
-  const playerRef = ref(fb.db, `rooms/${roomId}/players/${uid}`);
-  const intentRef = ref(fb.db, `rooms/${roomId}/intents/${uid}`);
-  await onDisconnect(slotRef).remove();
-  await onDisconnect(playerRef).remove();
-  await onDisconnect(intentRef).remove();
-  if (slot === 0) await set(ref(fb.db, `rooms/${roomId}/host`), uid);
-  room.listen();
-  return { kind: "joined", room };
+    const room = new Room(fb.db, roomId, uid, slot);
+    const slotRef = ref(fb.db, `rooms/${roomId}/slots/${slot}`);
+    const playerRef = ref(fb.db, `rooms/${roomId}/players/${uid}`);
+    const intentRef = ref(fb.db, `rooms/${roomId}/intents/${uid}`);
+    await onDisconnect(slotRef).remove();
+    await onDisconnect(playerRef).remove();
+    await onDisconnect(intentRef).remove();
+    if (slot === 0) await set(ref(fb.db, `rooms/${roomId}/host`), uid);
+    room.listen();
+    return { kind: "joined", room };
+  } catch (err) {
+    console.warn("joinRoom failed", err);
+    return { kind: "solo" };
+  }
 }
