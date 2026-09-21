@@ -180,7 +180,7 @@ export function smokePromptPriority(): void {
     promptKind: band,
   });
   const pick = (...bands: PromptBand[]) => pickPrompt(bands.map(stub))?.band;
-  const expect = (name: string, got: string | undefined, want: string) => {
+  const expect = (name: string, got: string | null | undefined, want: string) => {
     if (got !== want) throw new Error(`prompt priority ${name}: expected ${want}, got ${got}`);
   };
   expect("cook over meal", pick("heldMeal", "cook"), "cook");
