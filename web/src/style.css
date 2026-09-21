@@ -514,8 +514,7 @@ body.dead .player-chip {
 }
 
 #character-name-roll:hover,
-.character-toggle button:hover,
-.character-actions button:hover {
+.character-toggle button:hover {
   background: rgba(244, 247, 242, 0.16);
 }
 
@@ -564,16 +563,17 @@ body.dead .player-chip {
 
 .character-actions {
   display: flex;
-  gap: 10px;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
   margin-top: 8px;
 }
 
-.character-actions button {
-  flex: 1;
+#character-play {
   padding: 10px 16px;
   border: 2px solid rgba(244, 247, 242, 0.82);
   border-radius: 8px;
-  background: transparent;
+  background: rgba(244, 247, 242, 0.14);
   color: inherit;
   font: inherit;
   font-size: 16px;
@@ -582,8 +582,26 @@ body.dead .player-chip {
   cursor: pointer;
 }
 
-#character-play {
-  background: rgba(244, 247, 242, 0.14);
+#character-play:hover {
+  background: rgba(244, 247, 242, 0.22);
+}
+
+#character-random {
+  align-self: center;
+  padding: 2px 6px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 400;
+  letter-spacing: 0.02em;
+  opacity: 0.42;
+  cursor: pointer;
+}
+
+#character-random:hover {
+  opacity: 0.7;
 }
 
 #death {
