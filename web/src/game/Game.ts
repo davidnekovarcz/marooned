@@ -224,6 +224,8 @@ export class Game {
     const claimedPickups: ClaimedPickup[] = [];
     const claimedHearths: ClaimedHearth[] = [];
     const onRemoved = (item: Item): void => loot.onRemoved(item);
+    let hostCaughtWorld = Boolean(savedWorld);
+    let hostCatchWait = 0;
 
     const equipGear = (gear: StowedGear | null, stow: boolean): void => {
       if (!gear) return;
@@ -320,6 +322,30 @@ export class Game {
       wildlife.update(dt);
       const hosting = !room || room.isHost;
       if (hosting) {
+        if (room && !hostCaughtWorld) {
+          const live = room.latestWorld();
+          if (live) {
+            try {
+              applyNetWorld(
+                live,
+                scattered.items,
+                scattered.spawn,
+                camp,
+                day,
+                weather,
+                onRemoved,
+                claimedPickups,
+                claimedHearths,
+              );
+            } catch (err) {
+              console.warn("applyNetWorld failed", err);
+            }
+            hostCaughtWorld = true;
+          } else {
+            hostCatchWait += dt;
+            if (hostCatchWait > 0.75) hostCaughtWorld = true;
+          }
+        }
         loot.update(dt, player.cellX, player.cellZ);
         weather.update(dt, day.t, day.elapsed);
         if (weather.raining) camp.douseExposed();
@@ -327,6 +353,7 @@ export class Game {
       } else if (room) {
         const world = room.latestWorld();
         if (world) {
+          const ahead = typeof world.elapsed === "number" && Number.isFinite(world.elapsed) && world.elapsed > day.elapsed;
           try {
             applyNetWorld(
               world,
@@ -338,9 +365,14 @@ export class Game {
               onRemoved,
               claimedPickups,
               claimedHearths,
+              { clock: ahead },
             );
           } catch (err) {
             console.warn("applyNetWorld failed", err);
+          }
+          if (!ahead) {
+            day.update(dt);
+            weather.update(dt, day.t, day.elapsed);
           }
         } else {
           day.update(dt);
@@ -577,7 +609,7 @@ export class Game {
             else void room.clearIntent(intent.uid);
           }
           worldSend += dt;
-          if (worldSend >= 1 / WORLD_HZ) {
+          if (worldSend >= 1 / WORLD_HZ && hostCaughtWorld) {
             worldSend = 0;
             try {
               void room.publishWorld(snapshotWorld(scattered.items, camp, day, weather));

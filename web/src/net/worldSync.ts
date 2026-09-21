@@ -42,6 +42,11 @@ function matchesClaim(snap: ItemSnapshot, claim: ClaimedPickup): boolean {
   return snap.kind === claim.kind && chebyshev(snap.cellX, snap.cellZ, claim.cellX, claim.cellZ) <= 1;
 }
 
+export type ApplyNetWorldOpts = {
+  /** When false, keep local day/weather (stale or behind host snapshot). */
+  clock?: boolean;
+};
+
 export function applyNetWorld(
   world: NetWorld,
   items: Item[],
@@ -52,14 +57,17 @@ export function applyNetWorld(
   onRemoved: (item: Item) => void,
   claimed: ClaimedPickup[] = [],
   claimedHearths: ClaimedHearth[] = [],
+  opts: ApplyNetWorldOpts = {},
 ): void {
-  day.elapsed = world.elapsed;
-  day.t = world.dayT;
-  if (world.weather) {
-    weather.intensity = world.weather.intensity;
-    weather.raining = world.weather.raining;
-    weather.storm = world.weather.storm;
-    weather.flash = world.weather.flash;
+  if (opts.clock !== false) {
+    if (typeof world.elapsed === "number" && Number.isFinite(world.elapsed)) day.elapsed = world.elapsed;
+    if (typeof world.dayT === "number" && Number.isFinite(world.dayT)) day.t = world.dayT;
+    if (world.weather) {
+      weather.intensity = world.weather.intensity;
+      weather.raining = world.weather.raining;
+      weather.storm = world.weather.storm;
+      weather.flash = world.weather.flash;
+    }
   }
 
   const snaps = asArray(world.items);

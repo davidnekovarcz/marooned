@@ -158,7 +158,10 @@ export class Room {
     try {
       const snap = await get(ref(this.db, `rooms/${this.roomId}/world`));
       const val = snap.val() as NetWorld | null;
-      if (!val || typeof val !== "object" || !Array.isArray(val.items) || !val.weather) return null;
+      if (!val || typeof val !== "object") return null;
+      const elapsedOk = typeof val.elapsed === "number" && Number.isFinite(val.elapsed);
+      const dayOk = typeof val.dayT === "number" && Number.isFinite(val.dayT);
+      if (!elapsedOk && !dayOk && val.items == null && !val.weather) return null;
       this.world = val;
       return val;
     } catch (err) {
