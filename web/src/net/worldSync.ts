@@ -11,6 +11,22 @@ function moveMesh(item: Item): void {
   item.mesh.position.z = item.cellZ * CELL + CELL / 2;
 }
 
+export type ClaimedPickup = {
+  id: string;
+  kind: string;
+  cellX: number;
+  cellZ: number;
+};
+
+function chebyshev(ax: number, az: number, bx: number, bz: number): number {
+  return Math.max(Math.abs(ax - bx), Math.abs(az - bz));
+}
+
+function matchesClaim(snap: ItemSnapshot, claim: ClaimedPickup): boolean {
+  if (snap.id === claim.id) return true;
+  return snap.kind === claim.kind && chebyshev(snap.cellX, snap.cellZ, claim.cellX, claim.cellZ) <= 1;
+}
+
 export function applyNetWorld(
   world: NetWorld,
   items: Item[],
@@ -19,6 +35,7 @@ export function applyNetWorld(
   day: DayClock,
   weather: Weather,
   onRemoved: (item: Item) => void,
+  claimed: ClaimedPickup[] = [],
 ): void {
   day.elapsed = world.elapsed;
   day.t = world.dayT;
@@ -38,6 +55,7 @@ export function applyNetWorld(
 
   const local = new Map(items.map((item) => [item.id, item]));
   for (const snap of world.items) {
+    if (claimed.some((claim) => matchesClaim(snap, claim))) continue;
     const cur = local.get(snap.id);
     if (cur) {
       cur.cellX = snap.cellX;
@@ -49,6 +67,12 @@ export function applyNetWorld(
     const spawned = spawn(snap.kind as Parameters<SpawnFn>[0], snap.cellX, snap.cellZ, { id: snap.id });
     if (!spawned) continue;
     if (snap.prep || snap.freshness) spawned.applyFoodState(snap.prep, snap.freshness);
+  }
+
+  for (let i = claimed.length - 1; i >= 0; i--) {
+    const claim = claimed[i]!;
+    if (world.items.some((snap) => matchesClaim(snap, claim))) continue;
+    claimed.splice(i, 1);
   }
 
   const lit = new Map(world.hearths.map((h) => [h.id, h.lit]));

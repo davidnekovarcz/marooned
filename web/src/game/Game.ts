@@ -36,7 +36,7 @@ import {
   SURVIVOR_HZ,
   type NetSurvivor,
 } from "@/web/src/net/survivor";
-import { applyNetWorld, snapshotWorld, spawnFromSnapshot, takeCarriedItem } from "@/web/src/net/worldSync";
+import { applyNetWorld, snapshotWorld, spawnFromSnapshot, takeCarriedItem, type ClaimedPickup } from "@/web/src/net/worldSync";
 import { gatherPromptCandidates, pickPrompt, smokePromptPriority, type PromptChoice } from "@/web/src/sim/prompt";
 import { Camp, countNearby } from "@/web/src/sim/camp";
 import { Loot } from "@/web/src/sim/loot";
@@ -205,6 +205,7 @@ export class Game {
     let lastSurvivorJson = "";
     let intentSeq = 0;
     const lastIntentSeq = new Map<string, number>();
+    const claimedPickups: ClaimedPickup[] = [];
     const onRemoved = (item: Item): void => loot.onRemoved(item);
 
     const equipGear = (gear: StowedGear | null, stow: boolean): void => {
@@ -302,7 +303,7 @@ export class Game {
       } else if (room) {
         const world = room.latestWorld();
         if (world) {
-          applyNetWorld(world, scattered.items, scattered.spawn, camp, day, weather, onRemoved);
+          applyNetWorld(world, scattered.items, scattered.spawn, camp, day, weather, onRemoved, claimedPickups);
         } else {
           day.update(dt);
           weather.update(dt, day.t, day.elapsed);
@@ -406,9 +407,32 @@ export class Game {
       }
       const wantInteract = input.consumeInteract() || ui.consumeInteract();
       if (wantInteract && currentAction && actions.enabled(currentAction)) {
-        const localOnly = Boolean(currentAction.eatHeld || currentAction.pond);
-        if (!room || room.isHost || localOnly) {
-          if (interactor.perform(currentAction, currentItem)) {
+        const action = currentAction;
+        const target = currentItem;
+        const localOnly = Boolean(action.eatHeld || action.pond);
+        const pickHere = Boolean(action.pickup);
+        if (!room || room.isHost || localOnly || pickHere) {
+          if (interactor.perform(action, target)) {
+            if (room && !room.isHost && pickHere && target) {
+              claimedPickups.push({
+                id: target.id,
+                kind: target.kind,
+                cellX: target.cellX,
+                cellZ: target.cellZ,
+              });
+              intentSeq += 1;
+              void room.sendIntent({
+                seq: intentSeq,
+                uid: room.uid,
+                cellX: player.cellX,
+                cellZ: player.cellZ,
+                heldKind: player.heldKind,
+                interact: true,
+                itemId: target.id,
+                action,
+                taken: true,
+              });
+            }
             currentItem = null;
             currentAction = null;
             ui.actionId = null;
@@ -422,8 +446,8 @@ export class Game {
             cellZ: player.cellZ,
             heldKind: player.heldKind,
             interact: true,
-            itemId: currentItem?.id ?? null,
-            action: currentAction,
+            itemId: target?.id ?? null,
+            action,
           };
           void room.sendIntent(intent);
           currentItem = null;
@@ -469,7 +493,10 @@ export class Game {
           }
         } else {
           const grant = room.consumeGrant();
-          if (grant?.pickup) {
+          if (
+            grant?.pickup &&
+            !claimedPickups.some((claim) => claim.id === grant.pickup?.id || claim.kind === grant.pickup?.kind)
+          ) {
             const spawned = spawnFromSnapshot(scattered.spawn, grant.pickup);
             if (spawned) {
               player.inventory.grabHeld(spawned.mesh, grant.pickup.kind as HeldKind);

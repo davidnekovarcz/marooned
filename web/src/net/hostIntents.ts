@@ -57,6 +57,7 @@ export function applyHostIntent(
     if (!item) return null;
     const snap = item.snapshot();
     takeItem(items, item, onRemoved);
+    if (intent.taken) return null;
     return { seq: intent.seq, pickup: snap };
   }
 

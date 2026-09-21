@@ -32,6 +32,8 @@ export type NetIntent = {
   itemId?: string | null;
   action?: ResolvedAction;
   dropKind?: HeldKind;
+  /** Guest already took the item locally; host only removes it from the shared ground. */
+  taken?: boolean;
 };
 
 export type NetGrant = {
