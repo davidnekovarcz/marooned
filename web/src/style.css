@@ -341,21 +341,24 @@ button.gear-slot:hover {
 
 .player-chip-name,
 .player-chip-zzz {
-  padding: 3px 9px 4px;
-  border-radius: 8px;
-  background: rgba(8, 24, 32, 0.78);
+  padding: 1px 6px 2px;
+  border-radius: 6px;
+  background: rgba(8, 24, 32, 0.42);
   color: #f4f7f2;
-  font-size: 13px;
+  font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.02em;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
 }
 
 .player-chip-zzz {
-  font-size: 12px;
-  background: rgba(8, 24, 32, 0.88);
+  font-size: 13px;
+  line-height: 1.15;
+  padding: 1px 4px;
+  letter-spacing: 0;
 }
 
+.player-chip-name[hidden],
 .player-chip-zzz[hidden] {
   display: none;
 }

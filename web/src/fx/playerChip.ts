@@ -26,7 +26,7 @@ function makeChip(): Chip {
   nameEl.className = "player-chip-name";
   const zzzEl = document.createElement("span");
   zzzEl.className = "player-chip-zzz";
-  zzzEl.textContent = "Zzz";
+  zzzEl.textContent = "😴";
   zzzEl.hidden = true;
   root.append(nameEl, zzzEl);
   (document.getElementById("ui") ?? document.body).appendChild(root);
@@ -47,6 +47,7 @@ export function syncPlayerChips(
     const chip = pool[used] ?? (pool[used] = makeChip());
     used += 1;
     chip.nameEl.textContent = state.name.trim() || "Survivor";
+    chip.nameEl.hidden = state.afk;
     chip.zzzEl.hidden = !state.afk;
     state.object.getWorldPosition(_v);
     _v.y += HEAD_Y;
