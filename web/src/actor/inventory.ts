@@ -103,9 +103,9 @@ export class Inventory {
     };
   }
 
-  /** Stow the held tool into the first empty pocket. Food never pockets. */
+  /** Stow the held item into the first empty pocket. */
   stowHeld(): boolean {
-    if (!this.tool || !this.heldKind || isHeldFood(this.heldKind)) return false;
+    if (!this.tool || !this.heldKind) return false;
     const slot: PocketSlot | null = !this.pockets.left ? "left" : !this.pockets.right ? "right" : null;
     if (!slot) return false;
     this.hideInPocket(slot, { kind: this.heldKind, mesh: this.tool });
@@ -119,7 +119,6 @@ export class Inventory {
     const pocket = this.pockets[slot];
     const hand: PocketItem | null = this.tool && this.heldKind ? { kind: this.heldKind, mesh: this.tool } : null;
     if (!pocket && !hand) return false;
-    if (hand && isHeldFood(hand.kind)) return false;
     if (pocket) {
       const hold = poseFor(pocket.kind);
       placeInGrip(this.visual.grip, pocket.mesh, hold.length, hold.rot);
@@ -149,7 +148,7 @@ export class Inventory {
     if (!alive || busy) return null;
     let dropped: { mesh: THREE.Object3D; kind: HeldKind } | null = null;
     if (this.tool && this.heldKind) {
-      if (isHeldFood(this.heldKind) || !this.stowHeld()) dropped = this.detachToolToWorld(cellX, cellZ);
+      if (!this.stowHeld()) dropped = this.detachToolToWorld(cellX, cellZ);
     }
     this.grabHeld(mesh, kind);
     return { dropped };

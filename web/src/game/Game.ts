@@ -22,6 +22,7 @@ import { GridPlayer } from "@/web/src/actor/player";
 import { loadPlayerModel } from "@/web/src/playerModel";
 import { scatterProps } from "@/web/src/props";
 import { Actions, type ResolvedAction } from "@/web/src/sim/actions";
+import { gatherPromptCandidates, pickPrompt, smokePromptPriority, type PromptChoice } from "@/web/src/sim/prompt";
 import { Camp, countNearby } from "@/web/src/sim/camp";
 import { Loot } from "@/web/src/sim/loot";
 import { Interactor } from "@/web/src/sim/useItem";
@@ -116,6 +117,7 @@ export class Game {
     const day = new DayClock();
     const zoom = new CameraZoom();
     const actions = new Actions();
+    smokePromptPriority();
     const interactor = new Interactor(
       scattered.items,
       needs,
@@ -165,15 +167,26 @@ export class Game {
       renderer.domElement.style.filter = `grayscale(${gray}%) brightness(${bright})`;
     };
 
-    const applyAction = (action: ResolvedAction, item: Item | null, kind: string | null) => {
-      currentItem = item;
-      currentAction = action;
-      ui.nearbyItemId = item?.id ?? null;
-      ui.promptKind = kind;
-      ui.promptPrep = item?.prep;
-      ui.promptFreshness = item?.freshness;
-      ui.actionId = action.id;
-      ui.actionBlocked = action.blocked;
+    const applyChoice = (choice: PromptChoice | undefined): void => {
+      if (!choice) {
+        currentItem = null;
+        currentAction = null;
+        ui.nearbyItemId = null;
+        ui.promptKind = null;
+        ui.promptPrep = undefined;
+        ui.promptFreshness = undefined;
+        ui.actionId = null;
+        ui.actionBlocked = undefined;
+        return;
+      }
+      currentItem = choice.item;
+      currentAction = choice.action;
+      ui.nearbyItemId = choice.item?.id ?? null;
+      ui.promptKind = choice.promptKind;
+      ui.promptPrep = choice.promptPrep;
+      ui.promptFreshness = choice.promptFreshness;
+      ui.actionId = choice.action?.id ?? null;
+      ui.actionBlocked = choice.action?.blocked;
     };
 
     const frame = (): void => {
@@ -227,7 +240,7 @@ export class Game {
       } else {
         const hearth = camp.nearestHearth(player.cellX, player.cellZ);
         const inland = isInlandWater(player.cellX, player.cellZ, biomes);
-        const context = actions.context({
+        const places = actions.context({
           held: player.heldKind,
           inWater: inland,
           onShore: isShore(player.cellX, player.cellZ, biomes),
@@ -242,38 +255,22 @@ export class Game {
         const heldMeal = actions.heldMeal(player.heldKind, player.heldMesh);
         const next = actions.nearest(scattered.items, player.cellX, player.cellZ, player.heldKind);
         const worldAction = next ? actions.world(next, player.heldKind) : undefined;
-        // Survival verbs beat loot at your feet (a coconut used to hide Drink / Fish / Light).
-        if (context?.cook) {
-          applyAction(context, null, player.heldKind);
-          const inv = player.inventory.snapshot();
-          ui.promptPrep = inv.heldPrep;
-          ui.promptFreshness = inv.heldFreshness;
-        } else if (context?.id === "light" && hearth) {
-          applyAction(context, hearth.item, hearth.item.kind);
-        } else if (context?.build) {
-          applyAction(context, null, "leanTo");
-        } else if (context?.pond) {
-          applyAction(context, null, "pond");
-        } else if (context?.id === "fish") {
-          applyAction(context, null, "shore");
-        } else if (heldMeal) {
-          applyAction(heldMeal, null, player.heldKind);
-          const inv = player.inventory.snapshot();
-          ui.promptPrep = inv.heldPrep;
-          ui.promptFreshness = inv.heldFreshness;
-        } else if (next && worldAction) {
-          applyAction(worldAction, next, next.kind);
-        } else {
-          const animal = wildlife.nearest(player.cellX, player.cellZ);
-          currentItem = null;
-          currentAction = null;
-          ui.actionId = null;
-          ui.actionBlocked = undefined;
-          ui.nearbyItemId = null;
-          ui.promptKind = animal;
-          ui.promptPrep = undefined;
-          ui.promptFreshness = undefined;
-        }
+        const inv = player.inventory.snapshot();
+        applyChoice(
+          pickPrompt(
+            gatherPromptCandidates({
+              places,
+              hearth: hearth?.item ?? null,
+              heldKind: player.heldKind,
+              heldPrep: inv.heldPrep,
+              heldFreshness: inv.heldFreshness,
+              heldMeal,
+              worldItem: next,
+              worldAction,
+              wildlife: wildlife.nearest(player.cellX, player.cellZ),
+            }),
+          ),
+        );
       }
 
       const pocket = input.consumePocket() ?? ui.consumePocket();
