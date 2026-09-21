@@ -19,7 +19,7 @@ todos:
     status: cancelled
   - id: wetness-rain
     content: After this — wetness meter, rain, campfire dry/warm
-    status: pending
+    status: completed
 isProject: false
 ---
 
