@@ -65,12 +65,12 @@ export function snapshotWorld(items: Item[], camp: Camp, day: DayClock, weather:
     dayT: day.t,
     weather: {
       intensity: weather.intensity,
-      raining: weather.raining,
-      storm: weather.storm,
+      raining: Boolean(weather.raining),
+      storm: Boolean(weather.storm),
       flash: weather.flash,
     },
     items: items.map((item) => item.snapshot()),
-    hearths: camp.hearths.map((h) => ({ id: h.item.id, lit: h.lit })),
+    hearths: camp.hearths.map((h) => ({ id: h.item.id, lit: Boolean(h.lit) })),
     shelters: camp.shelters.map((s) => ({ x: s.x, z: s.z })),
   };
 }

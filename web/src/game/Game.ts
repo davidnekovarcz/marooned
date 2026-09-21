@@ -301,7 +301,12 @@ export class Game {
         day.update(dt);
       } else if (room) {
         const world = room.latestWorld();
-        if (world) applyNetWorld(world, scattered.items, scattered.spawn, camp, day, weather, onRemoved);
+        if (world) {
+          applyNetWorld(world, scattered.items, scattered.spawn, camp, day, weather, onRemoved);
+        } else {
+          day.update(dt);
+          weather.update(dt, day.t, day.elapsed);
+        }
       }
       const daytime = isDaytime(day.t);
       const sheltered = camp.covered(player.cellX, player.cellZ);
