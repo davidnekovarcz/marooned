@@ -6,7 +6,9 @@
   },
   "scripts": {
     "build": "npm ci --include=dev --prefix web && npm run build --prefix web && rm -rf web/node_modules assets/vendor",
-    "start": "serve -s web/dist -l tcp://0.0.0.0:$PORT"
+    "start": "serve -s web/dist -l tcp://0.0.0.0:$PORT",
+    "git:hooks:show": "git config --get core.hooksPath || echo .git/hooks",
+    "git:hooks:apply": "sh scripts/apply-git-hooks.sh"
   },
   "dependencies": {
     "serve": "^14.2.4"
