@@ -254,13 +254,19 @@ export class Game {
           applyAction(context, null, "leanTo");
         } else if (context?.pond) {
           applyAction(context, null, "pond");
-        } else if (context?.id === "fish") {
-          applyAction(context, null, "shore");
+        } else if (
+          next &&
+          worldAction?.id === "pickup" &&
+          (next.kind === "fish" || next.kind === "fishCooked")
+        ) {
+          applyAction(worldAction, next, next.kind);
         } else if (heldMeal) {
           applyAction(heldMeal, null, player.heldKind);
           const inv = player.inventory.snapshot();
           ui.promptPrep = inv.heldPrep;
           ui.promptFreshness = inv.heldFreshness;
+        } else if (context?.id === "fish") {
+          applyAction(context, null, "shore");
         } else if (next && worldAction) {
           applyAction(worldAction, next, next.kind);
         } else {
