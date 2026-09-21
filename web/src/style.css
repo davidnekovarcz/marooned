@@ -205,6 +205,14 @@ button.gear-slot:hover {
   animation: hud-blink-pulse 0.72s ease-in-out infinite;
 }
 
+#hud-needs[data-afk] {
+  animation: none;
+}
+
+#hud-needs[data-afk] .need {
+  opacity: 1;
+}
+
 .need {
   position: relative;
   width: 44px;
@@ -321,16 +329,60 @@ button.gear-slot:hover {
   height: 100%;
 }
 
+.player-chip {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  pointer-events: none;
+  transform: translate(-50%, -110%);
+  white-space: nowrap;
+}
+
+.player-chip[hidden] {
+  display: none;
+}
+
+.player-chip-name,
+.player-chip-zzz {
+  padding: 1px 6px 2px;
+  border-radius: 6px;
+  background: rgba(8, 24, 32, 0.42);
+  color: #f4f7f2;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+}
+
+.player-chip-zzz {
+  font-size: 13px;
+  line-height: 1.15;
+  padding: 1px 4px;
+  letter-spacing: 0;
+}
+
+.player-chip-name[hidden],
+.player-chip-zzz[hidden] {
+  display: none;
+}
+
 body.gate #hud-world,
 body.gate #hud-needs,
 body.gate #hint,
 body.gate #gear,
 body.gate #interact,
+body.gate .player-chip,
 body.dead #hud-world,
 body.dead #hud-needs,
 body.dead #hint,
 body.dead #gear,
-body.dead #interact {
+body.dead #interact,
+body.dead .player-chip {
   display: none;
 }
 

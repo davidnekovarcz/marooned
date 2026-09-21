@@ -70,6 +70,7 @@ function needTone(id: NeedId): Tone {
 }
 
 function needBlink(id: NeedId): Blink {
+  if (session.afk) return "0";
   const v = needValue(id);
   if (id === "energy") {
     if (needs.energyMax < HUD_ENERGY_MAX_BLINK) return "fade";
@@ -92,7 +93,7 @@ function needBlink(id: NeedId): Blink {
       {{ session.clock }}<template v-if="debugCells"> {{ player.cellX }},{{ player.cellZ }}</template>
     </time>
   </div>
-  <div id="hud-needs" aria-hidden="true">
+  <div id="hud-needs" aria-hidden="true" :data-afk="session.afk || undefined">
     <div
       v-for="id in NEED_ORDER"
       :key="id"

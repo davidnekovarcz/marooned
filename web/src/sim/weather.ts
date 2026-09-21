@@ -2,11 +2,9 @@ import { DAY_SECONDS } from "@/web/src/constants";
 
 type Window = { start: number; end: number; storm: boolean };
 
-/** After day 0: one short shower every other day. Night storm every fourth day. */
+/** Afternoon shower every day; night storm every fourth day (0-based index 3, 7, …). */
 function windowsForDay(dayIndex: number): Window[] {
-  if (dayIndex < 1) return [];
-  if (dayIndex % 2 === 0) return [];
-  const storm = dayIndex % 4 === 3;
+  const storm = ((dayIndex % 4) + 4) % 4 === 3;
   if (storm) return [{ start: 20.5, end: 22.4, storm: true }];
   return [{ start: 14.2, end: 16.0, storm: false }];
 }

@@ -42,6 +42,8 @@ export const DEBUG_GRID = false;
 
 /** Real seconds for a full 24h island day. */
 export const DAY_SECONDS = 8 * 60;
+/** No WASD / Space / pocket for this long → AFK (pause lived time, show Zzz). */
+export const AFK_SECONDS = 60;
 /** Start a bit after dawn so the first load is daytime. */
 export const DAY_START = 8 / 24;
 

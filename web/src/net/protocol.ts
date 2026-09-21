@@ -19,6 +19,8 @@ export type NetPlayer = {
   alive: boolean;
   name: string;
   appearance: Appearance;
+  /** True after a minute without input; omit when false. */
+  afk?: boolean;
 };
 
 export type NetIntent = {
