@@ -26,7 +26,8 @@ canvas {
 
 #gear,
 #interact,
-#death {
+#death,
+#say-compose {
   pointer-events: auto;
 }
 
@@ -42,6 +43,34 @@ canvas {
   font-size: 14px;
   letter-spacing: 0.01em;
   pointer-events: none;
+}
+
+#say-compose {
+  position: fixed;
+  left: 50%;
+  bottom: 88px;
+  z-index: 6;
+  transform: translateX(-50%);
+}
+
+#say-compose[hidden] {
+  display: none;
+}
+
+#say-input {
+  width: min(22rem, 72vw);
+  padding: 8px 12px;
+  border: 0;
+  border-radius: 8px;
+  background: rgba(8, 24, 32, 0.72);
+  color: #f4f7f2;
+  font: inherit;
+  font-size: 14px;
+  outline: none;
+}
+
+#say-input::placeholder {
+  color: rgba(244, 247, 242, 0.55);
 }
 
 #gear {
@@ -347,6 +376,20 @@ button.gear-slot:hover {
   display: none;
 }
 
+.player-chip-say {
+  max-width: 16rem;
+  padding: 3px 8px 4px;
+  border-radius: 8px;
+  background: rgba(8, 24, 32, 0.62);
+  color: #f4f7f2;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+  white-space: normal;
+  text-align: center;
+}
+
 .player-chip-name,
 .player-chip-zzz {
   padding: 1px 6px 2px;
@@ -367,7 +410,8 @@ button.gear-slot:hover {
 }
 
 .player-chip-name[hidden],
-.player-chip-zzz[hidden] {
+.player-chip-zzz[hidden],
+.player-chip-say[hidden] {
   display: none;
 }
 
@@ -376,12 +420,14 @@ body.gate #hud-needs,
 body.gate #hint,
 body.gate #gear,
 body.gate #interact,
+body.gate #say-compose,
 body.gate .player-chip,
 body.dead #hud-world,
 body.dead #hud-needs,
 body.dead #hint,
 body.dead #gear,
 body.dead #interact,
+body.dead #say-compose,
 body.dead .player-chip {
   display: none;
 }

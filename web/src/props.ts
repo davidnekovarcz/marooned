@@ -25,9 +25,10 @@ import { loadGlb, loadObj } from "@/web/src/loaders";
 import type { Cell, LootSites } from "@/web/src/sim/loot";
 import { makeFishingPole } from "@/web/src/world/fishingPole";
 import { Item } from "@/web/src/world/item";
+import type { HeldKind } from "@/web/src/world/kinds";
 import { LILY_URL, MODEL_URLS, TOMATO_URL, TORCH_URL, type ModelKind } from "@/web/src/models";
 import { mulberry32 } from "@/web/src/rng";
-import { fitAndPlant, plantOnGround, specFor } from "@/web/src/scale";
+import { fitAndPlant, fitToSpec, plantOnGround, specFor } from "@/web/src/scale";
 
 const PLUS: [number, number][] = [
   [0, 0],
@@ -47,6 +48,32 @@ for (let dz = -2; dz <= 2; dz++) {
 }
 
 type PlaceKind = ModelKind | "lilypad" | "torch" | "tomato" | "fishCooked" | "fishingPole";
+
+const heldTemplates: Record<string, THREE.Object3D> = {};
+
+function templateKey(kind: HeldKind): string {
+  return kind === "fishCooked" ? "fish" : kind;
+}
+
+/** Cosmetic grip clone — same fitted mesh the local player holds, not a world item. */
+export function cloneHeld(kind: HeldKind): THREE.Object3D | null {
+  const src = heldTemplates[templateKey(kind)];
+  if (!src) return null;
+  const clone = src.clone(true);
+  clone.position.set(0, 0, 0);
+  clone.rotation.set(0, 0, 0);
+  clone.scale.set(1, 1, 1);
+  clone.traverse((obj) => {
+    obj.visible = true;
+    obj.frustumCulled = false;
+    const mesh = obj as THREE.Mesh;
+    if (!mesh.isMesh) return;
+    mesh.material = Array.isArray(mesh.material) ? mesh.material.map((mat) => mat.clone()) : mesh.material.clone();
+  });
+  fitToSpec(clone, specFor(templateKey(kind)));
+  clone.position.set(0, 0, 0);
+  return clone;
+}
 
 export type AudioAnchor = { id: string; position: THREE.Vector3 };
 
@@ -177,6 +204,10 @@ export async function scatterProps(
   templates.torch = await loadObj(TORCH_URL, 0x6a4a32);
   templates.tomato = await loadObj(TOMATO_URL, 0xc43b2b);
   templates.fishingPole = makeFishingPole();
+  for (const key of Object.keys(templates) as PlaceKind[]) {
+    const src = templates[key];
+    if (src) heldTemplates[key] = src;
+  }
 
   const grass: [number, number][] = [];
   const land: [number, number][] = [];

@@ -5,6 +5,7 @@ import Hint from "@/web/src/view/Hint.vue";
 import Hud from "@/web/src/view/Hud.vue";
 import InteractPrompt from "@/web/src/view/InteractPrompt.vue";
 import IslandFull from "@/web/src/view/IslandFull.vue";
+import SayCompose from "@/web/src/view/SayCompose.vue";
 </script>
 
 <template>
@@ -13,5 +14,6 @@ import IslandFull from "@/web/src/view/IslandFull.vue";
   <Hud />
   <Gear />
   <InteractPrompt />
+  <SayCompose />
   <Death />
 </template>

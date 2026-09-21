@@ -5,6 +5,7 @@ const _v = new THREE.Vector3();
 
 type Chip = {
   root: HTMLDivElement;
+  sayEl: HTMLSpanElement;
   nameEl: HTMLSpanElement;
   zzzEl: HTMLSpanElement;
 };
@@ -16,21 +17,25 @@ export type PlayerChipState = {
   name: string;
   afk: boolean;
   alive: boolean;
+  say?: string | null;
 };
 
 function makeChip(): Chip {
   const root = document.createElement("div");
   root.className = "player-chip";
   root.hidden = true;
+  const sayEl = document.createElement("span");
+  sayEl.className = "player-chip-say";
+  sayEl.hidden = true;
   const nameEl = document.createElement("span");
   nameEl.className = "player-chip-name";
   const zzzEl = document.createElement("span");
   zzzEl.className = "player-chip-zzz";
   zzzEl.textContent = "😴";
   zzzEl.hidden = true;
-  root.append(nameEl, zzzEl);
+  root.append(sayEl, nameEl, zzzEl);
   (document.getElementById("ui") ?? document.body).appendChild(root);
-  return { root, nameEl, zzzEl };
+  return { root, sayEl, nameEl, zzzEl };
 }
 
 /** Screen-space name + AFK chip. Fog and zoom cannot eat a DOM label. */
@@ -46,9 +51,12 @@ export function syncPlayerChips(
     if (!state.alive) continue;
     const chip = pool[used] ?? (pool[used] = makeChip());
     used += 1;
+    const say = state.afk ? "" : (state.say ?? "").trim();
     chip.nameEl.textContent = state.name.trim() || "Survivor";
     chip.nameEl.hidden = state.afk;
     chip.zzzEl.hidden = !state.afk;
+    chip.sayEl.textContent = say;
+    chip.sayEl.hidden = !say;
     state.object.getWorldPosition(_v);
     _v.y += HEAD_Y;
     _v.project(camera);

@@ -52,6 +52,11 @@ const _holdBox = new THREE.Box3();
 const _holdSize = new THREE.Vector3();
 const _holdCenter = new THREE.Vector3();
 
+export function equipHeld(grip: THREE.Object3D, mesh: THREE.Object3D, kind: HeldKind): void {
+  const hold = poseFor(kind);
+  placeInGrip(grip, mesh, hold.length, hold.rot);
+}
+
 function placeInGrip(grip: THREE.Object3D, mesh: THREE.Object3D, length: number | null, rot: THREE.Euler): void {
   grip.attach(mesh);
   mesh.rotation.copy(rot);
@@ -183,8 +188,7 @@ export class Inventory {
   }
 
   grabHeld(mesh: THREE.Object3D, kind: HeldKind): void {
-    const hold = poseFor(kind);
-    placeInGrip(this.visual.grip, mesh, hold.length, hold.rot);
+    equipHeld(this.visual.grip, mesh, kind);
     this.tool = mesh;
     this.heldKind = kind;
   }

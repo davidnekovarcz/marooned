@@ -5,7 +5,7 @@ import { applyZoomFog, CameraZoom, offsetForZoom } from "@/web/src/cameraZoom";
 import { CAMERA_OFFSET, CENTER, DAY_START, DEBUG_GRID, GRID, HUD_BLINK, SEED, AFK_SECONDS } from "@/web/src/constants";
 import { applyDayNight, createDayLights, DayClock, isDaytime, livedHoursFromSeconds } from "@/web/src/dayNight";
 import { Atmosphere } from "@/web/src/fx/atmosphere";
-import { syncPlayerChips } from "@/web/src/fx/playerChip";
+import { syncPlayerChips, type PlayerChipState } from "@/web/src/fx/playerChip";
 import { buildGridOverlay, canEnter } from "@/web/src/gridOverlay";
 import { Input } from "@/web/src/input/Input";
 import {
@@ -27,7 +27,7 @@ import { loadPlayerModel } from "@/web/src/playerModel";
 import { scatterProps } from "@/web/src/props";
 import { Actions, type ResolvedAction } from "@/web/src/sim/actions";
 import { applyHostIntent } from "@/web/src/net/hostIntents";
-import { PLAYER_HZ, WORLD_HZ, roomIdFromUrl, type NetIntent } from "@/web/src/net/protocol";
+import { liveSay, PLAYER_HZ, SAY_MAX, WORLD_HZ, roomIdFromUrl, type NetIntent } from "@/web/src/net/protocol";
 import { joinRoom, type Room } from "@/web/src/net/room";
 import {
   consumeForceRespawn,
@@ -251,6 +251,14 @@ export class Game {
     let livedSeconds = saved?.alive ? saved.livedSeconds : 0;
     let lastInputAt = Date.now();
     let afk = false;
+    let localSay = "";
+    let localSayAt = 0;
+
+    const closeChat = (): void => {
+      ui.chatOpen = false;
+      ui.chatDraft = "";
+      input.setComposing(false);
+    };
 
     const persistSurvivor = (alive: boolean, deathHours = 0): void => {
       const snap = needs.snapshot();
@@ -314,6 +322,23 @@ export class Game {
     const frame = (): void => {
       if (dead) return;
       const dt = Math.min(0.05, clock.getDelta());
+      const now = Date.now();
+      if (input.consumeCancelChat()) closeChat();
+      if (input.consumeSendChat()) {
+        const line = ui.chatDraft.replace(/\s+/g, " ").trim().slice(0, SAY_MAX);
+        closeChat();
+        if (line && player.alive && !liveSay(localSay, localSayAt, now)) {
+          localSay = line;
+          localSayAt = now;
+          lastInputAt = now;
+        }
+      }
+      if (input.consumeOpenChat() && player.alive && !ui.dead && !ui.islandFull && !liveSay(localSay, localSayAt, now)) {
+        ui.chatOpen = true;
+        ui.chatDraft = "";
+        input.setComposing(true);
+      }
+      input.setComposing(ui.chatOpen);
       zoom.update(dt, input.zoomDir);
       player.canSprint = needs.canSprint;
       if (input.moveDir()) lastInputAt = Date.now();
@@ -431,11 +456,14 @@ export class Game {
         let remoteTorchI = 0;
         for (const net of room.remotes) {
           if (net.heldKind !== "torch" || remoteTorchI >= _remoteTorches.length) continue;
-          const visual = remotes.get(net.uid)?.visual;
-          if (!visual) continue;
+          const remote = remotes.get(net.uid);
+          if (!remote?.visual) continue;
           const pos = _remoteTorches[remoteTorchI++]!;
-          pos.copy(visual.root.position);
-          pos.y += 1.1;
+          if (remote.heldMesh) remote.heldMesh.getWorldPosition(pos);
+          else {
+            pos.copy(remote.visual.root.position);
+            pos.y += 1.1;
+          }
           _torches.push(pos);
         }
       }
@@ -484,7 +512,7 @@ export class Game {
         );
       }
 
-      const pocket = input.consumePocket() ?? ui.consumePocket();
+      const pocket = ui.chatOpen ? null : (input.consumePocket() ?? ui.consumePocket());
       if (pocket) {
         lastInputAt = Date.now();
         if (room && !room.isHost && pocket === "drop") {
@@ -508,7 +536,7 @@ export class Game {
           interactor.pocket(pocket);
         }
       }
-      const wantInteract = input.consumeInteract() || ui.consumeInteract();
+      const wantInteract = !ui.chatOpen && (input.consumeInteract() || ui.consumeInteract());
       if (wantInteract) lastInputAt = Date.now();
       if (wantInteract && currentAction && actions.enabled(currentAction)) {
         const action = currentAction;
@@ -593,6 +621,7 @@ export class Game {
             name: character.name,
             appearance: { gender: character.gender, skin: character.skin, clothes: character.clothes },
             ...(afk ? { afk: true } : {}),
+            ...(liveSay(localSay, localSayAt) ? { say: localSay, sayAt: localSayAt } : {}),
           });
         }
         if (room.isHost) {
@@ -652,12 +681,26 @@ export class Game {
         afk,
       });
       applyHealthLook(needs.health);
-      const chips = [{ object: player.mesh, name: character.name, afk, alive: player.alive }];
+      const chips: PlayerChipState[] = [
+        {
+          object: player.mesh,
+          name: character.name,
+          afk,
+          alive: player.alive,
+          say: liveSay(localSay, localSayAt, now),
+        },
+      ];
       if (room) {
         for (const net of room.remotes) {
           const root = remotes.get(net.uid)?.visual?.root;
           if (!root) continue;
-          chips.push({ object: root, name: net.name, afk: Boolean(net.afk), alive: net.alive });
+          chips.push({
+            object: root,
+            name: net.name,
+            afk: Boolean(net.afk),
+            alive: net.alive,
+            say: net.afk ? null : liveSay(net.say, net.sayAt, now),
+          });
         }
       }
       syncPlayerChips(chips, camera, renderer);
@@ -666,6 +709,7 @@ export class Game {
         dead = true;
         player.alive = false;
         afk = false;
+        closeChat();
         syncPlayerChips([], camera, renderer);
         ui.dead = true;
         ui.deathHours = livedHoursFromSeconds(livedSeconds);

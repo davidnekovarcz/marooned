@@ -1,16 +1,25 @@
 import * as THREE from "three";
 import { CELL } from "@/web/src/constants";
 import type { Appearance } from "@/web/src/appearance";
+import { equipHeld } from "@/web/src/actor/inventory";
 import { loadPlayerModel, type PlayerGait, type PlayerVisual } from "@/web/src/playerModel";
 import type { NetPlayer } from "@/web/src/net/protocol";
+import { cloneHeld } from "@/web/src/props";
+import type { HeldKind } from "@/web/src/world/kinds";
 
 export class RemotePlayer {
   visual: PlayerVisual | null = null;
   private loading = false;
   private appearanceKey = "";
   private target = new THREE.Vector3();
+  private heldKind: HeldKind | null | undefined = undefined;
+  private held: THREE.Object3D | null = null;
 
   constructor(readonly uid: string) {}
+
+  get heldMesh(): THREE.Object3D | null {
+    return this.held;
+  }
 
   async ensure(scene: THREE.Scene, appearance: Appearance): Promise<void> {
     const key = `${appearance.gender}:${appearance.skin}:${appearance.clothes}`;
@@ -19,9 +28,11 @@ export class RemotePlayer {
     this.loading = true;
     try {
       const visual = await loadPlayerModel(appearance);
+      this.clearHeld();
       this.visual?.root.removeFromParent();
       this.visual = visual;
       this.appearanceKey = key;
+      this.heldKind = undefined;
       visual.root.name = `remote-${this.uid}`;
       scene.add(visual.root);
     } finally {
@@ -43,10 +54,29 @@ export class RemotePlayer {
     this.visual.setSwim(gait === "swim" ? 1 : 0);
     this.visual.applyPose();
     this.visual.root.visible = net.alive;
+    this.syncHeld(net.heldKind ?? null);
   }
 
   dispose(): void {
+    this.clearHeld();
     this.visual?.root.removeFromParent();
     this.visual = null;
+  }
+
+  private syncHeld(kind: HeldKind | null): void {
+    if (!this.visual) return;
+    if (this.heldKind === kind && (kind === null || this.held)) return;
+    this.clearHeld();
+    this.heldKind = kind;
+    if (!kind) return;
+    const mesh = cloneHeld(kind);
+    if (!mesh) return;
+    equipHeld(this.visual.grip, mesh, kind);
+    this.held = mesh;
+  }
+
+  private clearHeld(): void {
+    this.held?.removeFromParent();
+    this.held = null;
   }
 }

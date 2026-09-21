@@ -119,7 +119,8 @@
   },
   "hud": {
     "hintLocked": "Click or press a key to hear the island.",
-    "hint": "[+/-] zoom. [WSAD] walk. [SHIFT] run. [SPACE] interact. [G] drop.",
+    "hint": "[+/-] zoom. [WSAD] walk. [SHIFT] run. [SPACE] interact. [G] drop. [ENTER] say.",
+    "say": "Say…",
     "survived": "You have survived {time}",
     "death": "... but now you're dead.",
     "hourOne": "1 hour",

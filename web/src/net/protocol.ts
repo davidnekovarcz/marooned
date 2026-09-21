@@ -8,6 +8,8 @@ import type { HeldKind } from "@/web/src/world/kinds";
 export const ROOM_SLOT_COUNT = 4;
 export const PLAYER_HZ = 10;
 export const WORLD_HZ = 2;
+export const SAY_MS = 5000;
+export const SAY_MAX = 72;
 
 export type NetPlayer = {
   uid: string;
@@ -21,7 +23,16 @@ export type NetPlayer = {
   appearance: Appearance;
   /** True after a minute without input; omit when false. */
   afk?: boolean;
+  /** One-line say; omit when idle. */
+  say?: string;
+  sayAt?: number;
 };
+
+export function liveSay(say?: string, sayAt?: number, now = Date.now()): string | null {
+  if (!say || typeof sayAt !== "number" || !Number.isFinite(sayAt)) return null;
+  if (now - sayAt >= SAY_MS || now - sayAt < 0) return null;
+  return say;
+}
 
 export type NetIntent = {
   seq: number;

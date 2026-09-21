@@ -75,6 +75,8 @@ export const useUiStore = defineStore("ui", {
     islandFull: false,
     netRoom: null as string | null,
     netHost: false,
+    chatOpen: false,
+    chatDraft: "",
   }),
   actions: {
     queuePocket(command: PocketCommand) {

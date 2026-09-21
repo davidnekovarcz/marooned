@@ -2,11 +2,15 @@ import { DAY_SECONDS } from "@/web/src/constants";
 
 type Window = { start: number; end: number; storm: boolean };
 
-/** Afternoon shower every day; night storm every fourth day (0-based index 3, 7, …). */
+/** Morning + afternoon showers every day; night storm every fourth day (index 3, 7, …). */
 function windowsForDay(dayIndex: number): Window[] {
+  const showers: Window[] = [
+    { start: 9 + 30 / 60, end: 11, storm: false },
+    { start: 14 + 20 / 60, end: 16 + 30 / 60, storm: false },
+  ];
   const storm = ((dayIndex % 4) + 4) % 4 === 3;
-  if (storm) return [{ start: 20.5, end: 22.4, storm: true }];
-  return [{ start: 14.2, end: 16.0, storm: false }];
+  if (storm) showers.push({ start: 20 + 30 / 60, end: 22 + 40 / 60, storm: true });
+  return showers;
 }
 
 const RAMP_IN = 3.5;

@@ -42,8 +42,8 @@ HUD: thirst, hunger, temperature, **wetness**, **energy**, **health**. Design v1
 
 ### Next on the web teaser
 
-- [ ] other players: held mesh in hands + nametag (name + item)
-- [ ] say bubble: Enter, type, Enter; one line over the head; no queue
+- [✓] ~~other players: held mesh in hands + nametag (name)~~
+- [✓] ~~say bubble: Enter, type, Enter; one line over the head; no queue~~
 - [ ] host world snapshot sometimes missing in RTDB (fires/items still work locally; guests need the write)
 - [ ] stale room slots when a tab dies before `onDisconnect`
 

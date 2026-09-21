@@ -27,23 +27,39 @@ function isZoomOut(e: KeyboardEvent): boolean {
 export class Input {
   sprinting = false;
   zoomDir = 0;
+  private composing = false;
   private pressed = new Set<string>();
   private interactQueued = false;
   private pocketQueued: PocketCommand | null = null;
+  private openChatQueued = false;
+  private sendChatQueued = false;
+  private cancelChatQueued = false;
 
   constructor() {
     window.addEventListener("keydown", (e) => {
-      if (SHIFT.has(e.code)) this.sprinting = true;
-      if (e.code in DIRS) {
+      if (e.code === "Enter" && !e.repeat) {
         e.preventDefault();
-        this.pressed.add(e.code);
+        if (this.composing) this.sendChatQueued = true;
+        else this.openChatQueued = true;
+        return;
       }
+      if (e.code === "Escape" && this.composing) {
+        e.preventDefault();
+        this.cancelChatQueued = true;
+        return;
+      }
+      if (SHIFT.has(e.code)) this.sprinting = true;
       if (isZoomIn(e)) {
         e.preventDefault();
         this.zoomDir = -1;
       } else if (isZoomOut(e)) {
         e.preventDefault();
         this.zoomDir = 1;
+      }
+      if (this.composing) return;
+      if (e.code in DIRS) {
+        e.preventDefault();
+        this.pressed.add(e.code);
       }
       if ((e.code === "Space" || e.key === " ") && !e.repeat) {
         e.preventDefault();
@@ -88,6 +104,29 @@ export class Input {
   consumePocket(): PocketCommand | null {
     const next = this.pocketQueued;
     this.pocketQueued = null;
+    return next;
+  }
+
+  setComposing(on: boolean): void {
+    this.composing = on;
+    if (on) this.pressed.clear();
+  }
+
+  consumeOpenChat(): boolean {
+    const next = this.openChatQueued;
+    this.openChatQueued = false;
+    return next;
+  }
+
+  consumeSendChat(): boolean {
+    const next = this.sendChatQueued;
+    this.sendChatQueued = false;
+    return next;
+  }
+
+  consumeCancelChat(): boolean {
+    const next = this.cancelChatQueued;
+    this.cancelChatQueued = false;
     return next;
   }
 
