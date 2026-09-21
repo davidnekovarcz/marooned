@@ -68,6 +68,13 @@ const _torch = new THREE.Vector3();
 const _torches: THREE.Vector3[] = [];
 const _remoteTorches = [new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3()];
 
+/** Living refresh keeps the body; a full room skips the card; otherwise pick a look. */
+async function resolveCharacter(continueAs: Character | undefined, islandFull: boolean): Promise<Character> {
+  if (continueAs) return continueAs;
+  if (islandFull) return loadSavedCharacter() ?? randomCharacter();
+  return showCharacterSelect();
+}
+
 export class Game {
   static async start(): Promise<void> {
     const game = new Game();
@@ -143,12 +150,7 @@ export class Game {
       return { scattered, loot, wildlife };
     })();
 
-    const character: Character =
-      !freshSpawn && saved?.character
-        ? saved.character
-        : ui.islandFull
-          ? (loadSavedCharacter() ?? randomCharacter())
-          : await showCharacterSelect();
+    const character = await resolveCharacter(!freshSpawn ? saved?.character : undefined, ui.islandFull);
     saveCharacter(character);
     const [{ scattered, loot, wildlife }, visual] = await Promise.all([worldP, loadPlayerModel(character)]);
 
