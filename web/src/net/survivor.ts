@@ -16,6 +16,8 @@ export type NetSurvivor = {
   inventory: InventoryGear;
   cellX: number;
   cellZ: number;
+  /** Radians; omitted on older saves. */
+  yaw?: number;
   alive: boolean;
   deathHours: number;
   /** Real seconds this body has been awake and not AFK. */
@@ -89,6 +91,7 @@ export function parseSurvivor(raw: unknown): NetSurvivor | null {
     },
     cellX,
     cellZ,
+    yaw: typeof o.yaw === "number" && Number.isFinite(o.yaw) ? o.yaw : 0,
     alive: o.alive !== false && parseNeed(needsRaw.health, 1) > 0,
     deathHours: typeof o.deathHours === "number" && Number.isFinite(o.deathHours) ? Math.max(0, o.deathHours) : 0,
     livedSeconds: typeof o.livedSeconds === "number" && Number.isFinite(o.livedSeconds) ? Math.max(0, o.livedSeconds) : 0,

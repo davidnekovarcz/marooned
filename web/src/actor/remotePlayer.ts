@@ -7,6 +7,10 @@ import type { NetPlayer } from "@/web/src/net/protocol";
 import { cloneHeld } from "@/web/src/props";
 import type { HeldKind } from "@/web/src/world/kinds";
 
+function lerpAngle(from: number, to: number, t: number): number {
+  return from + Math.atan2(Math.sin(to - from), Math.cos(to - from)) * t;
+}
+
 export class RemotePlayer {
   visual: PlayerVisual | null = null;
   private loading = false;
@@ -14,6 +18,7 @@ export class RemotePlayer {
   private target = new THREE.Vector3();
   private heldKind: HeldKind | null | undefined = undefined;
   private held: THREE.Object3D | null = null;
+  private hasYaw = false;
 
   constructor(readonly uid: string) {}
 
@@ -33,6 +38,7 @@ export class RemotePlayer {
       this.visual = visual;
       this.appearanceKey = key;
       this.heldKind = undefined;
+      this.hasYaw = false;
       visual.root.name = `remote-${this.uid}`;
       scene.add(visual.root);
     } finally {
@@ -44,9 +50,18 @@ export class RemotePlayer {
     if (!this.visual) return;
     this.target.set(net.cellX * CELL + CELL / 2, 0, net.cellZ * CELL + CELL / 2);
     this.visual.root.position.lerp(this.target, Math.min(1, dt * 8));
-    const dx = this.target.x - this.visual.root.position.x;
-    const dz = this.target.z - this.visual.root.position.z;
-    if (dx * dx + dz * dz > 0.01) this.visual.root.lookAt(this.target.x, 0, this.target.z);
+    if (typeof net.yaw === "number" && Number.isFinite(net.yaw)) {
+      if (!this.hasYaw) {
+        this.visual.root.rotation.y = net.yaw;
+        this.hasYaw = true;
+      } else {
+        this.visual.root.rotation.y = lerpAngle(this.visual.root.rotation.y, net.yaw, Math.min(1, dt * 8));
+      }
+    } else {
+      const dx = this.target.x - this.visual.root.position.x;
+      const dz = this.target.z - this.visual.root.position.z;
+      if (dx * dx + dz * dz > 0.01) this.visual.root.lookAt(this.target.x, 0, this.target.z);
+    }
     const gait: PlayerGait = net.alive ? net.gait : "idle";
     this.visual.setGait(gait);
     this.visual.mixer.update(dt);

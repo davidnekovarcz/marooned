@@ -148,6 +148,9 @@ export class Game {
 
     const input = new Input();
     const player = new GridPlayer(biomes, blocked, spawn, visual, input);
+    if (saved && typeof saved.yaw === "number" && Number.isFinite(saved.yaw)) {
+      player.mesh.rotation.y = saved.yaw;
+    }
     scene.add(player.mesh);
 
     const camp = new Camp();
@@ -275,6 +278,7 @@ export class Game {
         inventory: alive ? player.inventory.persistGear() : emptyInventory(),
         cellX: player.cellX,
         cellZ: player.cellZ,
+        yaw: player.mesh.rotation.y,
         alive,
         deathHours,
         livedSeconds,
@@ -616,6 +620,7 @@ export class Game {
             cellX: player.cellX,
             cellZ: player.cellZ,
             gait: player.gait,
+            yaw: player.mesh.rotation.y,
             heldKind: player.heldKind,
             alive: player.alive,
             name: character.name,

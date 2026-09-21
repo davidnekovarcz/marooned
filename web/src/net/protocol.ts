@@ -17,6 +17,8 @@ export type NetPlayer = {
   cellX: number;
   cellZ: number;
   gait: PlayerGait;
+  /** Radians; which way the body is looking. */
+  yaw: number;
   heldKind: HeldKind | null;
   alive: boolean;
   name: string;
