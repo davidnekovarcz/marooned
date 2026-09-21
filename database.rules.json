@@ -1,0 +1,35 @@
+{
+  "rules": {
+    "rooms": {
+      "$room": {
+        ".read": true,
+        "slots": {
+          "$slot": {
+            ".write": "auth != null && (!data.exists() || data.child('uid').val() === auth.uid) && (!newData.exists() || newData.child('uid').val() === auth.uid)"
+          }
+        },
+        "host": {
+          ".write": "auth != null"
+        },
+        "players": {
+          "$uid": {
+            ".write": "auth != null && auth.uid === $uid"
+          }
+        },
+        "intents": {
+          "$uid": {
+            ".write": "auth != null && (auth.uid === $uid || root.child('rooms').child($room).child('host').val() === auth.uid)"
+          }
+        },
+        "grants": {
+          "$uid": {
+            ".write": "auth != null && root.child('rooms').child($room).child('host').val() === auth.uid"
+          }
+        },
+        "world": {
+          ".write": "auth != null && root.child('rooms').child($room).child('host').val() === auth.uid"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,82 @@
+import { CELL } from "@/web/src/constants";
+import type { Camp } from "@/web/src/sim/camp";
+import type { DayClock } from "@/web/src/dayNight";
+import type { Weather } from "@/web/src/sim/weather";
+import { Item, type ItemSnapshot, type SpawnFn } from "@/web/src/world/item";
+import type { NetWorld } from "@/web/src/net/protocol";
+
+function moveMesh(item: Item): void {
+  item.mesh.position.x = item.cellX * CELL + CELL / 2;
+  item.mesh.position.z = item.cellZ * CELL + CELL / 2;
+}
+
+export function applyNetWorld(
+  world: NetWorld,
+  items: Item[],
+  spawn: SpawnFn,
+  camp: Camp,
+  day: DayClock,
+  weather: Weather,
+  onRemoved: (item: Item) => void,
+): void {
+  day.elapsed = world.elapsed;
+  day.t = world.dayT;
+  weather.intensity = world.weather.intensity;
+  weather.raining = world.weather.raining;
+  weather.storm = world.weather.storm;
+  weather.flash = world.weather.flash;
+
+  const incoming = new Map(world.items.map((snap) => [snap.id, snap]));
+  for (const item of [...items]) {
+    if (incoming.has(item.id)) continue;
+    item.mesh.removeFromParent();
+    const i = items.indexOf(item);
+    if (i >= 0) items.splice(i, 1);
+    onRemoved(item);
+  }
+
+  const local = new Map(items.map((item) => [item.id, item]));
+  for (const snap of world.items) {
+    const cur = local.get(snap.id);
+    if (cur) {
+      cur.cellX = snap.cellX;
+      cur.cellZ = snap.cellZ;
+      if (snap.prep || snap.freshness) cur.applyFoodState(snap.prep, snap.freshness);
+      moveMesh(cur);
+      continue;
+    }
+    const spawned = spawn(snap.kind as Parameters<SpawnFn>[0], snap.cellX, snap.cellZ, { id: snap.id });
+    if (!spawned) continue;
+    if (snap.prep || snap.freshness) spawned.applyFoodState(snap.prep, snap.freshness);
+  }
+
+  const lit = new Map(world.hearths.map((h) => [h.id, h.lit]));
+  camp.scan(items);
+  for (const hearth of camp.hearths) {
+    hearth.lit = Boolean(lit.get(hearth.item.id));
+  }
+  camp.replaceShelters(world.shelters);
+}
+
+export function snapshotWorld(items: Item[], camp: Camp, day: DayClock, weather: Weather): NetWorld {
+  return {
+    elapsed: day.elapsed,
+    dayT: day.t,
+    weather: {
+      intensity: weather.intensity,
+      raining: weather.raining,
+      storm: weather.storm,
+      flash: weather.flash,
+    },
+    items: items.map((item) => item.snapshot()),
+    hearths: camp.hearths.map((h) => ({ id: h.item.id, lit: h.lit })),
+    shelters: camp.shelters.map((s) => ({ x: s.x, z: s.z })),
+  };
+}
+
+export function spawnFromSnapshot(spawn: SpawnFn, snap: ItemSnapshot): Item | null {
+  const item = spawn(snap.kind as Parameters<SpawnFn>[0], snap.cellX, snap.cellZ, { id: snap.id });
+  if (!item) return null;
+  if (snap.prep || snap.freshness) item.applyFoodState(snap.prep, snap.freshness);
+  return item;
+}

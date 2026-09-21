@@ -127,6 +127,7 @@
     "minuteOne": "1 minute",
     "minuteMany": "{n} minutes",
     "respawn": "Respawn",
+    "islandFull": "This island is full (4 castaways). Try another ?room= name.",
     "need": {
       "energy": "energy",
       "thirst": "thirst",

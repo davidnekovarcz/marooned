@@ -82,6 +82,11 @@ export class Camp {
     this.shelters.push({ x, z });
   }
 
+  replaceShelters(rows: { x: number; z: number }[]): void {
+    this.shelters.length = 0;
+    this.shelters.push(...rows);
+  }
+
   worldPos(hearth: Hearth): THREE.Vector3 {
     return new THREE.Vector3(
       hearth.item.mesh.position.x,
