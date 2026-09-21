@@ -176,28 +176,28 @@ export class Actions {
     fireSheltered: boolean;
     sticks: number;
     fiber: number;
-  }): ResolvedAction[] {
-    const places: ResolvedAction[] = [];
+  }): ResolvedAction | undefined {
     if (opts.held === "fish" && opts.nearLitFire) {
-      places.push({ id: "cook", cook: true });
+      return { id: "cook", cook: true };
     }
     if (opts.nearUnlitFire && (opts.held === "tinder" || opts.held === "torch")) {
-      if (opts.raining && !opts.fireSheltered) places.push({ id: "light", light: true, blocked: "tooWet" });
-      else places.push({ id: "light", light: true });
+      if (opts.raining && !opts.fireSheltered) return { id: "light", light: true, blocked: "tooWet" };
+      return { id: "light", light: true };
     }
     if (opts.held === "hammer" && !opts.inWater) {
       if (opts.sticks >= LEAN_TO_STICKS && opts.fiber >= LEAN_TO_FIBER) {
-        places.push({ id: "build", build: true });
+        return { id: "build", build: true };
       }
     }
+    // Pond/river first so a coconut at your feet doesn't steal Drink.
     if (opts.atFreshWater) {
-      places.push({ id: "drink", pond: true, meal: { hunger: 0, thirst: DRINK_POND_THIRST } });
+      return { id: "drink", pond: true, meal: { hunger: 0, thirst: DRINK_POND_THIRST } };
     }
     if (opts.onShore) {
-      if (opts.held === "fishingPole") places.push({ id: "fish", fish: true });
-      else places.push({ id: "fish", blocked: "needPole" });
+      if (opts.held === "fishingPole") return { id: "fish", fish: true };
+      return { id: "fish", blocked: "needPole" };
     }
-    return places;
+    return undefined;
   }
 
   nearest(items: Item[], cellX: number, cellZ: number, held: HeldKind | null = null): Item | null {
