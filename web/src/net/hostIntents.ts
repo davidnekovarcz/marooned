@@ -62,7 +62,9 @@ export function applyHostIntent(
   }
 
   if (action.light) {
-    const hearth = camp.nearestHearth(intent.cellX, intent.cellZ);
+    const byId = itemAt(items, intent.itemId);
+    const hearth =
+      camp.hearths.find((h) => h.item.id === byId?.id) ?? camp.nearestHearth(intent.cellX, intent.cellZ);
     if (hearth && !hearth.lit) camp.light(hearth);
     return { seq: intent.seq };
   }

@@ -36,7 +36,14 @@ import {
   SURVIVOR_HZ,
   type NetSurvivor,
 } from "@/web/src/net/survivor";
-import { applyNetWorld, snapshotWorld, spawnFromSnapshot, takeCarriedItem, type ClaimedPickup } from "@/web/src/net/worldSync";
+import {
+  applyNetWorld,
+  snapshotWorld,
+  spawnFromSnapshot,
+  takeCarriedItem,
+  type ClaimedHearth,
+  type ClaimedPickup,
+} from "@/web/src/net/worldSync";
 import { gatherPromptCandidates, pickPrompt, smokePromptPriority, type PromptChoice } from "@/web/src/sim/prompt";
 import { Camp, countNearby } from "@/web/src/sim/camp";
 import { Loot } from "@/web/src/sim/loot";
@@ -212,6 +219,7 @@ export class Game {
     let intentSeq = 0;
     const lastIntentSeq = new Map<string, number>();
     const claimedPickups: ClaimedPickup[] = [];
+    const claimedHearths: ClaimedHearth[] = [];
     const onRemoved = (item: Item): void => loot.onRemoved(item);
 
     const equipGear = (gear: StowedGear | null, stow: boolean): void => {
@@ -309,7 +317,21 @@ export class Game {
       } else if (room) {
         const world = room.latestWorld();
         if (world) {
-          applyNetWorld(world, scattered.items, scattered.spawn, camp, day, weather, onRemoved, claimedPickups);
+          try {
+            applyNetWorld(
+              world,
+              scattered.items,
+              scattered.spawn,
+              camp,
+              day,
+              weather,
+              onRemoved,
+              claimedPickups,
+              claimedHearths,
+            );
+          } catch (err) {
+            console.warn("applyNetWorld failed", err);
+          }
         } else {
           day.update(dt);
           weather.update(dt, day.t, day.elapsed);
@@ -447,7 +469,8 @@ export class Game {
         const target = currentItem;
         const localOnly = Boolean(action.eatHeld || action.pond);
         const pickHere = Boolean(action.pickup);
-        if (!room || room.isHost || localOnly || pickHere) {
+        const lightHere = Boolean(action.light);
+        if (!room || room.isHost || localOnly || pickHere || lightHere) {
           if (interactor.perform(action, target)) {
             if (room && !room.isHost && pickHere && target) {
               claimedPickups.push({
@@ -467,6 +490,19 @@ export class Game {
                 itemId: target.id,
                 action,
                 taken: true,
+              });
+            } else if (room && !room.isHost && lightHere) {
+              if (target) claimedHearths.push({ cellX: target.cellX, cellZ: target.cellZ });
+              intentSeq += 1;
+              void room.sendIntent({
+                seq: intentSeq,
+                uid: room.uid,
+                cellX: player.cellX,
+                cellZ: player.cellZ,
+                heldKind: player.heldKind,
+                interact: true,
+                itemId: target?.id ?? null,
+                action,
               });
             }
             currentItem = null;
@@ -525,7 +561,11 @@ export class Game {
           worldSend += dt;
           if (worldSend >= 1 / WORLD_HZ) {
             worldSend = 0;
-            void room.publishWorld(snapshotWorld(scattered.items, camp, day, weather));
+            try {
+              void room.publishWorld(snapshotWorld(scattered.items, camp, day, weather));
+            } catch (err) {
+              console.warn("snapshotWorld failed", err);
+            }
           }
         } else {
           const grant = room.consumeGrant();

@@ -108,10 +108,22 @@ export class Room {
 
   async publishWorld(world: NetWorld): Promise<void> {
     if (!this.isHost) return;
+    const payload = toRtdb(world);
     try {
-      await set(ref(this.db, `rooms/${this.roomId}/world`), toRtdb(world));
+      await set(ref(this.db, `rooms/${this.roomId}/world`), payload);
     } catch (err) {
       console.warn("publishWorld failed", err);
+      try {
+        const base = `rooms/${this.roomId}/world`;
+        await set(ref(this.db, `${base}/elapsed`), payload.elapsed);
+        await set(ref(this.db, `${base}/dayT`), payload.dayT);
+        await set(ref(this.db, `${base}/weather`), payload.weather);
+        await set(ref(this.db, `${base}/hearths`), payload.hearths ?? []);
+        await set(ref(this.db, `${base}/shelters`), payload.shelters ?? []);
+        await set(ref(this.db, `${base}/items`), payload.items ?? []);
+      } catch (chunkErr) {
+        console.warn("publishWorld chunked failed", chunkErr);
+      }
     }
   }
 
