@@ -16,6 +16,11 @@ const _sky = new THREE.Color();
 const _hemiSky = new THREE.Color();
 const _hemiGround = new THREE.Color();
 
+/** Personal or world seconds → island hours (24h cycle = DAY_SECONDS real). */
+export function livedHoursFromSeconds(seconds: number): number {
+  return (Math.max(0, seconds) / DAY_SECONDS) * 24;
+}
+
 export class DayClock {
   /** 0 midnight … 0.25 dawn … 0.5 noon … 0.75 dusk. */
   t = DAY_START;
@@ -27,9 +32,9 @@ export class DayClock {
     this.t = (this.t + dt / DAY_SECONDS) % 1;
   }
 
-  /** Island hours survived (24h cycle = DAY_SECONDS real). */
+  /** Island hours from world elapsed (24h cycle = DAY_SECONDS real). */
   survivedGameHours(): number {
-    return (this.elapsed / DAY_SECONDS) * 24;
+    return livedHoursFromSeconds(this.elapsed);
   }
 
   clockLabel(): string {

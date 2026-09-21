@@ -2,9 +2,10 @@ import * as THREE from "three";
 import { randomCharacter, saveCharacter, type Character } from "@/web/src/appearance";
 import { setupIslandAudio } from "@/web/src/audio";
 import { applyZoomFog, CameraZoom, offsetForZoom } from "@/web/src/cameraZoom";
-import { CAMERA_OFFSET, CENTER, DAY_START, DEBUG_GRID, GRID, HUD_BLINK, SEED } from "@/web/src/constants";
-import { applyDayNight, createDayLights, DayClock, isDaytime } from "@/web/src/dayNight";
+import { CAMERA_OFFSET, CENTER, DAY_START, DEBUG_GRID, GRID, HUD_BLINK, SEED, AFK_SECONDS } from "@/web/src/constants";
+import { applyDayNight, createDayLights, DayClock, isDaytime, livedHoursFromSeconds } from "@/web/src/dayNight";
 import { Atmosphere } from "@/web/src/fx/atmosphere";
+import { syncPlayerChips } from "@/web/src/fx/playerChip";
 import { buildGridOverlay, canEnter } from "@/web/src/gridOverlay";
 import { Input } from "@/web/src/input/Input";
 import {
@@ -192,6 +193,7 @@ export class Game {
       player,
       items: scattered.items,
       weather,
+      livedSeconds: saved?.alive ? saved.livedSeconds : 0,
     });
 
     const offset = offsetForZoom(camera, zoom.cells);
@@ -243,6 +245,10 @@ export class Game {
       equipGear(saved.inventory.held, false);
     }
 
+    let livedSeconds = saved?.alive ? saved.livedSeconds : 0;
+    let lastInputAt = Date.now();
+    let afk = false;
+
     const persistSurvivor = (alive: boolean, deathHours = 0): void => {
       const snap = needs.snapshot();
       const row: NetSurvivor = {
@@ -260,6 +266,7 @@ export class Game {
         cellZ: player.cellZ,
         alive,
         deathHours,
+        livedSeconds,
         updatedAt: Date.now(),
       };
       const json = JSON.stringify({ ...row, updatedAt: 0 });
@@ -306,6 +313,7 @@ export class Game {
       const dt = Math.min(0.05, clock.getDelta());
       zoom.update(dt, input.zoomDir);
       player.canSprint = needs.canSprint;
+      if (input.moveDir()) lastInputAt = Date.now();
       player.update(dt);
       wildlife.update(dt);
       const hosting = !room || room.isHost;
@@ -442,6 +450,7 @@ export class Game {
 
       const pocket = input.consumePocket() ?? ui.consumePocket();
       if (pocket) {
+        lastInputAt = Date.now();
         if (room && !room.isHost && pocket === "drop") {
           const kind = player.heldKind;
           const dropped = player.dropHeld();
@@ -464,6 +473,7 @@ export class Game {
         }
       }
       const wantInteract = input.consumeInteract() || ui.consumeInteract();
+      if (wantInteract) lastInputAt = Date.now();
       if (wantInteract && currentAction && actions.enabled(currentAction)) {
         const action = currentAction;
         const target = currentItem;
@@ -528,6 +538,9 @@ export class Game {
         }
       }
 
+      afk = player.alive && (Date.now() - lastInputAt) / 1000 >= AFK_SECONDS;
+      if (player.alive && !afk) livedSeconds += dt;
+
       if (room) {
         ui.netHost = room.isHost;
         playerSend += dt;
@@ -543,6 +556,7 @@ export class Game {
             alive: player.alive,
             name: character.name,
             appearance: { gender: character.gender, skin: character.skin, clothes: character.clothes },
+            ...(afk ? { afk: true } : {}),
           });
         }
         if (room.isHost) {
@@ -598,14 +612,26 @@ export class Game {
         player,
         items: scattered.items,
         weather,
+        livedSeconds,
       });
       applyHealthLook(needs.health);
+      const chips = [{ object: player.mesh, name: character.name, afk, alive: player.alive }];
+      if (room) {
+        for (const net of room.remotes) {
+          const root = remotes.get(net.uid)?.visual?.root;
+          if (!root) continue;
+          chips.push({ object: root, name: net.name, afk: Boolean(net.afk), alive: net.alive });
+        }
+      }
+      syncPlayerChips(chips, camera, renderer);
       renderer.render(scene, camera);
       if (needs.health <= 0) {
         dead = true;
         player.alive = false;
+        afk = false;
+        syncPlayerChips([], camera, renderer);
         ui.dead = true;
-        ui.deathHours = day.survivedGameHours();
+        ui.deathHours = livedHoursFromSeconds(livedSeconds);
         document.body.classList.add("dead");
         applyHealthLook(0);
         persistSurvivor(false, ui.deathHours);
@@ -637,13 +663,20 @@ export class Game {
     inventoryStore: ReturnType<typeof useInventoryStore>,
     worldStore: ReturnType<typeof useWorldStore>,
     ui: ReturnType<typeof useUiStore>,
-    ctx: { day: DayClock; needs: Needs; player: GridPlayer; items: Item[]; weather: Weather },
+    ctx: {
+      day: DayClock;
+      needs: Needs;
+      player: GridPlayer;
+      items: Item[];
+      weather: Weather;
+      livedSeconds: number;
+    },
   ): void {
     const snap = ctx.needs.snapshot();
     session.$patch({
       dayT: ctx.day.t,
       clock: ctx.day.clockLabel(),
-      survivedHours: ctx.day.survivedGameHours(),
+      survivedHours: livedHoursFromSeconds(ctx.livedSeconds),
       alive: ctx.player.alive,
       sky: ctx.weather.sky(isDaytime(ctx.day.t)),
     });

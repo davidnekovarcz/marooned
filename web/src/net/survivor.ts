@@ -18,6 +18,8 @@ export type NetSurvivor = {
   cellZ: number;
   alive: boolean;
   deathHours: number;
+  /** Real seconds this body has been awake and not AFK. */
+  livedSeconds: number;
   updatedAt: number;
 };
 
@@ -89,6 +91,7 @@ export function parseSurvivor(raw: unknown): NetSurvivor | null {
     cellZ,
     alive: o.alive !== false && parseNeed(needsRaw.health, 1) > 0,
     deathHours: typeof o.deathHours === "number" && Number.isFinite(o.deathHours) ? Math.max(0, o.deathHours) : 0,
+    livedSeconds: typeof o.livedSeconds === "number" && Number.isFinite(o.livedSeconds) ? Math.max(0, o.livedSeconds) : 0,
     updatedAt: typeof o.updatedAt === "number" && Number.isFinite(o.updatedAt) ? o.updatedAt : 0,
   };
 }
