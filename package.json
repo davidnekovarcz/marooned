@@ -8,7 +8,12 @@
     "build": "npm ci --include=dev --prefix web && npm run build --prefix web && rm -rf web/node_modules assets/vendor",
     "start": "serve -s web/dist -l tcp://0.0.0.0:$PORT",
     "git:hooks:show": "git config --get core.hooksPath || echo .git/hooks",
-    "git:hooks:apply": "sh scripts/apply-git-hooks.sh"
+    "git:hooks:apply": "sh scripts/apply-git-hooks.sh",
+    "lint": "npm run lint --prefix web",
+    "lint:check": "npm run lint:check --prefix web",
+    "tsc": "npm run tsc --prefix web",
+    "test": "npm run test --prefix web",
+    "test:watch": "npm run test:watch --prefix web"
   },
   "dependencies": {
     "serve": "^14.2.4"
