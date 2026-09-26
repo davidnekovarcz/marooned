@@ -798,7 +798,7 @@ body.mobile-ui #hud-bar {
   right: max(10px, env(safe-area-inset-right));
   z-index: 2;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: space-between;
   gap: 8px;
   padding: 6px 8px 6px 6px;
   border-radius: 10px;
@@ -824,6 +824,7 @@ body.mobile-ui #hud-weather {
 
 body.mobile-ui #hud-clock {
   font-size: 18px;
+  padding-right: 10px;
 }
 
 body.mobile-ui #hud-needs {
