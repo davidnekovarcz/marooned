@@ -115,11 +115,15 @@
     "hands": "Hands [0]",
     "pocketLeft": "Left pocket [1]",
     "pocketRight": "Right pocket [2]",
+    "handsShort": "Hands",
+    "pocketLeftShort": "Left",
+    "pocketRightShort": "Right",
     "empty": "Empty"
   },
   "hud": {
     "hintLocked": "Click or press a key to hear the island.",
     "hint": "[+/-] zoom. [WSAD] walk. [SHIFT] run. [SPACE] interact. [G] drop. [ENTER] say.",
+    "hintTouch": "Stick to walk · push out to run · tap pockets & actions",
     "say": "Say…",
     "survived": "You have survived {time}",
     "death": "... but now you're dead.",
@@ -149,5 +153,11 @@
     "clothes": "Clothes",
     "play": "Choose character",
     "random": "Random character"
+  },
+  "mobile": {
+    "drop": "Drop",
+    "zoomIn": "+",
+    "zoomOut": "−",
+    "say": "Say"
   }
 }

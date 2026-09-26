@@ -15,6 +15,7 @@ const DIRS: Record<string, { x: number; z: number }> = {
 const SHIFT = new Set(["ShiftLeft", "ShiftRight"]);
 
 export type PocketCommand = "hands" | PocketSlot | "drop";
+export type MoveDir = { x: number; z: number };
 
 function isZoomIn(e: KeyboardEvent): boolean {
   return e.key === "+" || e.key === "=" || e.code === "NumpadAdd";
@@ -25,8 +26,11 @@ function isZoomOut(e: KeyboardEvent): boolean {
 }
 
 export class Input {
-  sprinting = false;
-  zoomDir = 0;
+  private keyboardSprint = false;
+  private keyboardZoom = 0;
+  private virtualMove: MoveDir | null = null;
+  private virtualSprint = false;
+  private virtualZoom = 0;
   private composing = false;
   private pressed = new Set<string>();
   private interactQueued = false;
@@ -34,6 +38,14 @@ export class Input {
   private openChatQueued = false;
   private sendChatQueued = false;
   private cancelChatQueued = false;
+
+  get sprinting(): boolean {
+    return this.virtualSprint || this.keyboardSprint;
+  }
+
+  get zoomDir(): number {
+    return this.virtualZoom !== 0 ? this.virtualZoom : this.keyboardZoom;
+  }
 
   constructor() {
     window.addEventListener("keydown", (e) => {
@@ -48,13 +60,13 @@ export class Input {
         this.cancelChatQueued = true;
         return;
       }
-      if (SHIFT.has(e.code)) this.sprinting = true;
+      if (SHIFT.has(e.code)) this.keyboardSprint = true;
       if (isZoomIn(e)) {
         e.preventDefault();
-        this.zoomDir = -1;
+        this.keyboardZoom = -1;
       } else if (isZoomOut(e)) {
         e.preventDefault();
-        this.zoomDir = 1;
+        this.keyboardZoom = 1;
       }
       if (this.composing) return;
       if (e.code in DIRS) {
@@ -72,15 +84,16 @@ export class Input {
       }
     });
     window.addEventListener("keyup", (e) => {
-      if (SHIFT.has(e.code)) this.sprinting = false;
+      if (SHIFT.has(e.code)) this.keyboardSprint = false;
       this.pressed.delete(e.code);
-      if (isZoomIn(e) && this.zoomDir < 0) this.zoomDir = 0;
-      if (isZoomOut(e) && this.zoomDir > 0) this.zoomDir = 0;
+      if (isZoomIn(e) && this.keyboardZoom < 0) this.keyboardZoom = 0;
+      if (isZoomOut(e) && this.keyboardZoom > 0) this.keyboardZoom = 0;
     });
   }
 
-  /** Combined WASD / arrows, each axis clamped to -1 / 0 / +1. */
-  moveDir(): { x: number; z: number } | null {
+  /** Combined WASD / arrows / virtual stick, each axis clamped to -1 / 0 / +1. */
+  moveDir(): MoveDir | null {
+    if (this.virtualMove) return this.virtualMove;
     let x = 0;
     let z = 0;
     for (const code of this.pressed) {
@@ -93,6 +106,24 @@ export class Input {
     z = Math.max(-1, Math.min(1, z));
     if (x === 0 && z === 0) return null;
     return { x, z };
+  }
+
+  setVirtualMove(dir: MoveDir | null): void {
+    this.virtualMove = dir;
+  }
+
+  setVirtualSprint(on: boolean): void {
+    this.virtualSprint = on;
+  }
+
+  setZoomDir(dir: number): void {
+    this.virtualZoom = dir < 0 ? -1 : dir > 0 ? 1 : 0;
+  }
+
+  clearVirtual(): void {
+    this.virtualMove = null;
+    this.virtualSprint = false;
+    this.virtualZoom = 0;
   }
 
   consumeInteract(): boolean {
@@ -109,7 +140,10 @@ export class Input {
 
   setComposing(on: boolean): void {
     this.composing = on;
-    if (on) this.pressed.clear();
+    if (on) {
+      this.pressed.clear();
+      this.clearVirtual();
+    }
   }
 
   consumeOpenChat(): boolean {

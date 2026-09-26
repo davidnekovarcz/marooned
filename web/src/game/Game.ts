@@ -9,6 +9,7 @@ import { Atmosphere } from "@/web/src/fx/atmosphere";
 import { syncPlayerChips, type PlayerChipState } from "@/web/src/fx/playerChip";
 import { buildGridOverlay, canEnter } from "@/web/src/gridOverlay";
 import { Input } from "@/web/src/input/Input";
+import { bindMobileInput } from "@/web/src/input/mobileBind";
 import {
   buildBiomes,
   buildCoastField,
@@ -155,6 +156,7 @@ export class Game {
     const [{ scattered, loot, wildlife }, visual] = await Promise.all([worldP, loadPlayerModel(character)]);
 
     const input = new Input();
+    bindMobileInput(input);
     const player = new GridPlayer(biomes, blocked, spawn, visual, input);
     if (saved && typeof saved.yaw === "number" && Number.isFinite(saved.yaw)) {
       player.mesh.rotation.y = saved.yaw;
@@ -345,7 +347,13 @@ export class Game {
           lastInputAt = now;
         }
       }
-      if (input.consumeOpenChat() && player.alive && !ui.dead && !ui.islandFull && !liveSay(localSay, localSayAt, now)) {
+      if (
+        (input.consumeOpenChat() || ui.consumeOpenChat()) &&
+        player.alive &&
+        !ui.dead &&
+        !ui.islandFull &&
+        !liveSay(localSay, localSayAt, now)
+      ) {
         ui.chatOpen = true;
         ui.chatDraft = "";
         input.setComposing(true);
