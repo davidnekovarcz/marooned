@@ -105,14 +105,6 @@ function onStickUp(e: PointerEvent): void {
   mobileInput()?.setVirtualSprint(false);
 }
 
-function zoomHold(dir: number): void {
-  mobileInput()?.setZoomDir(dir);
-}
-
-function zoomRelease(): void {
-  mobileInput()?.setZoomDir(0);
-}
-
 function drop(): void {
   ui.queuePocket("drop");
 }
@@ -153,28 +145,6 @@ onUnmounted(() => {
     </div>
     <div id="mobile-pads">
       <button type="button" class="mobile-pad" @click="drop">{{ t("mobile.drop") }}</button>
-      <div class="mobile-zoom">
-        <button
-          type="button"
-          class="mobile-pad mobile-pad-zoom"
-          @pointerdown.prevent="zoomHold(1)"
-          @pointerup="zoomRelease"
-          @pointercancel="zoomRelease"
-          @pointerleave="zoomRelease"
-        >
-          {{ t("mobile.zoomOut") }}
-        </button>
-        <button
-          type="button"
-          class="mobile-pad mobile-pad-zoom"
-          @pointerdown.prevent="zoomHold(-1)"
-          @pointerup="zoomRelease"
-          @pointercancel="zoomRelease"
-          @pointerleave="zoomRelease"
-        >
-          {{ t("mobile.zoomIn") }}
-        </button>
-      </div>
       <button type="button" class="mobile-pad" @click="say">{{ t("mobile.say") }}</button>
     </div>
   </div>

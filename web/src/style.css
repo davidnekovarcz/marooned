@@ -180,6 +180,10 @@ button.gear-slot:hover {
   display: none;
 }
 
+#hud-bar {
+  display: contents;
+}
+
 #hud-world {
   position: fixed;
   top: 16px;
@@ -416,6 +420,7 @@ button.gear-slot:hover {
   display: none;
 }
 
+body.gate #hud-bar,
 body.gate #hud-world,
 body.gate #hud-needs,
 body.gate #hint,
@@ -424,6 +429,7 @@ body.gate #interact,
 body.gate #say-compose,
 body.gate #mobile-controls,
 body.gate .player-chip,
+body.dead #hud-bar,
 body.dead #hud-world,
 body.dead #hud-needs,
 body.dead #hint,
@@ -717,10 +723,11 @@ body.dead .player-chip {
 
 .mobile-stick {
   position: absolute;
-  left: max(12px, env(safe-area-inset-left));
+  left: 50%;
   bottom: max(12px, env(safe-area-inset-bottom));
   width: 112px;
   height: 112px;
+  transform: translate(-50%, 0);
   border-radius: 999px;
   background: rgba(8, 24, 32, 0.38);
   border: 2px solid rgba(244, 247, 242, 0.28);
@@ -755,13 +762,8 @@ body.dead .player-chip {
   flex-direction: column;
   align-items: stretch;
   gap: 8px;
-  width: 96px;
+  width: 88px;
   pointer-events: auto;
-}
-
-.mobile-zoom {
-  display: flex;
-  gap: 8px;
 }
 
 .mobile-pad {
@@ -779,60 +781,84 @@ body.dead .player-chip {
   cursor: pointer;
 }
 
-.mobile-pad-zoom {
-  flex: 1;
-  min-width: 0;
-  padding: 8px 0;
-}
-
 .mobile-pad:active {
   background: rgba(244, 247, 242, 0.22);
 }
 
 /* Mobile / narrow only — desktop layout stays untouched. */
 body.mobile-ui #hint {
-  max-width: min(14rem, calc(100vw - 7.5rem));
-  font-size: 12px;
-  line-height: 1.35;
-  padding: 6px 10px;
+  display: none;
+}
+
+body.mobile-ui #hud-bar {
+  display: flex;
+  position: fixed;
+  top: max(10px, env(safe-area-inset-top));
+  left: max(10px, env(safe-area-inset-left));
+  right: max(10px, env(safe-area-inset-right));
+  z-index: 2;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 6px 8px 6px 6px;
+  border-radius: 10px;
+  background: rgba(8, 24, 32, 0.5);
+  color: #f4f7f2;
+  pointer-events: none;
 }
 
 body.mobile-ui #hud-world {
-  top: max(12px, env(safe-area-inset-top));
-  right: max(12px, env(safe-area-inset-right));
-}
-
-body.mobile-ui #hud-needs {
-  top: calc(max(12px, env(safe-area-inset-top)) + 58px);
-  right: max(12px, env(safe-area-inset-right));
-  bottom: auto;
-  left: auto;
+  position: static;
+  top: auto;
+  right: auto;
+  padding: 0;
+  border-radius: 0;
+  background: transparent;
   gap: 6px;
 }
 
+body.mobile-ui #hud-weather {
+  width: 32px;
+  height: 32px;
+}
+
+body.mobile-ui #hud-clock {
+  font-size: 18px;
+}
+
+body.mobile-ui #hud-needs {
+  position: static;
+  top: auto;
+  right: auto;
+  bottom: auto;
+  left: auto;
+  gap: 5px;
+}
+
 body.mobile-ui #hud-needs .need {
-  width: 36px;
-  height: 36px;
+  width: 32px;
+  height: 32px;
 }
 
 body.mobile-ui #gear {
   left: max(12px, env(safe-area-inset-left));
-  bottom: calc(112px + 20px + env(safe-area-inset-bottom, 0px));
-  max-width: min(11rem, calc(100vw - 140px));
-  font-size: 13px;
+  bottom: max(12px, env(safe-area-inset-bottom));
+  max-width: min(9.5rem, calc(50vw - 70px));
+  font-size: 12px;
+  z-index: 3;
 }
 
 body.mobile-ui button.gear-slot {
-  padding: 6px 8px;
-  min-height: 40px;
+  padding: 5px 7px;
+  min-height: 36px;
 }
 
 body.mobile-ui #interact {
   left: 50%;
   right: auto;
-  bottom: calc(112px + 20px + env(safe-area-inset-bottom, 0px));
+  bottom: calc(112px + 18px + env(safe-area-inset-bottom, 0px));
   transform: translateX(-50%);
-  max-width: min(14rem, calc(100vw - 240px));
+  max-width: min(14rem, calc(100vw - 40px));
 }
 
 body.mobile-ui #interact-action {
@@ -842,7 +868,8 @@ body.mobile-ui #interact-action {
 }
 
 body.mobile-ui #say-compose {
-  bottom: calc(112px + 24px + env(safe-area-inset-bottom, 0px));
+  bottom: calc(112px + 22px + env(safe-area-inset-bottom, 0px));
 }
+
 
 

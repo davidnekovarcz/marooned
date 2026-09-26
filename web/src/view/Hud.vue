@@ -87,24 +87,26 @@ function needBlink(id: NeedId): Blink {
 </script>
 
 <template>
-  <div id="hud-world" aria-hidden="true">
-    <div id="hud-weather" :data-sky="session.sky" v-html="skySvg" />
-    <time id="hud-clock" :data-cell="`${player.cellX},${player.cellZ}`">
-      {{ session.clock }}<template v-if="debugCells"> {{ player.cellX }},{{ player.cellZ }}</template>
-    </time>
-  </div>
-  <div id="hud-needs" aria-hidden="true" :data-afk="session.afk || undefined">
-    <div
-      v-for="id in NEED_ORDER"
-      :key="id"
-      class="need"
-      :data-need="id"
-      :data-tone="needTone(id)"
-      :data-blink="needBlink(id)"
-      :title="t(`hud.need.${id}`)"
-    >
-      <div class="need-fill" :style="{ '--fill': `${Math.round(needValue(id) * 100)}%` }" />
-      <div class="need-icon" v-html="NEED_SVG[id]" />
+  <div id="hud-bar" aria-hidden="true">
+    <div id="hud-world">
+      <div id="hud-weather" :data-sky="session.sky" v-html="skySvg" />
+      <time id="hud-clock" :data-cell="`${player.cellX},${player.cellZ}`">
+        {{ session.clock }}<template v-if="debugCells"> {{ player.cellX }},{{ player.cellZ }}</template>
+      </time>
+    </div>
+    <div id="hud-needs" :data-afk="session.afk || undefined">
+      <div
+        v-for="id in NEED_ORDER"
+        :key="id"
+        class="need"
+        :data-need="id"
+        :data-tone="needTone(id)"
+        :data-blink="needBlink(id)"
+        :title="t(`hud.need.${id}`)"
+      >
+        <div class="need-fill" :style="{ '--fill': `${Math.round(needValue(id) * 100)}%` }" />
+        <div class="need-icon" v-html="NEED_SVG[id]" />
+      </div>
     </div>
   </div>
 </template>

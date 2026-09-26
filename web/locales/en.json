@@ -156,8 +156,6 @@
   },
   "mobile": {
     "drop": "Drop",
-    "zoomIn": "+",
-    "zoomOut": "−",
     "say": "Say"
   }
 }
