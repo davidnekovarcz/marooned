@@ -869,10 +869,19 @@ body.mobile-ui .mobile-zoom {
 }
 
 body.mobile-ui .mobile-zoom-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   width: 40px;
   padding: 8px 0;
   font-size: 18px;
   line-height: 1;
+}
+
+body.mobile-ui .mobile-zoom-icon {
+  width: 20px;
+  height: 20px;
+  display: block;
 }
 
 body.mobile-ui #hud-world {

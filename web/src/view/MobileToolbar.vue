@@ -46,24 +46,32 @@ onUnmounted(() => {
       <button
         type="button"
         class="mobile-tool mobile-zoom-btn"
-        :aria-label="t('mobile.zoomOut')"
-        @pointerdown.prevent="zoomStart(1)"
-        @pointerup="zoomEnd"
-        @pointercancel="zoomEnd"
-        @pointerleave="zoomEnd"
-      >
-        −
-      </button>
-      <button
-        type="button"
-        class="mobile-tool mobile-zoom-btn"
         :aria-label="t('mobile.zoomIn')"
         @pointerdown.prevent="zoomStart(-1)"
         @pointerup="zoomEnd"
         @pointercancel="zoomEnd"
         @pointerleave="zoomEnd"
       >
-        +
+        <svg class="mobile-zoom-icon" viewBox="0 0 24 24" aria-hidden="true">
+          <circle cx="10.5" cy="10.5" r="6.25" fill="none" stroke="currentColor" stroke-width="1.8" />
+          <path d="M15.2 15.2 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+          <path d="M10.5 7.75v5.5M7.75 10.5h5.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+        </svg>
+      </button>
+      <button
+        type="button"
+        class="mobile-tool mobile-zoom-btn"
+        :aria-label="t('mobile.zoomOut')"
+        @pointerdown.prevent="zoomStart(1)"
+        @pointerup="zoomEnd"
+        @pointercancel="zoomEnd"
+        @pointerleave="zoomEnd"
+      >
+        <svg class="mobile-zoom-icon" viewBox="0 0 24 24" aria-hidden="true">
+          <circle cx="10.5" cy="10.5" r="6.25" fill="none" stroke="currentColor" stroke-width="1.8" />
+          <path d="M15.2 15.2 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+          <path d="M7.75 10.5h5.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+        </svg>
       </button>
     </div>
   </div>
