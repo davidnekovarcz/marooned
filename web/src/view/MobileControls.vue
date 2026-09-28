@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from "vue";
-import { t } from "@/web/src/i18n";
 import type { MoveDir } from "@/web/src/input/Input";
 import { mobileInput } from "@/web/src/input/mobileBind";
 import { watchMobileUi } from "@/web/src/input/mobileUi";
@@ -105,14 +104,6 @@ function onStickUp(e: PointerEvent): void {
   mobileInput()?.setVirtualSprint(false);
 }
 
-function drop(): void {
-  ui.queuePocket("drop");
-}
-
-function say(): void {
-  ui.queueOpenChat();
-}
-
 onMounted(() => {
   stopWatch = watchMobileUi((on) => {
     mobileUi.value = on;
@@ -142,10 +133,6 @@ onUnmounted(() => {
         class="mobile-stick-knob"
         :style="{ transform: `translate(${knobX}px, ${knobY}px)` }"
       />
-    </div>
-    <div id="mobile-pads">
-      <button type="button" class="mobile-pad" @click="drop">{{ t("mobile.drop") }}</button>
-      <button type="button" class="mobile-pad" @click="say">{{ t("mobile.say") }}</button>
     </div>
   </div>
 </template>

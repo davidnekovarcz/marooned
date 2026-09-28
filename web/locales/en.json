@@ -156,6 +156,8 @@
   },
   "mobile": {
     "drop": "Drop",
-    "say": "Say"
+    "say": "Say",
+    "zoomIn": "Zoom in",
+    "zoomOut": "Zoom out"
   }
 }

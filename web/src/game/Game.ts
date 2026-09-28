@@ -182,6 +182,7 @@ export class Game {
     const needs = new Needs();
     if (saved) needs.restore(saved.needs);
     const zoom = new CameraZoom();
+    if (isMobileUi()) zoom.cells = ZOOM_CELLS_IN;
     const actions = new Actions();
     smokePromptPriority();
     const interactor = new Interactor(
@@ -360,8 +361,7 @@ export class Game {
         input.setComposing(true);
       }
       input.setComposing(ui.chatOpen);
-      if (isMobileUi()) zoom.cells = ZOOM_CELLS_IN;
-      else zoom.update(dt, input.zoomDir);
+      zoom.update(dt, input.zoomDir);
       player.canSprint = needs.canSprint;
       if (input.moveDir()) lastInputAt = Date.now();
       afk = player.alive && (Date.now() - lastInputAt) / 1000 >= AFK_SECONDS;
