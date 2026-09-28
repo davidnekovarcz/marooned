@@ -125,6 +125,8 @@
     "hint": "[+/-] zoom. [WSAD] walk. [SHIFT] run. [SPACE] interact. [G] drop. [ENTER] say.",
     "hintTouch": "Stick to walk · push out to run · tap pockets & actions",
     "say": "Say…",
+    "saySend": "Send",
+    "sayCancel": "Cancel",
     "survived": "You have survived {time}",
     "death": "... but now you're dead.",
     "hourOne": "1 hour",

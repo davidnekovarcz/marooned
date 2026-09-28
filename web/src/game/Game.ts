@@ -339,8 +339,8 @@ export class Game {
       if (dead) return;
       const dt = Math.min(0.05, clock.getDelta());
       const now = Date.now();
-      if (input.consumeCancelChat()) closeChat();
-      if (input.consumeSendChat()) {
+      if (input.consumeCancelChat() || ui.consumeCancelChat()) closeChat();
+      if (input.consumeSendChat() || ui.consumeSendChat()) {
         const line = ui.chatDraft.replace(/\s+/g, " ").trim().slice(0, SAY_MAX);
         closeChat();
         if (line && player.alive && !liveSay(localSay, localSayAt, now)) {
