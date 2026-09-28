@@ -15,12 +15,12 @@ import { sunElevation } from "@/web/src/dayNight";
 export class CameraZoom {
   cells = ZOOM_CELLS_START;
 
-  update(dt: number, dir = 0): void {
+  update(dt: number, dir = 0, minCells = ZOOM_CELLS_IN, maxCells = ZOOM_CELLS_OUT): void {
     if (dir === 0) return;
     this.cells = THREE.MathUtils.clamp(
       this.cells + dir * ZOOM_CELLS_PER_SEC * dt,
-      ZOOM_CELLS_IN,
-      ZOOM_CELLS_OUT,
+      minCells,
+      maxCells,
     );
   }
 }
@@ -40,15 +40,13 @@ export function applyZoomFog(
   cells: number,
   dayT: number,
   rain = 0,
+  minCells = ZOOM_CELLS_IN,
 ): void {
   camera.far = Math.max(420, dist + ISLAND_RADIUS * 3);
   camera.updateProjectionMatrix();
   if (!(scene.fog instanceof THREE.Fog)) return;
-  const t = THREE.MathUtils.clamp(
-    (cells - ZOOM_CELLS_IN) / (ZOOM_CELLS_OUT - ZOOM_CELLS_IN),
-    0,
-    1,
-  );
+  const span = Math.max(1e-3, ZOOM_CELLS_OUT - minCells);
+  const t = THREE.MathUtils.clamp((cells - minCells) / span, 0, 1);
   // t=0 zoomed in: fog starts beyond the close view. t=1 zoomed out: haze over the island.
   const near = THREE.MathUtils.lerp(dist * 2.4, dist * 0.22, t);
   const far = THREE.MathUtils.lerp(dist * 9, dist * 1.05, t);

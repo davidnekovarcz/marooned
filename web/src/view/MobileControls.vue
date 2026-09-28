@@ -9,7 +9,7 @@ const DEAD = 0.28;
 const SPRINT = 0.65;
 const MAX = 52;
 
-/** Screen-up is world +X+Z (same as WASD). */
+/** Screen-up is world +X+Z (same as WASD). Normalized so 8-way dots stay fair. */
 const OCTANTS: MoveDir[] = [
   { x: 1, z: 1 },
   { x: -1, z: 1 },
@@ -19,7 +19,10 @@ const OCTANTS: MoveDir[] = [
   { x: -1, z: 0 },
   { x: 0, z: -1 },
   { x: 1, z: 0 },
-];
+].map((o) => {
+  const len = Math.hypot(o.x, o.z) || 1;
+  return { x: o.x / len, z: o.z / len };
+});
 
 const session = useSessionStore();
 const ui = useUiStore();
@@ -50,7 +53,11 @@ function quantize(nx: number, ny: number): MoveDir {
       best = o;
     }
   }
-  return best;
+  // Snap back to grid steps (-1/0/1), not unit vectors.
+  return {
+    x: Math.max(-1, Math.min(1, Math.round(best.x * Math.SQRT2))) as -1 | 0 | 1,
+    z: Math.max(-1, Math.min(1, Math.round(best.z * Math.SQRT2))) as -1 | 0 | 1,
+  };
 }
 
 function applyStick(clientX: number, clientY: number): void {

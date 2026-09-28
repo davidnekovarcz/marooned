@@ -19,7 +19,13 @@ const handsLabel = computed(() => {
 const canDrop = computed(() => Boolean(inventory.heldKind));
 
 const showMobileDrop = computed(
-  () => mobileUi.value && session.alive && !ui.dead && !ui.islandFull && !ui.chatOpen,
+  () =>
+    mobileUi.value &&
+    canDrop.value &&
+    session.alive &&
+    !ui.dead &&
+    !ui.islandFull &&
+    !ui.chatOpen,
 );
 
 function pocketLabel(kind: string | null): string {
@@ -61,7 +67,6 @@ onUnmounted(() => {
         v-if="showMobileDrop"
         type="button"
         class="gear-drop"
-        :disabled="!canDrop"
         @click="drop"
       >
         {{ t("mobile.drop") }}

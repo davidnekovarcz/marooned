@@ -3,7 +3,7 @@ import { loadSavedCharacter, randomCharacter, saveCharacter, type Character } fr
 import { showCharacterSelect } from "@/web/src/characterSelect";
 import { setupIslandAudio } from "@/web/src/audio";
 import { applyZoomFog, CameraZoom, offsetForZoom } from "@/web/src/cameraZoom";
-import { CAMERA_OFFSET, CENTER, DAY_START, DEBUG_GRID, GRID, HUD_BLINK, SEED, AFK_SECONDS, ZOOM_CELLS_IN } from "@/web/src/constants";
+import { CAMERA_OFFSET, CENTER, DAY_START, DEBUG_GRID, GRID, HUD_BLINK, SEED, AFK_SECONDS, ZOOM_CELLS_IN, ZOOM_CELLS_IN_MOBILE } from "@/web/src/constants";
 import { applyDayNight, createDayLights, DayClock, isDaytime, livedHoursFromSeconds } from "@/web/src/dayNight";
 import { Atmosphere } from "@/web/src/fx/atmosphere";
 import { syncPlayerChips, type PlayerChipState } from "@/web/src/fx/playerChip";
@@ -124,6 +124,7 @@ export class Game {
     if (room) {
       ui.netRoom = room.roomId;
       ui.netHost = room.isHost;
+      if (room.isHost) void room.removeGhostsByName(["Salt Gull", "Far Ash"]);
     }
 
     const persistRoomId = room?.roomId ?? roomIdFromUrl();
@@ -182,6 +183,7 @@ export class Game {
     const needs = new Needs();
     if (saved) needs.restore(saved.needs);
     const zoom = new CameraZoom();
+    const zoomMin = () => (isMobileUi() ? ZOOM_CELLS_IN_MOBILE : ZOOM_CELLS_IN);
     if (isMobileUi()) zoom.cells = ZOOM_CELLS_IN;
     const actions = new Actions();
     smokePromptPriority();
@@ -213,7 +215,7 @@ export class Game {
     });
 
     const offset = offsetForZoom(camera, zoom.cells);
-    applyZoomFog(scene, camera, offset.length(), zoom.cells, day.t, weather.intensity);
+    applyZoomFog(scene, camera, offset.length(), zoom.cells, day.t, weather.intensity, zoomMin());
     player.followCamera(camera, offset);
     applyDayNight(scene, lights, day.t);
     renderer.render(scene, camera);
@@ -361,7 +363,7 @@ export class Game {
         input.setComposing(true);
       }
       input.setComposing(ui.chatOpen);
-      zoom.update(dt, input.zoomDir);
+      zoom.update(dt, input.zoomDir, zoomMin());
       player.canSprint = needs.canSprint;
       if (input.moveDir()) lastInputAt = Date.now();
       afk = player.alive && (Date.now() - lastInputAt) / 1000 >= AFK_SECONDS;
@@ -444,7 +446,7 @@ export class Game {
       ocean.update(clock.elapsedTime, weather.intensity);
       islandAudio.update(weather.intensity, sheltered, afk);
       const camOffset = offsetForZoom(camera, zoom.cells);
-      applyZoomFog(scene, camera, camOffset.length(), zoom.cells, day.t, weather.intensity);
+      applyZoomFog(scene, camera, camOffset.length(), zoom.cells, day.t, weather.intensity, zoomMin());
       player.followCamera(camera, camOffset);
 
       atmosphere.setRain(weather.intensity);
@@ -648,6 +650,7 @@ export class Game {
           });
         }
         if (room.isHost) {
+          void room.pruneOrphans(now);
           for (const intent of room.consumeIntents()) {
             if (intent.uid === room.uid) continue;
             const prev = lastIntentSeq.get(intent.uid) ?? 0;

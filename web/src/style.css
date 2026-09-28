@@ -974,7 +974,7 @@ body.mobile-ui button.gear-slot {
 body.mobile-ui #interact {
   left: 50%;
   right: auto;
-  bottom: calc(112px + 18px + env(safe-area-inset-bottom, 0px));
+  bottom: calc(112px + 72px + env(safe-area-inset-bottom, 0px));
   transform: translateX(-50%);
   max-width: min(14rem, calc(100vw - 40px));
 }
