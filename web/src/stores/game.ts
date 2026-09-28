@@ -72,6 +72,7 @@ export const useUiStore = defineStore("ui", {
     deathHours: 0,
     pocketQueued: null as PocketCommand | null,
     interactQueued: false,
+    chatOpenQueued: false,
     islandFull: false,
     netRoom: null as string | null,
     netHost: false,
@@ -85,6 +86,9 @@ export const useUiStore = defineStore("ui", {
     queueInteract() {
       this.interactQueued = true;
     },
+    queueOpenChat() {
+      this.chatOpenQueued = true;
+    },
     consumePocket(): PocketCommand | null {
       const next = this.pocketQueued;
       this.pocketQueued = null;
@@ -93,6 +97,11 @@ export const useUiStore = defineStore("ui", {
     consumeInteract(): boolean {
       const next = this.interactQueued;
       this.interactQueued = false;
+      return next;
+    },
+    consumeOpenChat(): boolean {
+      const next = this.chatOpenQueued;
+      this.chatOpenQueued = false;
       return next;
     },
   },

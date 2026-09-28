@@ -3,12 +3,14 @@ import { loadSavedCharacter, randomCharacter, saveCharacter, type Character } fr
 import { showCharacterSelect } from "@/web/src/characterSelect";
 import { setupIslandAudio } from "@/web/src/audio";
 import { applyZoomFog, CameraZoom, offsetForZoom } from "@/web/src/cameraZoom";
-import { CAMERA_OFFSET, CENTER, DAY_START, DEBUG_GRID, GRID, HUD_BLINK, SEED, AFK_SECONDS } from "@/web/src/constants";
+import { CAMERA_OFFSET, CENTER, DAY_START, DEBUG_GRID, GRID, HUD_BLINK, SEED, AFK_SECONDS, ZOOM_CELLS_IN } from "@/web/src/constants";
 import { applyDayNight, createDayLights, DayClock, isDaytime, livedHoursFromSeconds } from "@/web/src/dayNight";
 import { Atmosphere } from "@/web/src/fx/atmosphere";
 import { syncPlayerChips, type PlayerChipState } from "@/web/src/fx/playerChip";
 import { buildGridOverlay, canEnter } from "@/web/src/gridOverlay";
 import { Input } from "@/web/src/input/Input";
+import { bindMobileInput } from "@/web/src/input/mobileBind";
+import { isMobileUi } from "@/web/src/input/mobileUi";
 import {
   buildBiomes,
   buildCoastField,
@@ -155,6 +157,7 @@ export class Game {
     const [{ scattered, loot, wildlife }, visual] = await Promise.all([worldP, loadPlayerModel(character)]);
 
     const input = new Input();
+    bindMobileInput(input);
     const player = new GridPlayer(biomes, blocked, spawn, visual, input);
     if (saved && typeof saved.yaw === "number" && Number.isFinite(saved.yaw)) {
       player.mesh.rotation.y = saved.yaw;
@@ -345,13 +348,20 @@ export class Game {
           lastInputAt = now;
         }
       }
-      if (input.consumeOpenChat() && player.alive && !ui.dead && !ui.islandFull && !liveSay(localSay, localSayAt, now)) {
+      if (
+        (input.consumeOpenChat() || ui.consumeOpenChat()) &&
+        player.alive &&
+        !ui.dead &&
+        !ui.islandFull &&
+        !liveSay(localSay, localSayAt, now)
+      ) {
         ui.chatOpen = true;
         ui.chatDraft = "";
         input.setComposing(true);
       }
       input.setComposing(ui.chatOpen);
-      zoom.update(dt, input.zoomDir);
+      if (isMobileUi()) zoom.cells = ZOOM_CELLS_IN;
+      else zoom.update(dt, input.zoomDir);
       player.canSprint = needs.canSprint;
       if (input.moveDir()) lastInputAt = Date.now();
       afk = player.alive && (Date.now() - lastInputAt) / 1000 >= AFK_SECONDS;
