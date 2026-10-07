@@ -8,6 +8,7 @@ import { applyDayNight, createDayLights, DayClock, isDaytime, livedHoursFromSeco
 import { Atmosphere } from "@/web/src/fx/atmosphere";
 import { syncPlayerChips, type PlayerChipState } from "@/web/src/fx/playerChip";
 import { buildGridOverlay, canEnter } from "@/web/src/gridOverlay";
+import { postSurvivalScore } from "@/web/src/hubScore";
 import { Input } from "@/web/src/input/Input";
 import { bindMobileInput } from "@/web/src/input/mobileBind";
 import { isMobileUi } from "@/web/src/input/mobileUi";
@@ -742,6 +743,7 @@ export class Game {
         document.body.classList.add("dead");
         applyHealthLook(0);
         persistSurvivor(false, ui.deathHours);
+        postSurvivalScore(ui.deathHours);
         return;
       }
       requestAnimationFrame(frame);
