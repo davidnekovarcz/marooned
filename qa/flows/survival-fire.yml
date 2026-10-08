@@ -1,0 +1,35 @@
+schema: qawalk.scenario.v1
+id: MAROONED-SURVIVAL-FIRE
+title: Survival — light the hut fire
+kind: flow
+source: qa/flows/ACCEPTANCE-survival.md
+version: 1
+locales: [en]
+viewports:
+  desktop: [1280, 800]
+environments: [local]
+lanes: [Main path]
+
+nodes:
+  - id: fire
+    kind: screen
+    title: Hut hearth is lit
+    path: /?room=kaloko-fire&qa=1
+    purpose: With a dry sky and tinder, the hut campfire can be lit.
+    execution:
+      strategy: playwright
+      script: steps/survival-fire.mjs
+      instructions: Force clear weather, give tinder, stand at the hut hearth, light it.
+    criteria:
+      - id: AC1
+        text: A hearth is lit.
+        check:
+          type: deterministic
+          assert: js_equals
+          expression: "document.body.dataset.qaFire === '1'"
+          value: true
+      - id: AC2
+        text: No browser console errors.
+        check: { type: deterministic, assert: no_console_errors }
+
+edges: []

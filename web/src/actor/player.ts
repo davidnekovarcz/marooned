@@ -62,6 +62,7 @@ export class GridPlayer {
   }
 
   placeAt(x: number, z: number): void {
+    this.moving = false;
     this.cellX = x;
     this.cellZ = z;
     this.snap();

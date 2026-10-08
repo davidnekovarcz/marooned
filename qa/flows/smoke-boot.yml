@@ -1,0 +1,42 @@
+schema: qawalk.scenario.v1
+id: MAROONED-SMOKE-BOOT
+title: Smoke — character gate to HUD
+kind: flow
+source: qa/flows/ACCEPTANCE-smoke.md
+version: 1
+locales: [en]
+viewports:
+  desktop: [1280, 800]
+environments: [local]
+lanes: [Main path]
+readonly: false
+
+nodes:
+  - id: boot
+    kind: screen
+    title: In-world after Choose character
+    path: /?room=kaloko-smoke
+    purpose: A new castaway can pick a character and reach the survival HUD.
+    page: work
+    execution:
+      strategy: playwright
+      script: steps/smoke-boot.mjs
+      instructions: Open the smoke room, accept cookies if shown, click Choose character, land in-world.
+    criteria:
+      - id: AC1
+        text: Character select is gone.
+        check: { type: deterministic, assert: absent, selector: "#character:not([hidden])" }
+      - id: AC2
+        text: Survival HUD clock is in the DOM (aria-hidden parent fails exists/visible).
+        check: { type: deterministic, assert: js_equals, expression: "!!document.querySelector('#hud-clock')?.textContent?.trim()", value: true }
+      - id: AC3
+        text: Gear strip is visible.
+        check: { type: deterministic, assert: exists, selector: "#gear:not([hidden])" }
+      - id: AC4
+        text: WebGL canvas is present.
+        check: { type: deterministic, assert: exists, selector: "#game" }
+      - id: AC5
+        text: No browser console errors.
+        check: { type: deterministic, assert: no_console_errors }
+
+edges: []

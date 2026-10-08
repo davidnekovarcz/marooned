@@ -1,0 +1,42 @@
+schema: qawalk.scenario.v1
+id: MAROONED-SMOKE-MOBILE
+title: Smoke — mobile controls
+kind: flow
+source: qa/flows/ACCEPTANCE-smoke.md
+version: 1
+locales: [en]
+viewports:
+  mobile: [390, 844]
+environments: [local]
+lanes: [Main path]
+readonly: false
+
+nodes:
+  - id: mobile
+    kind: screen
+    title: Phone UI after Choose character
+    path: /?room=kaloko-smoke
+    purpose: On a phone-sized viewport the stick and toolbar appear after character select.
+    page: work
+    execution:
+      strategy: playwright
+      script: steps/smoke-mobile.mjs
+      instructions: Open the smoke room at mobile size, choose a character, leave mobile chrome visible.
+    criteria:
+      - id: AC1
+        text: body has mobile-ui class.
+        check: { type: deterministic, assert: exists, selector: "body.mobile-ui" }
+      - id: AC2
+        text: Virtual stick is visible.
+        check: { type: deterministic, assert: exists, selector: "#mobile-controls:not([hidden])" }
+      - id: AC3
+        text: Mobile toolbar is visible.
+        check: { type: deterministic, assert: exists, selector: "#mobile-toolbar:not([hidden])" }
+      - id: AC4
+        text: Survival HUD clock is in the DOM.
+        check: { type: deterministic, assert: js_equals, expression: "!!document.querySelector('#hud-clock')?.textContent?.trim()", value: true }
+      - id: AC5
+        text: No browser console errors.
+        check: { type: deterministic, assert: no_console_errors }
+
+edges: []

@@ -62,6 +62,7 @@ import {
   useUiStore,
   useWorldStore,
 } from "@/web/src/stores/game";
+import { installQaHarness, syncQaDom } from "@/web/src/qa/harness";
 import { mountUi } from "@/web/src/view/mount";
 import { spawnWildlife } from "@/web/src/wildlife";
 import { Item } from "@/web/src/world/item";
@@ -198,6 +199,16 @@ export class Game {
       camp,
       (item) => loot.onRemoved(item),
     );
+    installQaHarness({
+      player,
+      biomes,
+      blocked,
+      items: scattered.items,
+      needs,
+      weather,
+      camp,
+      interact: () => ui.queueInteract(),
+    });
     const session = useSessionStore();
     const needsStore = useNeedsStore();
     const playerStore = usePlayerStore();
@@ -732,6 +743,7 @@ export class Game {
       }
       syncPlayerChips(chips, camera, renderer);
       renderer.render(scene, camera);
+      syncQaDom(player.heldKind ?? "", camp.hearths.some((hearth) => hearth.lit));
       if (needs.health <= 0) {
         dead = true;
         player.alive = false;

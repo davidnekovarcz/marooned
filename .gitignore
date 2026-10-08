@@ -6,3 +6,13 @@ dist/
 web/dist/
 web/.env
 web/firebase-debug.log
+
+# Nested clone of davidnekovarcz/git-hooks. Local only.
+__git-hooks/
+
+# Kaloko / secrets
+.env
+.env.*
+!.env.example
+tmp/kaloko/
+.kaloko/

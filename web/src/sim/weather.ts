@@ -40,9 +40,25 @@ export class Weather {
   /** Seconds since rain last stopped — fireflies live in this afterglow. */
   afterglow = 99;
   flash = 0;
+  /** QA pin so walks can force rain or a dry sky without waiting on the clock. */
+  pinned: "rain" | "clear" | null = null;
   private thunderIn = 12;
 
   update(dt: number, dayT: number, elapsed = 0): void {
+    if (this.pinned === "rain") {
+      this.intensity = 1;
+      this.raining = true;
+      this.storm = false;
+      this.afterglow = 0;
+      return;
+    }
+    if (this.pinned === "clear") {
+      this.intensity = 0;
+      this.raining = false;
+      this.storm = false;
+      this.afterglow = 99;
+      return;
+    }
     const hour = hourOf(dayT);
     const win = inWindow(hour, windowsForDay(dayIndexOf(elapsed)));
     const want = win ? 1 : 0;

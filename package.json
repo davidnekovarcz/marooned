@@ -13,9 +13,15 @@
     "lint:check": "npm run lint:check --prefix web",
     "tsc": "npm run tsc --prefix web",
     "test": "npm run test --prefix web",
-    "test:watch": "npm run test:watch --prefix web"
+    "test:watch": "npm run test:watch --prefix web",
+    "dev:web": "npm run dev --prefix web",
+    "kaloko:doctor": "kaloko doctor",
+    "kaloko:smoke": "sh scripts/kaloko-smoke.sh"
   },
   "dependencies": {
     "serve": "^14.2.4"
+  },
+  "devDependencies": {
+    "kaloko": "^0.16.1"
   }
 }

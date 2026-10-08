@@ -1,0 +1,31 @@
+schema: qawalk.scenario.v1
+id: MAROONED-SURVIVAL-DEATH
+title: Survival — die of hunger and thirst
+kind: flow
+source: qa/flows/ACCEPTANCE-survival.md
+version: 1
+locales: [en]
+viewports:
+  desktop: [1280, 800]
+environments: [local]
+lanes: [Main path]
+
+nodes:
+  - id: death
+    kind: screen
+    title: Death screen
+    path: /?room=kaloko-death&qa=1
+    purpose: Empty hunger and thirst drain health until the death screen appears.
+    execution:
+      strategy: playwright
+      script: steps/survival-death.mjs
+      instructions: Set hunger and thirst to empty with a little health left, wait for death.
+    criteria:
+      - id: AC1
+        text: Death overlay is visible.
+        check: { type: deterministic, assert: exists, selector: "#death:not([hidden])" }
+      - id: AC2
+        text: No browser console errors.
+        check: { type: deterministic, assert: no_console_errors }
+
+edges: []

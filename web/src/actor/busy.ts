@@ -138,11 +138,12 @@ export class BusyAction {
       this.onMealEnd = null;
       ended?.();
     }
+    // Clear busy before the callback so it can pick up (catching a fish).
+    this.busy = false;
     if (lock === "cut" && finished) this.onCutDone?.();
     if (lock === "work" && finished) this.onCutDone?.();
     this.meal = null;
     this.grabbed = false;
-    this.busy = false;
     this.lock = null;
     this.lockT = 0;
     this.onCutDone = null;
