@@ -1,7 +1,31 @@
 import { describe, expect, it } from "vitest";
+import { groundCategory } from "@/web/src/admin/ground";
 import { formatIslandSurvival, respawnLabel, roomStats, sumStats } from "@/web/src/admin/metrics";
-import { cleanRoomSlug } from "@/web/src/net/protocol";
+import { clampMaxPlayers, cleanRoomSlug, isKalokoRoomId, MAX_PLAYERS_LIMIT } from "@/web/src/net/protocol";
 import { livedTodaySeconds, nextVisit, pragueDayKey } from "@/web/src/net/visits";
+
+describe("rooms", () => {
+  it("keeps ten players on four beaches and only removes Kaloko islands", () => {
+    expect(MAX_PLAYERS_LIMIT).toBe(10);
+    expect(clampMaxPlayers(16)).toBe(10);
+    expect(clampMaxPlayers(undefined)).toBe(10);
+    expect(isKalokoRoomId("kaloko-smoke")).toBe(true);
+    expect(isKalokoRoomId("kaloko-death-1791473845267")).toBe(true);
+    expect(isKalokoRoomId("demo")).toBe(false);
+  });
+});
+
+describe("ground categories", () => {
+  it("sorts trees, nature, food, and tools apart", () => {
+    expect(groundCategory("palm")).toBe("tree");
+    expect(groundCategory("bush")).toBe("nature");
+    expect(groundCategory("coconut")).toBe("food");
+    expect(groundCategory("axe")).toBe("tool");
+    expect(groundCategory("stick")).toBe("resource");
+    expect(groundCategory("wreck")).toBe("wreck");
+    expect(groundCategory("leanTo")).toBe("camp");
+  });
+});
 
 describe("cleanRoomSlug", () => {
   it("keeps a short slug and drops everything else", () => {

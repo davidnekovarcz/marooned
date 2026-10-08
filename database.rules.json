@@ -37,20 +37,20 @@
         },
         "visits": {
           "$uid": {
-            ".write": "auth != null && auth.uid === $uid"
+            ".write": "auth != null && (auth.uid === $uid || ($room.matches(/^kaloko-[a-z0-9-]{1,25}$/) && root.child('rooms').child($room).child('host').val() === auth.uid && !newData.exists()))"
           }
         },
         "stats": {
           "peakPlayers": {
-            ".write": "auth != null && root.child('rooms').child($room).child('host').val() === auth.uid && newData.isNumber() && (!data.exists() || newData.val() >= data.val())"
+            ".write": "auth != null && root.child('rooms').child($room).child('host').val() === auth.uid && ((newData.isNumber() && (!data.exists() || newData.val() >= data.val())) || ($room.matches(/^kaloko-[a-z0-9-]{1,25}$/) && !newData.exists()))"
           }
         },
         "config": {
           "maxPlayers": {
-            ".write": "auth.token.email === 'nekovar.david@gmail.com' && newData.isNumber() && newData.val() >= 1 && newData.val() <= 16"
+            ".write": "(auth.token.email === 'nekovar.david@gmail.com' && newData.isNumber() && newData.val() >= 1 && newData.val() <= 10) || (auth != null && $room.matches(/^kaloko-[a-z0-9-]{1,25}$/) && root.child('rooms').child($room).child('host').val() === auth.uid && !newData.exists())"
           },
           "createdAt": {
-            ".write": "(auth.token.email === 'nekovar.david@gmail.com' && newData.isNumber()) || (auth != null && !data.exists() && newData.isNumber())"
+            ".write": "(auth.token.email === 'nekovar.david@gmail.com' && newData.isNumber()) || (auth != null && !data.exists() && newData.isNumber()) || (auth != null && $room.matches(/^kaloko-[a-z0-9-]{1,25}$/) && root.child('rooms').child($room).child('host').val() === auth.uid && !newData.exists())"
           }
         },
         "commands": {

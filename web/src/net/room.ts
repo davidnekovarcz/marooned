@@ -11,6 +11,7 @@ import {
 import { connectFirebase, firebaseConfigured } from "@/web/src/net/firebase";
 import {
   clampMaxPlayers,
+  isKalokoRoomId,
   MAX_PLAYERS_LIMIT,
   roomIdFromUrl,
   type NetGrant,
@@ -132,6 +133,45 @@ export class Room {
       this.respawnAt = null;
     } catch (err) {
       console.warn("clearRespawnCommand failed", err);
+    }
+  }
+
+  /** Remove a Kaloko island after a walk. `demo` and admin rooms stay. */
+  async deleteKalokoRoom(): Promise<void> {
+    if (!isKalokoRoomId(this.roomId) || (!this.isHost && this.slot !== 0)) return;
+    const base = `rooms/${this.roomId}`;
+    try {
+      const snap = await get(ref(this.db, base));
+      const room = snap.val();
+      if (!room || typeof room !== "object") return;
+      const row = room as Record<string, unknown>;
+      const jobs: Promise<unknown>[] = [];
+      const clearChildren = (node: string) => {
+        const children = row[node];
+        if (!children || typeof children !== "object") return;
+        for (const key of Object.keys(children as Record<string, unknown>)) {
+          jobs.push(set(ref(this.db, `${base}/${node}/${key}`), null));
+        }
+      };
+      clearChildren("slots");
+      clearChildren("players");
+      clearChildren("intents");
+      clearChildren("grants");
+      clearChildren("survivors");
+      clearChildren("visits");
+      if ("host" in row) jobs.push(set(ref(this.db, `${base}/host`), null));
+      if ("world" in row) jobs.push(set(ref(this.db, `${base}/world`), null));
+      if (row.stats && typeof row.stats === "object") jobs.push(set(ref(this.db, `${base}/stats/peakPlayers`), null));
+      if (row.config && typeof row.config === "object") {
+        jobs.push(set(ref(this.db, `${base}/config/maxPlayers`), null));
+        jobs.push(set(ref(this.db, `${base}/config/createdAt`), null));
+      }
+      if (row.commands && typeof row.commands === "object") {
+        jobs.push(set(ref(this.db, `${base}/commands/respawnItems`), null));
+      }
+      await Promise.all(jobs);
+    } catch (err) {
+      console.warn("deleteKalokoRoom failed", err);
     }
   }
 
@@ -306,6 +346,12 @@ export class Room {
   dispose(): void {
     for (const stop of this.unsubs) stop();
     this.unsubs = [];
+  }
+}
+
+declare global {
+  interface Window {
+    __maroonedDeleteRoom?: () => Promise<void>;
   }
 }
 

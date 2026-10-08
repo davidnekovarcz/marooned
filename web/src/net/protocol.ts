@@ -5,10 +5,18 @@ import type { ResolvedAction } from "@/web/src/sim/actions";
 import type { ItemSnapshot } from "@/web/src/world/item";
 import type { HeldKind } from "@/web/src/world/kinds";
 
+/** Shore beaches. Extra players share these; they do not add new beaches. */
 export const ROOM_SLOT_COUNT = 4;
 /** Highest cap an admin can set. Existing occupants above a lower cap stay. */
-export const MAX_PLAYERS_LIMIT = 16;
-export const DEFAULT_MAX_PLAYERS = ROOM_SLOT_COUNT;
+export const MAX_PLAYERS_LIMIT = 10;
+export const DEFAULT_MAX_PLAYERS = MAX_PLAYERS_LIMIT;
+
+/** Test islands. The host may remove one when the walk ends. `demo` does not match. */
+const KALOKO_ROOM_ID = /^kaloko-[a-z0-9-]{1,25}$/;
+
+export function isKalokoRoomId(id: string): boolean {
+  return KALOKO_ROOM_ID.test(id);
+}
 
 export function clampMaxPlayers(value: unknown): number {
   const n = typeof value === "number" ? Math.floor(value) : DEFAULT_MAX_PLAYERS;

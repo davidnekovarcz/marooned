@@ -31,7 +31,7 @@ import { loadPlayerModel } from "@/web/src/playerModel";
 import { scatterProps } from "@/web/src/props";
 import { Actions, type ResolvedAction } from "@/web/src/sim/actions";
 import { applyHostIntent } from "@/web/src/net/hostIntents";
-import { liveSay, parseLootTimers, PLAYER_HZ, SAY_MAX, WORLD_HZ, roomIdFromUrl, type NetIntent } from "@/web/src/net/protocol";
+import { isKalokoRoomId, liveSay, parseLootTimers, PLAYER_HZ, SAY_MAX, WORLD_HZ, roomIdFromUrl, type NetIntent } from "@/web/src/net/protocol";
 import { joinRoom, type Room } from "@/web/src/net/room";
 import {
   consumeForceRespawn,
@@ -127,6 +127,7 @@ export class Game {
       ui.netRoom = room.roomId;
       ui.netHost = room.isHost;
       if (room.isHost) void room.removeGhostsByName(["Salt Gull", "Far Ash"]);
+      if (isKalokoRoomId(room.roomId)) window.__maroonedDeleteRoom = () => room.deleteKalokoRoom();
     }
 
     const persistRoomId = room?.roomId ?? roomIdFromUrl();
@@ -139,7 +140,7 @@ export class Game {
 
     const freshSpawn = respawn || !saved?.alive;
     const spawns = findSpawns(biomes);
-    const slotSpawn = room ? (spawns[room.slot] ?? findSpawn(biomes)) : findSpawn(biomes);
+    const slotSpawn = room ? (spawns[room.slot % spawns.length] ?? findSpawn(biomes)) : findSpawn(biomes);
     let spawn = slotSpawn;
     if (saved && canEnter(biomes, blocked, saved.cellX, saved.cellZ)) {
       spawn = { x: saved.cellX, z: saved.cellZ };
@@ -320,6 +321,10 @@ export class Game {
     };
 
     window.addEventListener("pagehide", () => {
+      if (room && isKalokoRoomId(room.roomId)) {
+        void room.deleteKalokoRoom();
+        return;
+      }
       persistSurvivor(player.alive && !dead, ui.deathHours);
     });
 

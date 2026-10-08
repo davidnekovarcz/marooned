@@ -1,3 +1,4 @@
+import { groundCategory, type GroundCategory } from "@/web/src/admin/ground";
 import { respawnLabel, roomStats, type RoomStats } from "@/web/src/admin/metrics";
 import { clampMaxPlayers, parseLootTimers, type LootTimer } from "@/web/src/net/protocol";
 import { parseSurvivor } from "@/web/src/net/survivor";
@@ -12,6 +13,7 @@ export type PlayerRow = {
 
 export type ItemRow = {
   kind: string;
+  category: GroundCategory;
   cell: string;
   state: string;
   countdown: string;
@@ -41,27 +43,29 @@ function onlineCount(slots: unknown): number {
 }
 
 function itemRows(world: Record<string, unknown>): ItemRow[] {
-  const timers = parseLootTimers(world.loot);
-  if (timers.length) {
-    return timers.map((row) => rowFromTimer(row));
-  }
-  const placed = Array.isArray(world.items)
-    ? world.items
-    : Object.values(asRecord(world.items));
-  return placed.flatMap((raw) => {
+  const timers = parseLootTimers(world.loot).map((row) => rowFromTimer(row));
+  const covered = new Set(timers.map((row) => `${row.kind}@${row.cell}`));
+  const placed = Array.isArray(world.items) ? world.items : Object.values(asRecord(world.items));
+  const scenery = placed.flatMap((raw) => {
     if (!raw || typeof raw !== "object") return [];
     const item = raw as { kind?: unknown; cellX?: unknown; cellZ?: unknown };
     const kind = typeof item.kind === "string" ? item.kind : "";
     if (!kind) return [];
     const cell =
       typeof item.cellX === "number" && typeof item.cellZ === "number" ? `${item.cellX}, ${item.cellZ}` : "—";
-    return [{ kind, cell, state: "placed", countdown: "—" }];
+    if (covered.has(`${kind}@${cell}`)) return [];
+    return [itemRow(kind, cell, "placed", "—")];
   });
+  return [...timers, ...scenery].sort((a, b) => a.category.localeCompare(b.category) || a.kind.localeCompare(b.kind));
+}
+
+function itemRow(kind: string, cell: string, state: string, countdown: string): ItemRow {
+  return { kind, category: groundCategory(kind), cell, state, countdown };
 }
 
 function rowFromTimer(row: LootTimer): ItemRow {
   const cell = row.cellX == null || row.cellZ == null ? "—" : `${row.cellX}, ${row.cellZ}`;
-  return { kind: row.kind, cell, state: row.state, countdown: respawnLabel(row) };
+  return itemRow(row.kind, cell, row.state, respawnLabel(row));
 }
 
 export function parseRooms(raw: unknown, today: string): RoomRecord[] {
