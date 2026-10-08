@@ -1006,5 +1006,93 @@ body.mobile-ui .say-action {
   min-height: 44px;
 }
 
+body.admin {
+  overflow: auto;
+  background: #1c1914;
+  color: #f4efe6;
+}
+
+body.admin #ui {
+  position: static;
+  pointer-events: auto;
+  min-height: 100%;
+}
+
+body.admin #character {
+  display: none;
+}
+
+.admin {
+  max-width: 64rem;
+  margin: 0 auto;
+  padding: 1.5rem 1rem 3rem;
+  font: 16px/1.4 system-ui, sans-serif;
+}
+
+.admin h1,
+.admin h2,
+.admin h3 {
+  font-weight: 600;
+}
+
+.admin section {
+  margin: 1.5rem 0;
+}
+
+.admin label {
+  display: inline-flex;
+  gap: 0.4rem;
+  align-items: center;
+  margin: 0 0.8rem 0.6rem 0;
+}
+
+.admin input,
+.admin select,
+.admin button {
+  font: inherit;
+}
+
+.admin button {
+  margin: 0 0.4rem 0.6rem 0;
+  padding: 0.35rem 0.7rem;
+}
+
+.admin table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 0.6rem;
+}
+
+.admin th,
+.admin td {
+  text-align: left;
+  padding: 0.35rem 0.5rem;
+  border-bottom: 1px solid #3a342c;
+}
+
+.admin tr.selected td {
+  background: #2c261f;
+}
+
+.admin dl {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr));
+  gap: 0.6rem;
+  margin: 0.4rem 0 0.8rem;
+}
+
+.admin dt {
+  font-size: 0.8rem;
+  color: #c8bfb2;
+}
+
+.admin dd {
+  margin: 0;
+}
+
+.admin .note {
+  color: #e7d7a1;
+}
+
 
 

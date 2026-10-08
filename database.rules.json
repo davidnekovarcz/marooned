@@ -1,6 +1,7 @@
 {
   "rules": {
     "rooms": {
+      ".read": "auth.token.email === 'nekovar.david@gmail.com'",
       "$room": {
         ".read": true,
         "slots": {
@@ -32,6 +33,29 @@
         "survivors": {
           "$uid": {
             ".write": "auth != null && (auth.uid === $uid || (root.child('rooms').child($room).child('host').val() === auth.uid && !newData.exists()))"
+          }
+        },
+        "visits": {
+          "$uid": {
+            ".write": "auth != null && auth.uid === $uid"
+          }
+        },
+        "stats": {
+          "peakPlayers": {
+            ".write": "auth != null && root.child('rooms').child($room).child('host').val() === auth.uid && newData.isNumber() && (!data.exists() || newData.val() >= data.val())"
+          }
+        },
+        "config": {
+          "maxPlayers": {
+            ".write": "auth.token.email === 'nekovar.david@gmail.com' && newData.isNumber() && newData.val() >= 1 && newData.val() <= 16"
+          },
+          "createdAt": {
+            ".write": "(auth.token.email === 'nekovar.david@gmail.com' && newData.isNumber()) || (auth != null && !data.exists() && newData.isNumber())"
+          }
+        },
+        "commands": {
+          "respawnItems": {
+            ".write": "auth.token.email === 'nekovar.david@gmail.com' || (auth != null && root.child('rooms').child($room).child('host').val() === auth.uid && !newData.exists())"
           }
         }
       }

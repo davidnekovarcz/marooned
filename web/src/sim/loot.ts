@@ -11,6 +11,7 @@ import { isFoodKind, type FoodKind } from "@/web/src/food";
 import type { ModelKind } from "@/web/src/models";
 import { mulberry32 } from "@/web/src/rng";
 import { Item, type SpawnFn } from "@/web/src/world/item";
+import type { LootTimer } from "@/web/src/net/protocol";
 import type { ToolKind } from "@/web/src/world/kinds";
 
 export type Cell = { x: number; z: number };
@@ -182,6 +183,47 @@ export class Loot {
       placed: this.lives.filter((it) => it.state !== "waiting").length,
       kinds: this.lives.map((it) => `${it.kind}:${it.state}:${it.cell ? `${it.cell.x},${it.cell.z}` : "-"}`),
     });
+  }
+
+  exportTimers(): LootTimer[] {
+    return this.lives.map((live) => ({
+      kind: live.kind,
+      state: live.state,
+      age: live.age,
+      respawn: live.respawn,
+      cellX: live.cell?.x ?? null,
+      cellZ: live.cell?.z ?? null,
+    }));
+  }
+
+  /** Waiting ground loot is due now. Held and pocket items are not lives. */
+  forceGroundRespawn(): void {
+    for (const live of this.lives) {
+      if (live.state !== "waiting" || !live.respawn) continue;
+      const tool = TOOLS.some((spec) => spec.kind === live.kind);
+      live.age = tool ? TOOL_RESPAWN_SECONDS : LOOT_RESPAWN_SECONDS;
+    }
+  }
+
+  /** Continue saved countdowns after the host reloads. */
+  adoptTimers(rows: LootTimer[]): void {
+    const pending = [...rows];
+    for (const live of this.lives) {
+      const index = pending.findIndex((row) => row.kind === live.kind);
+      if (index < 0) continue;
+      const row = pending.splice(index, 1)[0];
+      if (!row) continue;
+      live.respawn = row.respawn;
+      if (row.state === "waiting") {
+        if (live.item) this.despawn(live);
+        live.state = "waiting";
+        live.age = row.age;
+        continue;
+      }
+      if (live.state === "waiting") this.trySpawn(live);
+      if (row.state === "rotten" && live.item && live.state === "fresh") this.rotItem(live);
+      live.age = row.age;
+    }
   }
 
   update(dt: number, playerX?: number, playerZ?: number): void {

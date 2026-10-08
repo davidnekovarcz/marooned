@@ -4,7 +4,7 @@ import type { DayClock } from "@/web/src/dayNight";
 import type { Weather } from "@/web/src/sim/weather";
 import { Item, type ItemSnapshot, type SpawnFn } from "@/web/src/world/item";
 import type { HeldKind } from "@/web/src/world/kinds";
-import type { NetWorld } from "@/web/src/net/protocol";
+import type { LootTimer, NetWorld } from "@/web/src/net/protocol";
 
 function moveMesh(item: Item): void {
   item.mesh.position.x = item.cellX * CELL + CELL / 2;
@@ -134,7 +134,13 @@ export function applyNetWorld(
   camp.replaceShelters(asArray(world.shelters));
 }
 
-export function snapshotWorld(items: Item[], camp: Camp, day: DayClock, weather: Weather): NetWorld {
+export function snapshotWorld(
+  items: Item[],
+  camp: Camp,
+  day: DayClock,
+  weather: Weather,
+  loot?: LootTimer[],
+): NetWorld {
   return {
     elapsed: Number.isFinite(day.elapsed) ? day.elapsed : 0,
     dayT: Number.isFinite(day.t) ? day.t : 0,
@@ -147,6 +153,7 @@ export function snapshotWorld(items: Item[], camp: Camp, day: DayClock, weather:
     items: items.filter(Boolean).map((item) => item.snapshot()),
     hearths: camp.hearths.filter((h) => h?.item?.id).map((h) => ({ id: h.item.id, lit: Boolean(h.lit) })),
     shelters: camp.shelters.filter(Boolean).map((s) => ({ x: s.x, z: s.z })),
+    ...(loot ? { loot } : {}),
   };
 }
 

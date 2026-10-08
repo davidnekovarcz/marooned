@@ -10,7 +10,8 @@ import {
 } from "firebase/database";
 import { connectFirebase, firebaseConfigured } from "@/web/src/net/firebase";
 import {
-  ROOM_SLOT_COUNT,
+  clampMaxPlayers,
+  MAX_PLAYERS_LIMIT,
   roomIdFromUrl,
   type NetGrant,
   type NetIntent,
@@ -18,6 +19,7 @@ import {
   type NetWorld,
 } from "@/web/src/net/protocol";
 import { parseSurvivor, type NetSurvivor } from "@/web/src/net/survivor";
+import { nextVisit, parseVisit } from "@/web/src/net/visits";
 
 export type JoinResult =
   | { kind: "solo" }
@@ -39,6 +41,8 @@ export class Room {
   private grant: NetGrant | null = null;
   private unsubs: Unsubscribe[] = [];
   private lastPruneAt = 0;
+  private respawnAt: number | null = null;
+  private peakSent = 0;
 
   constructor(
     readonly db: Database,
@@ -82,7 +86,7 @@ export class Room {
         const slots = (snap.val() as Record<string, SlotRow> | null) ?? {};
         this.slots = slots;
         let best: { slot: number; uid: string } | null = null;
-        for (let i = 0; i < ROOM_SLOT_COUNT; i++) {
+        for (let i = 0; i < MAX_PLAYERS_LIMIT; i++) {
           const row = slots[String(i)];
           if (!row?.uid) continue;
           if (!best || i < best.slot) best = { slot: i, uid: row.uid };
@@ -102,7 +106,50 @@ export class Room {
       onValue(ref(this.db, `${base}/grants/${this.uid}`), (snap) => {
         this.grant = (snap.val() as NetGrant | null) ?? null;
       }),
+      onValue(ref(this.db, `${base}/commands/respawnItems`), (snap) => {
+        const at = snap.val();
+        this.respawnAt = typeof at === "number" && Number.isFinite(at) ? at : null;
+      }),
     );
+  }
+
+  onlineCount(): number {
+    let n = 0;
+    for (const row of Object.values(this.slots)) {
+      if (row?.uid) n += 1;
+    }
+    return n;
+  }
+
+  peekRespawnCommand(): number | null {
+    return this.respawnAt;
+  }
+
+  async clearRespawnCommand(): Promise<void> {
+    if (!this.isHost) return;
+    try {
+      await set(ref(this.db, `rooms/${this.roomId}/commands/respawnItems`), null);
+      this.respawnAt = null;
+    } catch (err) {
+      console.warn("clearRespawnCommand failed", err);
+    }
+  }
+
+  async raisePeak(count: number): Promise<void> {
+    if (!this.isHost || count <= this.peakSent) return;
+    this.peakSent = count;
+    try {
+      const peakRef = ref(this.db, `rooms/${this.roomId}/stats/peakPlayers`);
+      const tx = await runTransaction(peakRef, (current: number | null) => {
+        const prev = typeof current === "number" && Number.isFinite(current) ? current : 0;
+        return Math.max(prev, count);
+      });
+      const saved = tx.snapshot.val();
+      if (typeof saved === "number" && saved > this.peakSent) this.peakSent = saved;
+    } catch (err) {
+      this.peakSent = 0;
+      console.warn("raisePeak failed", err);
+    }
   }
 
   /** Drop player/intent rows whose uid is no longer holding a slot (failed onDisconnect leftovers). */
@@ -184,6 +231,7 @@ export class Room {
         await set(ref(this.db, `${base}/hearths`), payload.hearths ?? []);
         await set(ref(this.db, `${base}/shelters`), payload.shelters ?? []);
         await set(ref(this.db, `${base}/items`), payload.items ?? []);
+        if (payload.loot) await set(ref(this.db, `${base}/loot`), payload.loot);
       } catch (chunkErr) {
         console.warn("publishWorld chunked failed", chunkErr);
       }
@@ -246,6 +294,10 @@ export class Room {
   async saveSurvivor(row: NetSurvivor): Promise<void> {
     try {
       await set(ref(this.db, `rooms/${this.roomId}/survivors/${this.uid}`), toRtdb(row));
+      const visitRef = ref(this.db, `rooms/${this.roomId}/visits/${this.uid}`);
+      const prev = parseVisit((await get(visitRef)).val());
+      const now = row.updatedAt || Date.now();
+      await set(visitRef, toRtdb(nextVisit(prev, row.livedSeconds, row.character.name, now)));
     } catch (err) {
       console.warn("saveSurvivor failed", err);
     }
@@ -264,19 +316,44 @@ export async function joinRoom(): Promise<JoinResult> {
     if (!fb?.auth.currentUser) return { kind: "solo" };
     const uid = fb.auth.currentUser.uid;
     const roomId = roomIdFromUrl();
+    const cap = clampMaxPlayers((await get(ref(fb.db, `rooms/${roomId}/config/maxPlayers`))).val());
+    const held = ((await get(ref(fb.db, `rooms/${roomId}/slots`))).val() as Record<string, SlotRow> | null) ?? {};
     let slot = -1;
-    for (let i = 0; i < ROOM_SLOT_COUNT; i++) {
-      const slotRef = ref(fb.db, `rooms/${roomId}/slots/${i}`);
-      const tx = await runTransaction(slotRef, (current: SlotRow | null) => {
-        if (current?.uid && current.uid !== uid) return;
-        return { uid, connectedAt: Date.now() };
-      });
-      if (tx.committed && (tx.snapshot.val() as SlotRow | null)?.uid === uid) {
-        slot = i;
-        break;
+    let occupied = 0;
+    for (let i = 0; i < MAX_PLAYERS_LIMIT; i++) {
+      const row = held[String(i)];
+      if (!row?.uid) continue;
+      occupied += 1;
+      if (row.uid === uid) slot = i;
+    }
+    if (slot < 0 && occupied >= cap) return { kind: "full" };
+    if (slot < 0) {
+      for (let i = 0; i < cap; i++) {
+        const slotRef = ref(fb.db, `rooms/${roomId}/slots/${i}`);
+        const tx = await runTransaction(slotRef, (current: SlotRow | null) => {
+          if (current?.uid && current.uid !== uid) return;
+          return { uid, connectedAt: Date.now() };
+        });
+        if (tx.committed && (tx.snapshot.val() as SlotRow | null)?.uid === uid) {
+          slot = i;
+          break;
+        }
       }
+    } else {
+      await set(ref(fb.db, `rooms/${roomId}/slots/${slot}`), { uid, connectedAt: Date.now() });
     }
     if (slot < 0) return { kind: "full" };
+    try {
+      const createdRef = ref(fb.db, `rooms/${roomId}/config/createdAt`);
+      if (typeof (await get(createdRef)).val() !== "number") {
+        await runTransaction(createdRef, (current: number | null) => {
+          if (typeof current === "number") return current;
+          return Date.now();
+        });
+      }
+    } catch (err) {
+      console.warn("createdAt", err);
+    }
 
     const room = new Room(fb.db, roomId, uid, slot);
     const slotRef = ref(fb.db, `rooms/${roomId}/slots/${slot}`);

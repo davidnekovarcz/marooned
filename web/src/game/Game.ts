@@ -31,7 +31,7 @@ import { loadPlayerModel } from "@/web/src/playerModel";
 import { scatterProps } from "@/web/src/props";
 import { Actions, type ResolvedAction } from "@/web/src/sim/actions";
 import { applyHostIntent } from "@/web/src/net/hostIntents";
-import { liveSay, PLAYER_HZ, SAY_MAX, WORLD_HZ, roomIdFromUrl, type NetIntent } from "@/web/src/net/protocol";
+import { liveSay, parseLootTimers, PLAYER_HZ, SAY_MAX, WORLD_HZ, roomIdFromUrl, type NetIntent } from "@/web/src/net/protocol";
 import { joinRoom, type Room } from "@/web/src/net/room";
 import {
   consumeForceRespawn,
@@ -174,6 +174,8 @@ export class Game {
     const savedWorld = room ? await room.loadWorld() : null;
     if (savedWorld) {
       applyNetWorld(savedWorld, scattered.items, scattered.spawn, camp, day, weather, (item) => loot.onRemoved(item));
+      const timers = parseLootTimers(savedWorld.loot);
+      if (timers.length) loot.adoptTimers(timers);
     }
     const atmosphere = new Atmosphere(scene);
     atmosphere.attachIsland(islandMesh);
@@ -662,6 +664,11 @@ export class Game {
           });
         }
         if (room.isHost) {
+          void room.raisePeak(room.onlineCount());
+          if (room.peekRespawnCommand()) {
+            loot.forceGroundRespawn();
+            void room.clearRespawnCommand();
+          }
           void room.pruneOrphans(now);
           for (const intent of room.consumeIntents()) {
             if (intent.uid === room.uid) continue;
@@ -679,7 +686,7 @@ export class Game {
           if (worldSend >= 1 / WORLD_HZ && hostCaughtWorld) {
             worldSend = 0;
             try {
-              void room.publishWorld(snapshotWorld(scattered.items, camp, day, weather));
+              void room.publishWorld(snapshotWorld(scattered.items, camp, day, weather, loot.exportTimers()));
             } catch (err) {
               console.warn("snapshotWorld failed", err);
             }
