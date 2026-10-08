@@ -24,6 +24,8 @@ export const CAMERA_LERP_RUN = 0.07;
 export const CAMERA_LERP = 0.12;
 export const CAMERA_OFFSET = { x: -18, y: 24, z: -18 } as const;
 export const ZOOM_CELLS_IN = 10;
+/** Phone zoom-in floor — half the desktop span so + can get ~2× closer. */
+export const ZOOM_CELLS_IN_MOBILE = ZOOM_CELLS_IN / 2;
 /** Horizontal span ≈ half the island (radius cells). */
 export const ZOOM_CELLS_OUT = ISLAND_RADIUS;
 export const ZOOM_CELLS_START = 16;

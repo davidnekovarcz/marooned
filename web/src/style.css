@@ -51,6 +51,10 @@ canvas {
   left: 50%;
   bottom: 88px;
   z-index: 6;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
   transform: translateX(-50%);
 }
 
@@ -72,6 +76,34 @@ canvas {
 
 #say-input::placeholder {
   color: rgba(244, 247, 242, 0.55);
+}
+
+.say-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.say-action {
+  min-height: 40px;
+  padding: 8px 14px;
+  border: 0;
+  border-radius: 8px;
+  background: rgba(8, 24, 32, 0.72);
+  color: #f4f7f2;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.say-send {
+  background: rgba(244, 247, 242, 0.22);
+}
+
+.say-action:active {
+  background: rgba(244, 247, 242, 0.3);
 }
 
 #gear {
@@ -109,6 +141,43 @@ canvas {
   color: inherit;
   font: inherit;
   text-align: left;
+}
+
+.gear-hands-row {
+  display: flex;
+  align-items: stretch;
+  gap: 6px;
+}
+
+.gear-hands-row .gear-slot {
+  flex: 1;
+  min-width: 0;
+}
+
+.gear-drop {
+  display: none;
+  align-self: center;
+  margin: 0;
+  padding: 6px 10px;
+  border: 0;
+  border-radius: 6px;
+  background: rgba(244, 247, 242, 0.18);
+  color: inherit;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  touch-action: manipulation;
+  white-space: nowrap;
+}
+
+.gear-drop:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.gear-drop:not(:disabled):active {
+  background: rgba(244, 247, 242, 0.28);
 }
 
 button.gear-slot {
@@ -428,6 +497,7 @@ body.gate #gear,
 body.gate #interact,
 body.gate #say-compose,
 body.gate #mobile-controls,
+body.gate #mobile-toolbar,
 body.gate .player-chip,
 body.dead #hud-bar,
 body.dead #hud-world,
@@ -437,6 +507,7 @@ body.dead #gear,
 body.dead #interact,
 body.dead #say-compose,
 body.dead #mobile-controls,
+body.dead #mobile-toolbar,
 body.dead .player-chip {
   display: none;
 }
@@ -721,6 +792,14 @@ body.dead .player-chip {
   display: none;
 }
 
+#mobile-toolbar {
+  display: none;
+}
+
+#mobile-toolbar[hidden] {
+  display: none !important;
+}
+
 .mobile-stick {
   position: absolute;
   left: 50%;
@@ -754,37 +833,6 @@ body.dead .player-chip {
   will-change: transform;
 }
 
-#mobile-pads {
-  position: absolute;
-  right: max(12px, env(safe-area-inset-right));
-  bottom: max(12px, env(safe-area-inset-bottom));
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 8px;
-  width: 88px;
-  pointer-events: auto;
-}
-
-.mobile-pad {
-  min-height: 44px;
-  padding: 8px 10px;
-  border: 0;
-  border-radius: 10px;
-  background: rgba(8, 24, 32, 0.55);
-  color: #f4f7f2;
-  font: inherit;
-  font-size: 15px;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-  touch-action: manipulation;
-  cursor: pointer;
-}
-
-.mobile-pad:active {
-  background: rgba(244, 247, 242, 0.22);
-}
-
 /* Mobile / narrow only — desktop layout stays untouched. */
 body.mobile-ui #hint {
   display: none;
@@ -805,6 +853,67 @@ body.mobile-ui #hud-bar {
   background: rgba(8, 24, 32, 0.5);
   color: #f4f7f2;
   pointer-events: none;
+}
+
+body.mobile-ui #mobile-toolbar {
+  display: flex;
+  position: fixed;
+  top: calc(max(10px, env(safe-area-inset-top)) + 48px);
+  left: max(10px, env(safe-area-inset-left));
+  right: max(10px, env(safe-area-inset-right));
+  z-index: 3;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  pointer-events: none;
+}
+
+body.mobile-ui.gate #mobile-toolbar,
+body.mobile-ui.dead #mobile-toolbar {
+  display: none;
+}
+
+body.mobile-ui .mobile-tool {
+  min-height: 40px;
+  min-width: 40px;
+  padding: 8px 12px;
+  border: 0;
+  border-radius: 10px;
+  background: rgba(8, 24, 32, 0.55);
+  color: #f4f7f2;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  touch-action: manipulation;
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+body.mobile-ui .mobile-tool:active {
+  background: rgba(244, 247, 242, 0.22);
+}
+
+body.mobile-ui .mobile-zoom {
+  display: flex;
+  gap: 6px;
+  pointer-events: auto;
+}
+
+body.mobile-ui .mobile-zoom-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  padding: 8px 0;
+  font-size: 18px;
+  line-height: 1;
+}
+
+body.mobile-ui .mobile-zoom-icon {
+  width: 20px;
+  height: 20px;
+  display: block;
 }
 
 body.mobile-ui #hud-world {
@@ -844,9 +953,17 @@ body.mobile-ui #hud-needs .need {
 body.mobile-ui #gear {
   left: max(12px, env(safe-area-inset-left));
   bottom: max(12px, env(safe-area-inset-bottom));
-  max-width: min(9.5rem, calc(50vw - 70px));
+  max-width: min(11.5rem, calc(50vw - 24px));
   font-size: 12px;
   z-index: 3;
+}
+
+body.mobile-ui .gear-drop {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 36px;
+  padding: 6px 10px;
 }
 
 body.mobile-ui button.gear-slot {
@@ -857,7 +974,7 @@ body.mobile-ui button.gear-slot {
 body.mobile-ui #interact {
   left: 50%;
   right: auto;
-  bottom: calc(112px + 18px + env(safe-area-inset-bottom, 0px));
+  bottom: calc(112px + 72px + env(safe-area-inset-bottom, 0px));
   transform: translateX(-50%);
   max-width: min(14rem, calc(100vw - 40px));
 }
@@ -869,7 +986,24 @@ body.mobile-ui #interact-action {
 }
 
 body.mobile-ui #say-compose {
-  bottom: calc(112px + 22px + env(safe-area-inset-bottom, 0px));
+  top: calc(max(10px, env(safe-area-inset-top)) + 96px);
+  bottom: auto;
+  left: 50%;
+  width: min(22rem, calc(100vw - 24px));
+  transform: translateX(-50%);
+}
+
+body.mobile-ui #say-input {
+  width: 100%;
+}
+
+body.mobile-ui .say-actions {
+  width: 100%;
+}
+
+body.mobile-ui .say-action {
+  flex: 1;
+  min-height: 44px;
 }
 
 

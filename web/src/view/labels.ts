@@ -1,4 +1,5 @@
 import { t } from "@/web/src/i18n";
+import { isMobileUi } from "@/web/src/input/mobileUi";
 import { itemLabelParts, type FoodPrep, type Freshness } from "@/web/src/food";
 import type { ResolvedAction } from "@/web/src/sim/actions";
 
@@ -19,7 +20,7 @@ export function formatActionLabel(action: ResolvedAction): string {
     if (action.blocked === "rotten") return t("food.state.rotten");
     return `${verb} (${t(`action.blocked.${action.blocked}`)})`;
   }
-  return `${verb} [SPACE]`;
+  return isMobileUi() ? verb : `${verb} [SPACE]`;
 }
 
 export function formatDeathTime(gameHours: number): string {

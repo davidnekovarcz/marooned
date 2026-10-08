@@ -5,7 +5,7 @@
         ".read": true,
         "slots": {
           "$slot": {
-            ".write": "auth != null && (!data.exists() || data.child('uid').val() === auth.uid) && (!newData.exists() || newData.child('uid').val() === auth.uid)"
+            ".write": "auth != null && (( !data.exists() || data.child('uid').val() === auth.uid || (root.child('rooms').child($room).child('host').val() === auth.uid && !newData.exists()) ) && ( !newData.exists() || newData.child('uid').val() === auth.uid ))"
           }
         },
         "host": {
@@ -13,7 +13,7 @@
         },
         "players": {
           "$uid": {
-            ".write": "auth != null && auth.uid === $uid"
+            ".write": "auth != null && (auth.uid === $uid || (root.child('rooms').child($room).child('host').val() === auth.uid && !newData.exists()))"
           }
         },
         "intents": {
@@ -31,7 +31,7 @@
         },
         "survivors": {
           "$uid": {
-            ".write": "auth != null && auth.uid === $uid"
+            ".write": "auth != null && (auth.uid === $uid || (root.child('rooms').child($room).child('host').val() === auth.uid && !newData.exists()))"
           }
         }
       }

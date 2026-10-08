@@ -34,9 +34,11 @@ export class Room {
   hostUid: string | null = null;
   private players: Record<string, NetPlayer> = {};
   private intents: Record<string, NetIntent> = {};
+  private slots: Record<string, SlotRow> = {};
   private world: NetWorld | null = null;
   private grant: NetGrant | null = null;
   private unsubs: Unsubscribe[] = [];
+  private lastPruneAt = 0;
 
   constructor(
     readonly db: Database,
@@ -50,7 +52,11 @@ export class Room {
   }
 
   get remotes(): NetPlayer[] {
-    return Object.values(this.players).filter((p) => p.uid !== this.uid);
+    const live = new Set<string>();
+    for (const row of Object.values(this.slots)) {
+      if (row?.uid) live.add(row.uid);
+    }
+    return Object.values(this.players).filter((p) => p.uid !== this.uid && live.has(p.uid));
   }
 
   latestWorld(): NetWorld | null {
@@ -74,6 +80,7 @@ export class Room {
     this.unsubs.push(
       onValue(ref(this.db, `${base}/slots`), (snap) => {
         const slots = (snap.val() as Record<string, SlotRow> | null) ?? {};
+        this.slots = slots;
         let best: { slot: number; uid: string } | null = null;
         for (let i = 0; i < ROOM_SLOT_COUNT; i++) {
           const row = slots[String(i)];
@@ -96,6 +103,62 @@ export class Room {
         this.grant = (snap.val() as NetGrant | null) ?? null;
       }),
     );
+  }
+
+  /** Drop player/intent rows whose uid is no longer holding a slot (failed onDisconnect leftovers). */
+  async pruneOrphans(now = Date.now()): Promise<void> {
+    if (!this.isHost) return;
+    if (now - this.lastPruneAt < 2000) return;
+    this.lastPruneAt = now;
+    const live = new Set<string>();
+    for (const row of Object.values(this.slots)) {
+      if (row?.uid) live.add(row.uid);
+    }
+    const jobs: Promise<unknown>[] = [];
+    for (const uid of Object.keys(this.players)) {
+      if (live.has(uid)) continue;
+      jobs.push(set(ref(this.db, `rooms/${this.roomId}/players/${uid}`), null));
+    }
+    for (const uid of Object.keys(this.intents)) {
+      if (live.has(uid)) continue;
+      jobs.push(set(ref(this.db, `rooms/${this.roomId}/intents/${uid}`), null));
+    }
+    if (!jobs.length) return;
+    try {
+      await Promise.all(jobs);
+    } catch (err) {
+      console.warn("pruneOrphans failed", err);
+    }
+  }
+
+  /** One-shot host cleanup by display name (stale ghosts, including slot holders). */
+  async removeGhostsByName(names: string[]): Promise<number> {
+    if (!this.isHost || !names.length) return 0;
+    const want = new Set(names.map((n) => n.trim().toLowerCase()).filter(Boolean));
+    const uids = new Set<string>();
+    for (const [uid, player] of Object.entries(this.players)) {
+      if (want.has((player.name ?? "").trim().toLowerCase())) uids.add(uid);
+    }
+    if (!uids.size) return 0;
+    const jobs: Promise<unknown>[] = [];
+    for (const uid of uids) {
+      jobs.push(set(ref(this.db, `rooms/${this.roomId}/players/${uid}`), null));
+      jobs.push(set(ref(this.db, `rooms/${this.roomId}/intents/${uid}`), null));
+      jobs.push(set(ref(this.db, `rooms/${this.roomId}/survivors/${uid}`), null));
+      jobs.push(set(ref(this.db, `rooms/${this.roomId}/grants/${uid}`), null));
+    }
+    for (const [slot, row] of Object.entries(this.slots)) {
+      if (row?.uid && uids.has(row.uid)) {
+        jobs.push(set(ref(this.db, `rooms/${this.roomId}/slots/${slot}`), null));
+      }
+    }
+    try {
+      await Promise.all(jobs);
+      return uids.size;
+    } catch (err) {
+      console.warn("removeGhostsByName failed", err);
+      return 0;
+    }
   }
 
   async publishPlayer(player: NetPlayer): Promise<void> {
