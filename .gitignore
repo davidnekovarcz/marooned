@@ -6,3 +6,10 @@ dist/
 web/dist/
 web/.env
 web/firebase-debug.log
+
+# Kaloko / secrets
+.env
+.env.*
+!.env.example
+tmp/kaloko/
+.kaloko/

@@ -1,0 +1,36 @@
+schema: qawalk.scenario.v1
+id: MAROONED-SMOKE-SAY
+title: Smoke — Say compose
+kind: flow
+source: qa/flows/ACCEPTANCE-smoke.md
+version: 1
+locales: [en]
+viewports:
+  desktop: [1280, 800]
+environments: [local]
+lanes: [Main path]
+readonly: false
+
+nodes:
+  - id: say
+    kind: screen
+    title: After sending a Say line
+    path: /?room=kaloko-smoke
+    purpose: A castaway can open Say, type a short line, and close the compose UI.
+    page: work
+    execution:
+      strategy: playwright
+      script: steps/smoke-say.mjs
+      instructions: Boot into the world, open Say with Enter, type Kaloko smoke, send with Enter.
+    criteria:
+      - id: AC1
+        text: Say compose is closed after send.
+        check: { type: deterministic, assert: absent, selector: "#say-compose:not([hidden])" }
+      - id: AC2
+        text: Survival HUD clock is still in the DOM.
+        check: { type: deterministic, assert: js_equals, expression: "!!document.querySelector('#hud-clock')?.textContent?.trim()", value: true }
+      - id: AC3
+        text: No browser console errors.
+        check: { type: deterministic, assert: no_console_errors }
+
+edges: []
