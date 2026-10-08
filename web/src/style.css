@@ -1007,15 +1007,16 @@ body.mobile-ui .say-action {
 }
 
 body.admin {
-  overflow: auto;
+  overflow: hidden;
   background: #7ec8e3;
   color: #241c16;
 }
 
 body.admin #ui {
-  position: static;
+  position: fixed;
+  inset: 0;
   pointer-events: auto;
-  min-height: 100%;
+  overflow: hidden;
 }
 
 body.admin #character {
@@ -1023,7 +1024,11 @@ body.admin #character {
 }
 
 .lagoon {
-  min-height: 100vh;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  overflow: hidden;
   padding: 2.5rem 1rem 4rem;
   background:
     linear-gradient(#e7d7a8, #e7d7a8) bottom / 100% 18% no-repeat,
@@ -1049,8 +1054,9 @@ body.admin #character {
 
 .screen {
   position: relative;
-  max-width: 72rem;
-  margin: 0 auto;
+  width: min(72rem, 100%);
+  max-height: 100%;
+  overflow: auto;
   padding: 1.25rem 1.25rem 2rem;
   background: #f7f4ef;
   color: #241c16;
