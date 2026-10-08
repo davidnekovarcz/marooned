@@ -1,0 +1,35 @@
+schema: qawalk.scenario.v1
+id: MAROONED-SURVIVAL-FISH
+title: Survival — pole and a fish
+kind: flow
+source: qa/flows/ACCEPTANCE-survival.md
+version: 1
+locales: [en]
+viewports:
+  desktop: [1280, 800]
+environments: [local]
+lanes: [Main path]
+
+nodes:
+  - id: fish
+    kind: screen
+    title: Holding a caught fish
+    path: /?room=kaloko-fish&qa=1
+    purpose: A castaway can pick up the wreck pole and catch a fish from shore.
+    execution:
+      strategy: playwright
+      script: steps/survival-fish.mjs
+      instructions: With ?qa=1, stand on the pole, pick it up, move to shore, fish.
+    criteria:
+      - id: AC1
+        text: Hands hold a fish.
+        check:
+          type: deterministic
+          assert: js_equals
+          expression: "document.body.dataset.qaHeld === 'fish'"
+          value: true
+      - id: AC2
+        text: No browser console errors.
+        check: { type: deterministic, assert: no_console_errors }
+
+edges: []

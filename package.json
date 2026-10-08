@@ -16,7 +16,7 @@
     "test:watch": "npm run test:watch --prefix web",
     "dev:web": "npm run dev --prefix web",
     "kaloko:doctor": "kaloko doctor",
-    "kaloko:smoke": "kaloko start --scenario qa/flows/smoke-boot.yml --env local && kaloko walk && kaloko evaluate"
+    "kaloko:smoke": "sh scripts/kaloko-smoke.sh"
   },
   "dependencies": {
     "serve": "^14.2.4"
