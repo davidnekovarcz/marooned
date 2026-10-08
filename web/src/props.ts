@@ -289,7 +289,6 @@ export async function scatterProps(
     add("bottle", wreck.x + 2, wreck.z, rng() * 6);
     add("bottle", wreck.x - 1, wreck.z - 2, rng() * 6);
     add("flag", wreck.x - 2, wreck.z + 1, 0.2);
-    add("fishingPole", wreck.x + 2, wreck.z - 1, rng() * 2);
     lootSites.wreck.push(...collectAround(biomes, blocked, wreck.x, wreck.z, 1, 1, 2));
     audioAnchors.push({ id: "wreck", position: worldPos(wreck.x, wreck.z) });
   }

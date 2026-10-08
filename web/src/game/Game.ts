@@ -177,6 +177,7 @@ export class Game {
       applyNetWorld(savedWorld, scattered.items, scattered.spawn, camp, day, weather, (item) => loot.onRemoved(item));
       const timers = parseLootTimers(savedWorld.loot);
       if (timers.length) loot.adoptTimers(timers);
+      loot.enforceCaps();
     }
     const atmosphere = new Atmosphere(scene);
     atmosphere.attachIsland(islandMesh);
@@ -405,6 +406,9 @@ export class Game {
                 claimedPickups,
                 claimedHearths,
               );
+              const timers = parseLootTimers(live.loot);
+              if (timers.length) loot.adoptTimers(timers);
+              loot.enforceCaps();
             } catch (err) {
               console.warn("applyNetWorld failed", err);
             }
