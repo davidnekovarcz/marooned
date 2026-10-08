@@ -130,7 +130,7 @@ async function saveCap(): Promise<void> {
   try {
     await set(dbRef(database, `rooms/${selected.value.id}/config/maxPlayers`), cap);
   } catch (err) {
-    note.value = err instanceof Error ? err.message : "Could not save the cap.";
+    note.value = err instanceof Error ? err.message : "Could not save the max.";
     return;
   }
   note.value = `${selected.value.id} now allows ${cap} players. People already inside stay.`;
@@ -230,7 +230,7 @@ onUnmounted(() => {
             @click="choose(room.id)"
           >
             <strong>{{ room.id }}</strong>
-            <span>{{ room.online }} online · cap {{ room.maxPlayers }} · {{ room.stats.players }} players</span>
+            <span>{{ room.online }} online · max {{ room.maxPlayers }} · {{ room.stats.players }} players</span>
           </button>
           <h3>New room</h3>
           <label>Slug <input v-model="newSlug" type="text" maxlength="32" /></label>
@@ -258,8 +258,8 @@ onUnmounted(() => {
                 <p>Created {{ when(selected.createdAt) }}</p>
               </div>
               <div class="cap">
-                <label>Player cap <input v-model.number="capDraft" type="number" min="1" max="10" /></label>
-                <button type="button" @click="saveCap">Save cap</button>
+                <label>Max <input v-model.number="capDraft" type="number" min="1" max="10" /></label>
+                <button type="button" @click="saveCap">Save max</button>
                 <button type="button" @click="forceRespawn">Respawn ground items</button>
               </div>
             </header>
