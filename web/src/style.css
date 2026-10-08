@@ -1085,6 +1085,16 @@ body.admin #character {
   font-size: 1.4rem;
 }
 
+.screen aside h3,
+.ground-fold {
+  margin-top: 1.5rem;
+}
+
+.ground-fold summary {
+  font-weight: 600;
+  cursor: pointer;
+}
+
 .screen-bar p,
 .room-head p,
 .gate-copy {

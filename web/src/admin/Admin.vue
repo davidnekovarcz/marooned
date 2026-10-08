@@ -296,32 +296,34 @@ onUnmounted(() => {
               </tbody>
             </table>
 
-            <h3>Ground items</h3>
-            <label>
-              Category
-              <select v-model="categoryFilter">
-                <option value="all">All</option>
-                <option v-for="category in GROUND_CATEGORIES" :key="category" :value="category">
-                  {{ groundCategoryLabel(category) }}
-                </option>
-              </select>
-            </label>
-            <section v-for="group in itemGroups" :key="group.category" class="item-group">
-              <h4>{{ group.label }}</h4>
-              <table>
-                <thead>
-                  <tr><th>Kind</th><th>Cell</th><th>State</th><th>Respawn</th></tr>
-                </thead>
-                <tbody>
-                  <tr v-for="(item, index) in group.items" :key="`${item.kind}-${item.cell}-${index}`">
-                    <td>{{ item.kind }}</td>
-                    <td>{{ item.cell }}</td>
-                    <td>{{ item.state }}</td>
-                    <td>{{ item.countdown }}</td>
-                  </tr>
-                </tbody>
-              </table>
-            </section>
+            <details class="ground-fold">
+              <summary>Ground items</summary>
+              <label>
+                Category
+                <select v-model="categoryFilter">
+                  <option value="all">All</option>
+                  <option v-for="category in GROUND_CATEGORIES" :key="category" :value="category">
+                    {{ groundCategoryLabel(category) }}
+                  </option>
+                </select>
+              </label>
+              <section v-for="group in itemGroups" :key="group.category" class="item-group">
+                <h4>{{ group.label }}</h4>
+                <table>
+                  <thead>
+                    <tr><th>Kind</th><th>Cell</th><th>State</th><th>Respawn</th></tr>
+                  </thead>
+                  <tbody>
+                    <tr v-for="(item, index) in group.items" :key="`${item.kind}-${item.cell}-${index}`">
+                      <td>{{ item.kind }}</td>
+                      <td>{{ item.cell }}</td>
+                      <td>{{ item.state }}</td>
+                      <td>{{ item.countdown }}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </section>
+            </details>
           </section>
         </div>
       </div>
