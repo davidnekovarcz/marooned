@@ -230,7 +230,7 @@ onUnmounted(() => {
             @click="choose(room.id)"
           >
             <strong>{{ room.id }}</strong>
-            <span>{{ room.online }} online · cap {{ room.maxPlayers }}</span>
+            <span>{{ room.online }} online · cap {{ room.maxPlayers }} · {{ room.stats.players }} players</span>
           </button>
           <h3>New room</h3>
           <label>Slug <input v-model="newSlug" type="text" maxlength="32" /></label>
