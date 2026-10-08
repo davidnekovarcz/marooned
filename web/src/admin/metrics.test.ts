@@ -1,8 +1,16 @@
 import { describe, expect, it } from "vitest";
 import { groundCategory } from "@/web/src/admin/ground";
+import { parseRooms } from "@/web/src/admin/records";
 import { formatIslandSurvival, respawnLabel, roomStats, sumStats } from "@/web/src/admin/metrics";
 import { clampMaxPlayers, cleanRoomSlug, isKalokoRoomId, MAX_PLAYERS_LIMIT } from "@/web/src/net/protocol";
 import { livedTodaySeconds, nextVisit, pragueDayKey } from "@/web/src/net/visits";
+
+describe("online count", () => {
+  it("counts people when the slot list comes back as an array", () => {
+    const [demo] = parseRooms({ demo: { slots: [{ uid: "a" }, null, { uid: "b" }] } }, "2026-10-08");
+    expect(demo?.online).toBe(2);
+  });
+});
 
 describe("rooms", () => {
   it("keeps ten players on four beaches and only removes Kaloko islands", () => {

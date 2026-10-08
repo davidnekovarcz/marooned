@@ -30,7 +30,14 @@ export type RoomRecord = {
 };
 
 function asRecord(raw: unknown): Record<string, unknown> {
-  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return {};
+  if (!raw || typeof raw !== "object") return {};
+  if (Array.isArray(raw)) {
+    const out: Record<string, unknown> = {};
+    raw.forEach((value, index) => {
+      if (value != null) out[String(index)] = value;
+    });
+    return out;
+  }
   return raw as Record<string, unknown>;
 }
 
