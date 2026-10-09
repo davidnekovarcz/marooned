@@ -76,8 +76,14 @@ function rowFromTimer(row: LootTimer): ItemRow {
   return itemRow(row.kind, cell, row.state, respawnLabel(row));
 }
 
+/** Smoke islands stay in the database. The admin list hides these prefixes. */
+export function isHiddenAdminRoom(id: string): boolean {
+  return id.startsWith("kaloko_") || id.startsWith("kaloko-");
+}
+
 export function parseRooms(raw: unknown, today: string): RoomRecord[] {
   return Object.entries(asRecord(raw))
+    .filter(([id]) => !isHiddenAdminRoom(id))
     .map(([id, value]) => parseRoom(id, value, today))
     .sort((a, b) => a.id.localeCompare(b.id));
 }

@@ -11,7 +11,7 @@ import {
   visibleGroundKind,
 } from "@/web/src/admin/ground";
 import { formatIslandSurvival, sumStats } from "@/web/src/admin/metrics";
-import { parseRooms, type PlayerRow, type RoomRecord } from "@/web/src/admin/records";
+import { isHiddenAdminRoom, parseRooms, type PlayerRow, type RoomRecord } from "@/web/src/admin/records";
 import { connectAdminFirebase } from "@/web/src/admin/session";
 import { clampMaxPlayers, cleanRoomSlug, DEFAULT_MAX_PLAYERS } from "@/web/src/net/protocol";
 import { playerRemovePaths, roomWipePaths } from "@/web/src/net/roomClear";
@@ -77,6 +77,10 @@ const visiblePlayers = computed(() => {
 });
 
 function choose(id: string): void {
+  if (isHiddenAdminRoom(id)) {
+    selectedId.value = "";
+    return;
+  }
   keepEmpty = false;
   roomRemoved.value = "";
   selectedId.value = id;
@@ -112,6 +116,10 @@ function listen(db: Database): void {
   stopRooms?.();
   stopRooms = onValue(dbRef(db, "rooms"), (snap) => {
     rooms.value = parseRooms(snap.val(), pragueDayKey(Date.now()));
+    if (isHiddenAdminRoom(selectedId.value)) {
+      keepEmpty = true;
+      selectedId.value = "";
+    }
     if (!selectedId.value && !keepEmpty && rooms.value[0]) choose(rooms.value[0].id);
     const current = rooms.value.find((room) => room.id === selectedId.value);
     if (current) capDraft.value = current.maxPlayers;
