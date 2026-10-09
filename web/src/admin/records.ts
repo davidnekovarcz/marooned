@@ -1,4 +1,4 @@
-import { groundCategory, type GroundCategory } from "@/web/src/admin/ground";
+import { groundCategory, parseGroundCaps, type GroundCategory } from "@/web/src/admin/ground";
 import { respawnLabel, roomStats, type RoomStats } from "@/web/src/admin/metrics";
 import { clampMaxPlayers, parseLootTimers, type LootTimer } from "@/web/src/net/protocol";
 import { parseSurvivor } from "@/web/src/net/survivor";
@@ -23,6 +23,7 @@ export type RoomRecord = {
   id: string;
   online: number;
   maxPlayers: number;
+  groundCaps: Record<string, number>;
   createdAt: number | null;
   players: PlayerRow[];
   items: ItemRow[];
@@ -107,6 +108,7 @@ function parseRoom(id: string, raw: unknown, today: string): RoomRecord {
     id,
     online: onlineCount(room.slots),
     maxPlayers: clampMaxPlayers(config.maxPlayers),
+    groundCaps: parseGroundCaps(config.groundCaps),
     createdAt,
     players,
     items: itemRows(asRecord(room.world)),

@@ -3,7 +3,13 @@ import { computed, onMounted, onUnmounted, ref } from "vue";
 import { GoogleAuthProvider, onAuthStateChanged, signInWithPopup, signOut, type User } from "firebase/auth";
 import { get, onValue, ref as dbRef, set, type Database, type Unsubscribe } from "firebase/database";
 import { ADMIN_EMAIL } from "@/web/src/admin/access";
-import { GROUND_CATEGORIES, groundCategoryLabel, type GroundCategory } from "@/web/src/admin/ground";
+import {
+  GROUND_CAP_MAX,
+  builtinGroundCap,
+  clampGroundCap,
+  groundKindRank,
+  visibleGroundKind,
+} from "@/web/src/admin/ground";
 import { formatIslandSurvival, sumStats } from "@/web/src/admin/metrics";
 import { parseRooms, type PlayerRow, type RoomRecord } from "@/web/src/admin/records";
 import { connectAdminFirebase } from "@/web/src/admin/session";
@@ -23,7 +29,7 @@ const aliveFilter = ref<"all" | "alive" | "dead">("all");
 const newSlug = ref("");
 const newCap = ref(DEFAULT_MAX_PLAYERS);
 const capDraft = ref(DEFAULT_MAX_PLAYERS);
-const categoryFilter = ref<"all" | GroundCategory>("tool");
+const groundDrafts = ref<Record<string, string>>({});
 let database: Database | null = null;
 let stopAuth: Unsubscribe | null = null;
 let stopRooms: Unsubscribe | null = null;
@@ -36,16 +42,19 @@ const visibleRooms = computed(() => {
 const selected = computed(() => rooms.value.find((room) => room.id === selectedId.value) ?? null);
 const gameStats = computed(() => sumStats(rooms.value.map((room) => room.stats)));
 const itemGroups = computed(() => {
-  const items = selected.value?.items ?? [];
-  return GROUND_CATEGORIES.filter(
-    (category) => categoryFilter.value === "all" || categoryFilter.value === category,
-  )
-    .map((category) => ({
-      category,
-      label: groundCategoryLabel(category),
-      items: items.filter((item) => item.category === category),
-    }))
-    .filter((group) => group.items.length > 0);
+  const items = (selected.value?.items ?? []).filter((item) => visibleGroundKind(item.kind));
+  const groups: { kind: string; count: number; items: typeof items }[] = [];
+  for (const item of items) {
+    let group = groups.find((row) => row.kind === item.kind);
+    if (!group) {
+      group = { kind: item.kind, count: 0, items: [] };
+      groups.push(group);
+    }
+    group.items.push(item);
+    if (item.state !== "waiting") group.count += 1;
+  }
+  groups.sort((a, b) => groundKindRank(a.kind) - groundKindRank(b.kind) || a.kind.localeCompare(b.kind));
+  return groups;
 });
 const visiblePlayers = computed(() => {
   const room = selected.value;
@@ -63,6 +72,30 @@ function choose(id: string): void {
   selectedId.value = id;
   const room = rooms.value.find((row) => row.id === id);
   capDraft.value = room?.maxPlayers ?? DEFAULT_MAX_PLAYERS;
+  const prefix = `${id}:`;
+  const drafts: Record<string, string> = {};
+  for (const [key, value] of Object.entries(groundDrafts.value)) {
+    if (!key.startsWith(prefix)) drafts[key] = value;
+  }
+  groundDrafts.value = drafts;
+}
+
+function shownCap(kind: string): string {
+  const room = selected.value;
+  if (!room) return "";
+  const draft = groundDrafts.value[`${room.id}:${kind}`];
+  if (draft != null) return draft;
+  const saved = room.groundCaps[kind];
+  if (saved != null) return String(saved);
+  const builtin = builtinGroundCap(kind);
+  return builtin == null ? "" : String(builtin);
+}
+
+function setGroundDraft(kind: string, event: Event): void {
+  const input = event.target;
+  const room = selected.value;
+  if (!(input instanceof HTMLInputElement) || !room) return;
+  groundDrafts.value[`${room.id}:${kind}`] = input.value;
 }
 
 function listen(db: Database): void {
@@ -134,6 +167,27 @@ async function saveCap(): Promise<void> {
     return;
   }
   note.value = `${selected.value.id} now allows ${cap} players. People already inside stay.`;
+}
+
+async function saveGroundCap(kind: string): Promise<void> {
+  note.value = "";
+  if (!database || !selected.value || !visibleGroundKind(kind)) return;
+  const cap = clampGroundCap(shownCap(kind));
+  if (cap == null) {
+    note.value = "Use a whole number from 0 to 40.";
+    return;
+  }
+  const roomId = selected.value.id;
+  try {
+    await set(dbRef(database, `rooms/${roomId}/config/groundCaps/${kind}`), cap);
+  } catch (err) {
+    note.value = err instanceof Error ? err.message : "Could not save the ground max.";
+    return;
+  }
+  const drafts = { ...groundDrafts.value };
+  delete drafts[`${roomId}:${kind}`];
+  groundDrafts.value = drafts;
+  note.value = `${roomId} keeps at most ${cap} ${kind}. The host applies it the next time they are in the room.`;
 }
 
 async function forceRespawn(): Promise<void> {
@@ -298,17 +352,24 @@ onUnmounted(() => {
 
             <details class="ground-fold">
               <summary>Ground items</summary>
-              <label>
-                Category
-                <select v-model="categoryFilter">
-                  <option value="all">All</option>
-                  <option v-for="category in GROUND_CATEGORIES" :key="category" :value="category">
-                    {{ groundCategoryLabel(category) }}
-                  </option>
-                </select>
-              </label>
-              <section v-for="group in itemGroups" :key="group.category" class="item-group">
-                <h4>{{ group.label }}</h4>
+              <section v-for="group in itemGroups" :key="group.kind" class="item-group">
+                <header class="kind-head">
+                  <h4>{{ group.kind }} <span class="kind-count">{{ group.count }}</span></h4>
+                  <div class="cap">
+                    <label>
+                      Max
+                      <input
+                        :value="shownCap(group.kind)"
+                        type="number"
+                        min="0"
+                        :max="GROUND_CAP_MAX"
+                        step="1"
+                        @input="setGroundDraft(group.kind, $event)"
+                      />
+                    </label>
+                    <button type="button" @click="saveGroundCap(group.kind)">Save</button>
+                  </div>
+                </header>
                 <table>
                   <thead>
                     <tr><th>Kind</th><th>Cell</th><th>State</th><th>Respawn</th></tr>

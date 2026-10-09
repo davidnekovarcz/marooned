@@ -8,6 +8,7 @@ import {
   type Database,
   type Unsubscribe,
 } from "firebase/database";
+import { parseGroundCaps } from "@/web/src/admin/ground";
 import { connectFirebase, firebaseConfigured } from "@/web/src/net/firebase";
 import {
   clampMaxPlayers,
@@ -165,6 +166,12 @@ export class Room {
       if (row.config && typeof row.config === "object") {
         jobs.push(set(ref(this.db, `${base}/config/maxPlayers`), null));
         jobs.push(set(ref(this.db, `${base}/config/createdAt`), null));
+        const caps = (row.config as { groundCaps?: unknown }).groundCaps;
+        if (caps && typeof caps === "object") {
+          for (const key of Object.keys(caps as Record<string, unknown>)) {
+            jobs.push(set(ref(this.db, `${base}/config/groundCaps/${key}`), null));
+          }
+        }
       }
       if (row.commands && typeof row.commands === "object") {
         jobs.push(set(ref(this.db, `${base}/commands/respawnItems`), null));
@@ -318,6 +325,16 @@ export class Room {
     } catch (err) {
       console.warn("loadWorld failed", err);
       return null;
+    }
+  }
+
+  async loadGroundCaps(): Promise<Record<string, number>> {
+    try {
+      const snap = await get(ref(this.db, `rooms/${this.roomId}/config/groundCaps`));
+      return parseGroundCaps(snap.val());
+    } catch (err) {
+      console.warn("loadGroundCaps failed", err);
+      return {};
     }
   }
 

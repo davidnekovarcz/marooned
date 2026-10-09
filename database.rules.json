@@ -51,6 +51,11 @@
           },
           "createdAt": {
             ".write": "(auth.token.email === 'nekovar.david@gmail.com' && newData.isNumber()) || (auth != null && !data.exists() && newData.isNumber()) || (auth != null && $room.matches(/^kaloko-[a-z0-9-]{1,25}$/) && root.child('rooms').child($room).child('host').val() === auth.uid && !newData.exists())"
+          },
+          "groundCaps": {
+            "$kind": {
+              ".write": "(auth.token.email === 'nekovar.david@gmail.com' && newData.isNumber() && newData.val() >= 0 && newData.val() <= 40 && newData.val() % 1 === 0) || (auth != null && $room.matches(/^kaloko-[a-z0-9-]{1,25}$/) && root.child('rooms').child($room).child('host').val() === auth.uid && !newData.exists())"
+            }
           }
         },
         "commands": {

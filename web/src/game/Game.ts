@@ -173,12 +173,14 @@ export class Game {
     const weather = new Weather();
     const day = new DayClock();
     const savedWorld = room ? await room.loadWorld() : null;
+    const groundCaps = room ? await room.loadGroundCaps() : null;
+    if (groundCaps) loot.useGroundCaps(groundCaps);
     if (savedWorld) {
       applyNetWorld(savedWorld, scattered.items, scattered.spawn, camp, day, weather, (item) => loot.onRemoved(item));
       const timers = parseLootTimers(savedWorld.loot);
       if (timers.length) loot.adoptTimers(timers);
-      loot.enforceCaps();
     }
+    if (groundCaps) loot.enforceCaps();
     const atmosphere = new Atmosphere(scene);
     atmosphere.attachIsland(islandMesh);
     atmosphere.bindCamp(camp);

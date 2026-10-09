@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { groundCategory } from "@/web/src/admin/ground";
+import { groundCategory, visibleGroundKind } from "@/web/src/admin/ground";
 import { parseRooms } from "@/web/src/admin/records";
 import { formatIslandSurvival, respawnLabel, roomStats, sumStats } from "@/web/src/admin/metrics";
 import { clampMaxPlayers, cleanRoomSlug, isKalokoRoomId, MAX_PLAYERS_LIMIT } from "@/web/src/net/protocol";
@@ -24,7 +24,52 @@ describe("rooms", () => {
 });
 
 describe("ground categories", () => {
-  it("sorts trees, nature, food, and tools apart", () => {
+  it("lists tools, food, stone, sticks, logs, wreck, and camp", () => {
+    for (const kind of [
+      "knife",
+      "hammer",
+      "axe",
+      "shovel",
+      "torch",
+      "fishingPole",
+      "coconut",
+      "banana",
+      "fish",
+      "fishCooked",
+      "mushroomRed",
+      "stone",
+      "stick",
+      "log",
+      "logLarge",
+      "natureLog",
+      "wreck",
+      "bow",
+      "arrow",
+      "leanTo",
+      "campfire",
+    ]) {
+      expect(visibleGroundKind(kind)).toBe(true);
+    }
+    for (const kind of [
+      "palm",
+      "oak",
+      "pine",
+      "stump",
+      "bush",
+      "flowerYellow",
+      "flowerPurple",
+      "flowerRed",
+      "rockSmall",
+      "rockLarge",
+      "sandRock",
+      "lilypad",
+      "fiber",
+      "tinder",
+      "campfireLogs",
+      "campfireStones",
+    ]) {
+      expect(visibleGroundKind(kind)).toBe(false);
+    }
     expect(groundCategory("palm")).toBe("tree");
     expect(groundCategory("bush")).toBe("nature");
     expect(groundCategory("coconut")).toBe("food");
@@ -32,6 +77,16 @@ describe("ground categories", () => {
     expect(groundCategory("stick")).toBe("resource");
     expect(groundCategory("wreck")).toBe("wreck");
     expect(groundCategory("leanTo")).toBe("camp");
+  });
+});
+
+describe("ground caps on the room", () => {
+  it("keeps a saved max from 0 to 40 and drops the rest", () => {
+    const [demo] = parseRooms(
+      { demo: { config: { groundCaps: { axe: 4, coconut: 0, palm: 2, stick: 41, fish: 1.2, log: 8 } } } },
+      "2026-10-08",
+    );
+    expect(demo?.groundCaps).toEqual({ axe: 4, coconut: 0, log: 8 });
   });
 });
 

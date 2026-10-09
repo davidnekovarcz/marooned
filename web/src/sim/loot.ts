@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { builtinGroundCap, GROUND_CAP_MAX } from "@/web/src/admin/ground";
 import {
   LOOT_FRESH_SECONDS,
   LOOT_RESPAWN_SECONDS,
@@ -126,27 +127,32 @@ function pool(sites: LootSites, keys: SiteKey[]): Cell[] {
 
 export type GroundPiece = { id: string; kind: string; rotten: boolean };
 
-/** Ground cap for a fruit or tool. Resources and scenery have none. */
-export function lootGroundCap(kind: string): number | null {
-  const food = FOOD.find((spec) => spec.kind === kind);
-  if (food) return food.cap;
-  const tool = TOOLS.find((spec) => spec.kind === kind);
-  if (tool) return tool.count;
-  return null;
+function savedGroundCap(kind: string, roomCaps?: Readonly<Record<string, number>> | null): number | null {
+  if (!roomCaps || !Object.prototype.hasOwnProperty.call(roomCaps, kind)) return null;
+  const saved = roomCaps[kind];
+  if (typeof saved !== "number" || !Number.isInteger(saved) || saved < 0 || saved > GROUND_CAP_MAX) return null;
+  return saved;
+}
+
+/** Room max when one is saved, otherwise the built-in cap. Logs, wreck, camp, and fish have none until saved. */
+export function lootGroundCap(kind: string, roomCaps?: Readonly<Record<string, number>> | null): number | null {
+  const saved = savedGroundCap(kind, roomCaps);
+  if (saved != null) return saved;
+  return builtinGroundCap(kind);
 }
 
 /** Ids to remove so each capped kind stays within its ground limit. Rotten copies go first. */
-export function excessGroundIds(pieces: GroundPiece[]): string[] {
+export function excessGroundIds(pieces: GroundPiece[], roomCaps?: Readonly<Record<string, number>> | null): string[] {
   const byKind = new Map<string, GroundPiece[]>();
   for (const piece of pieces) {
-    if (lootGroundCap(piece.kind) == null) continue;
+    if (lootGroundCap(piece.kind, roomCaps) == null) continue;
     const list = byKind.get(piece.kind) ?? [];
     list.push(piece);
     byKind.set(piece.kind, list);
   }
   const drop: string[] = [];
   for (const [kind, list] of byKind) {
-    const cap = lootGroundCap(kind);
+    const cap = lootGroundCap(kind, roomCaps);
     if (cap == null || list.length <= cap) continue;
     const ranked = [...list].sort((a, b) => Number(a.rotten) - Number(b.rotten));
     for (const extra of ranked.slice(cap)) drop.push(extra.id);
@@ -158,6 +164,7 @@ export class Loot {
   private readonly rng = mulberry32(`${SEED}-loot`);
   private readonly lives: Live[] = [];
   private playerAt: Cell | null = null;
+  private roomCaps: Record<string, number> | null = null;
 
   constructor(
     private sites: LootSites,
@@ -166,7 +173,8 @@ export class Loot {
     private keepOff: Cell | null = null,
   ) {
     for (const spec of FOOD) {
-      for (let i = 0; i < spec.cap; i++) {
+      const count = builtinGroundCap(spec.kind) ?? spec.cap;
+      for (let i = 0; i < count; i++) {
         const live: Live = {
           kind: spec.kind,
           sites: spec.sites,
@@ -185,7 +193,8 @@ export class Loot {
       }
     }
     for (const spec of TOOLS) {
-      for (let i = 0; i < spec.count; i++) {
+      const count = builtinGroundCap(spec.kind) ?? spec.count;
+      for (let i = 0; i < count; i++) {
         const live: Live = {
           kind: spec.kind,
           sites: spec.sites,
@@ -273,7 +282,14 @@ export class Loot {
     }
   }
 
-  /** Drop ground copies past the fruit and tool caps. Rotten copies go first. Pockets are not in the list. */
+  /** Remember the room max, then add waiting food and tool lives when that max is higher than the built-in count. */
+  useGroundCaps(caps: Record<string, number>): void {
+    this.roomCaps = caps;
+    for (const spec of FOOD) this.addWaitingLives(spec.kind, spec.sites, spec.rots);
+    for (const spec of TOOLS) this.addWaitingLives(spec.kind, spec.sites, false);
+  }
+
+  /** Drop ground copies past the saved or built-in cap. Rotten copies go first. Pockets are not in the list. */
   enforceCaps(): void {
     const drop = new Set(
       excessGroundIds(
@@ -282,6 +298,7 @@ export class Loot {
           kind: item.kind,
           rotten: item.freshness === "rotten",
         })),
+        this.roomCaps,
       ),
     );
     if (!drop.size) return;
@@ -350,6 +367,26 @@ export class Loot {
     return this.items.filter((item) => item.kind === kind).length;
   }
 
+  /** Food and tools can wait for the next respawn. Stone, sticks, fish, logs, wreck, and camp are only trimmed. */
+  private addWaitingLives(kind: LootKind, sites: SiteKey[], rots: boolean): void {
+    const cap = lootGroundCap(kind, this.roomCaps);
+    if (cap == null) return;
+    let have = this.lives.filter((live) => live.kind === kind).length;
+    while (have < cap) {
+      this.lives.push({
+        kind,
+        sites,
+        rots,
+        respawn: true,
+        cell: null,
+        state: "waiting",
+        age: 0,
+        item: null,
+      });
+      have += 1;
+    }
+  }
+
   private pickCell(live: Live, nearWreck: boolean, awayFromPlayer: boolean): Cell | null {
     let cells = nearWreck && this.sites.inlandPalm.length ? this.sites.inlandPalm : pool(this.sites, live.sites);
     if (nearWreck) {
@@ -411,7 +448,7 @@ export class Loot {
     live: Live,
     opts?: { stagger?: boolean; nearWreck?: boolean; ignoreCap?: boolean; awayFromPlayer?: boolean },
   ): boolean {
-    const cap = lootGroundCap(live.kind);
+    const cap = lootGroundCap(live.kind, this.roomCaps);
     if (cap != null && !opts?.ignoreCap && this.groundCount(live.kind) >= cap) return false;
     const cell = this.pickCell(live, Boolean(opts?.nearWreck), Boolean(opts?.awayFromPlayer));
     if (!cell) return false;
@@ -451,7 +488,7 @@ export class Loot {
       item: null,
     };
     this.lives.push(live);
-    const cap = lootGroundCap(kind);
+    const cap = lootGroundCap(kind, this.roomCaps);
     if (cap != null && this.groundCount(kind) >= cap) return;
     this.trySpawn(live, { stagger: false, awayFromPlayer: true });
   }

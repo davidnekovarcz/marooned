@@ -1101,6 +1101,28 @@ body.admin #character {
   cursor: pointer;
 }
 
+.kind-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.kind-head label {
+  margin: 0;
+}
+
+.kind-head input {
+  width: 4.5rem;
+}
+
+.kind-count {
+  margin-left: 0.4rem;
+  color: #7d7368;
+  font-weight: 400;
+}
+
 .screen-bar p,
 .room-head p,
 .gate-copy {
