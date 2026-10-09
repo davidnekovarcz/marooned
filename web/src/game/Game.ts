@@ -149,7 +149,9 @@ export class Game {
 
     const worldP = (async () => {
       const scattered = await scatterProps(scene, biomes, blocked);
-      const loot = new Loot(scattered.lootSites, scattered.items, scattered.spawn, spawn);
+      const loot = new Loot(scattered.lootSites, scattered.items, scattered.spawn, spawn, (x, z) =>
+        canEnter(biomes, blocked, x, z),
+      );
       const wildlife = await spawnWildlife(scene, biomes, blocked);
       for (const cell of spawns) blocked[cell.z * GRID + cell.x] = 0;
       if (DEBUG_GRID) scene.add(buildGridOverlay(biomes, blocked));
@@ -181,6 +183,7 @@ export class Game {
       if (timers.length) loot.adoptTimers(timers);
     }
     if (groundCaps) loot.enforceCaps();
+    if (!room || room.isHost) loot.relocateBlockedPickups();
     const atmosphere = new Atmosphere(scene);
     atmosphere.attachIsland(islandMesh);
     atmosphere.bindCamp(camp);
@@ -411,6 +414,7 @@ export class Game {
               const timers = parseLootTimers(live.loot);
               if (timers.length) loot.adoptTimers(timers);
               loot.enforceCaps();
+              loot.relocateBlockedPickups();
             } catch (err) {
               console.warn("applyNetWorld failed", err);
             }

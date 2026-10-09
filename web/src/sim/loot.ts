@@ -1,6 +1,8 @@
 import * as THREE from "three";
 import { builtinGroundCap, GROUND_CAP_MAX } from "@/web/src/admin/ground";
 import {
+  CELL,
+  GRID,
   LOOT_FRESH_SECONDS,
   LOOT_RESPAWN_SECONDS,
   LOOT_ROTTEN_SECONDS,
@@ -13,7 +15,7 @@ import type { ModelKind } from "@/web/src/models";
 import { mulberry32 } from "@/web/src/rng";
 import { Item, type SpawnFn } from "@/web/src/world/item";
 import type { LootTimer } from "@/web/src/net/protocol";
-import type { ToolKind } from "@/web/src/world/kinds";
+import { isHeldKind, type ToolKind } from "@/web/src/world/kinds";
 
 export type Cell = { x: number; z: number };
 
@@ -171,6 +173,7 @@ export class Loot {
     private items: Item[],
     private spawn: SpawnFn,
     private keepOff: Cell | null = null,
+    private canStand: (x: number, z: number) => boolean = () => true,
   ) {
     for (const spec of FOOD) {
       const count = builtinGroundCap(spec.kind) ?? spec.cap;
@@ -287,6 +290,29 @@ export class Loot {
     this.roomCaps = caps;
     for (const spec of FOOD) this.addWaitingLives(spec.kind, spec.sites, spec.rots);
     for (const spec of TOOLS) this.addWaitingLives(spec.kind, spec.sites, false);
+  }
+
+  /**
+   * Move food, fish, tools, stone, sticks, fiber, and tinder off a cell the player cannot enter.
+   * Trees, bushes, rocks, and hut, wreck, and camp pieces stay where they are.
+   * When every other cell is blocked or already taken, the pickup stays put.
+   */
+  relocateBlockedPickups(): void {
+    const taken = new Map<string, number>();
+    for (const item of this.items) {
+      const key = keyOf({ x: item.cellX, z: item.cellZ });
+      taken.set(key, (taken.get(key) ?? 0) + 1);
+    }
+    for (const item of this.items) {
+      if (!isHeldKind(item.kind)) continue;
+      if (this.canStand(item.cellX, item.cellZ)) continue;
+      const next = this.nearestOpen(item.cellX, item.cellZ, taken);
+      if (!next) continue;
+      const from = keyOf({ x: item.cellX, z: item.cellZ });
+      taken.set(from, (taken.get(from) ?? 1) - 1);
+      taken.set(keyOf(next), (taken.get(keyOf(next)) ?? 0) + 1);
+      this.movePickup(item, next);
+    }
   }
 
   /** Drop ground copies past the saved or built-in cap. Rotten copies go first. Pockets are not in the list. */
@@ -407,6 +433,7 @@ export class Loot {
       return Math.hypot(cell.x - origin.x, cell.z - origin.z) >= LOOT_SPAWN_AWAY;
     };
     const ok = (cell: Cell, strict: boolean): boolean => {
+      if (!this.canStand(cell.x, cell.z)) return false;
       if (avoid && cell.x === avoid.x && cell.z === avoid.z) return false;
       if (strict && occupied.has(keyOf(cell))) return false;
       if (!far(cell)) return false;
@@ -430,6 +457,31 @@ export class Loot {
       return cells.find((c) => ok(c, strict)) ?? null;
     };
     return tryPick(true) ?? tryPick(false);
+  }
+
+  private nearestOpen(fromX: number, fromZ: number, taken: Map<string, number>): Cell | null {
+    for (let radius = 1; radius < GRID; radius++) {
+      for (let dz = -radius; dz <= radius; dz++) {
+        for (let dx = -radius; dx <= radius; dx++) {
+          if (Math.max(Math.abs(dx), Math.abs(dz)) !== radius) continue;
+          const x = fromX + dx;
+          const z = fromZ + dz;
+          if (!this.canStand(x, z)) continue;
+          if ((taken.get(keyOf({ x, z })) ?? 0) > 0) continue;
+          return { x, z };
+        }
+      }
+    }
+    return null;
+  }
+
+  private movePickup(item: Item, cell: Cell): void {
+    item.cellX = cell.x;
+    item.cellZ = cell.z;
+    item.mesh.position.x = cell.x * CELL + CELL / 2;
+    item.mesh.position.z = cell.z * CELL + CELL / 2;
+    const live = this.lives.find((row) => row.item === item);
+    if (live) live.cell = cell;
   }
 
   private place(live: Live, cell: Cell, stagger: boolean): boolean {
