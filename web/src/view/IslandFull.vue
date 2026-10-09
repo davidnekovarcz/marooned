@@ -1,13 +1,21 @@
 <script setup lang="ts">
+import { computed } from "vue";
 import { useI18n } from "vue-i18n";
 import { useUiStore } from "@/web/src/stores/game";
 
+const props = defineProps<{ text?: string }>();
 const { t } = useI18n();
 const ui = useUiStore();
+
+const message = computed(() => {
+  if (props.text) return props.text;
+  if (!ui.islandFull) return "";
+  return t("hud.islandFull");
+});
 </script>
 
 <template>
-  <p v-if="ui.islandFull" class="island-full">{{ t("hud.islandFull") }}</p>
+  <p v-if="message" class="island-full">{{ message }}</p>
 </template>
 
 <style scoped>

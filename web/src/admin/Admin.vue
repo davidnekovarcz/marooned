@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from "vue";
+import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 import { GoogleAuthProvider, onAuthStateChanged, signInWithPopup, signOut, type User } from "firebase/auth";
 import { get, onValue, ref as dbRef, set, update, type Database, type Unsubscribe } from "firebase/database";
 import { ADMIN_EMAIL } from "@/web/src/admin/access";
@@ -16,12 +16,14 @@ import { connectAdminFirebase } from "@/web/src/admin/session";
 import { clampMaxPlayers, cleanRoomSlug, DEFAULT_MAX_PLAYERS } from "@/web/src/net/protocol";
 import { playerRemovePaths, roomWipePaths } from "@/web/src/net/roomClear";
 import { pragueDayKey } from "@/web/src/net/visits";
+import IslandFull from "@/web/src/view/IslandFull.vue";
 
 const ready = ref(false);
 const configured = ref(true);
 const user = ref<User | null>(null);
 const denied = ref(false);
 const note = ref("");
+const roomRemoved = ref("");
 const rooms = ref<RoomRecord[]>([]);
 const roomQuery = ref("");
 const selectedId = ref("");
@@ -35,6 +37,10 @@ let database: Database | null = null;
 let stopAuth: Unsubscribe | null = null;
 let stopRooms: Unsubscribe | null = null;
 let keepEmpty = false;
+
+watch(note, (value) => {
+  if (value) roomRemoved.value = "";
+});
 
 const visibleRooms = computed(() => {
   const q = roomQuery.value.trim().toLowerCase();
@@ -72,6 +78,7 @@ const visiblePlayers = computed(() => {
 
 function choose(id: string): void {
   keepEmpty = false;
+  roomRemoved.value = "";
   selectedId.value = id;
   const room = rooms.value.find((row) => row.id === id);
   capDraft.value = room?.maxPlayers ?? DEFAULT_MAX_PLAYERS;
@@ -230,7 +237,7 @@ async function removeRoom(): Promise<void> {
     await clearRoomPaths(roomId, roomWipePaths(snap.val()));
     keepEmpty = true;
     selectedId.value = "";
-    note.value = `Removed room ${roomId}.`;
+    roomRemoved.value = `Removed room ${roomId}.`;
   } catch (err) {
     note.value = err instanceof Error ? err.message : "Could not remove the room.";
   }
@@ -299,6 +306,8 @@ onUnmounted(() => {
       <ellipse cx="68" cy="70" rx="34" ry="12" fill="#1a5434" transform="rotate(-25 68 70)" />
       <ellipse cx="68" cy="70" rx="30" ry="11" fill="#2d7a4a" transform="rotate(-60 68 70)" />
     </svg>
+
+    <IslandFull v-if="roomRemoved" :text="roomRemoved" />
 
     <main class="screen">
       <header class="screen-bar">
