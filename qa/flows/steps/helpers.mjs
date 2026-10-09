@@ -33,6 +33,16 @@ export async function waitForCharacterGate(page, timeout = 45000) {
   await play.waitFor({ state: "visible", timeout });
 }
 
+/** Drop a Kaloko island. Other rooms, including demo, are left in place. */
+export async function deleteKalokoRoom(page) {
+  await page
+    .evaluate(async () => {
+      const cleanup = window.__maroonedDeleteRoom;
+      if (typeof cleanup === "function") await cleanup();
+    })
+    .catch(() => {});
+}
+
 export async function chooseCharacter(page) {
   await waitForCharacterGate(page);
   await page.locator("#character-play").click();

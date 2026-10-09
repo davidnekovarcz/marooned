@@ -24,6 +24,11 @@ export type SpawnFn = (
 
 let nextId = 1;
 
+/** Keep later props on the ids a saved room already stored after a prop is no longer placed. */
+export function reserveItemId(): void {
+  nextId += 1;
+}
+
 export class Item {
   readonly id: string;
   loot = false;

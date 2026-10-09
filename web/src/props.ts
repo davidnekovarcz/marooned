@@ -24,7 +24,7 @@ import {
 import { loadGlb, loadObj } from "@/web/src/loaders";
 import type { Cell, LootSites } from "@/web/src/sim/loot";
 import { makeFishingPole } from "@/web/src/world/fishingPole";
-import { Item } from "@/web/src/world/item";
+import { Item, reserveItemId } from "@/web/src/world/item";
 import type { HeldKind } from "@/web/src/world/kinds";
 import { LILY_URL, MODEL_URLS, TOMATO_URL, TORCH_URL, type ModelKind } from "@/web/src/models";
 import { mulberry32 } from "@/web/src/rng";
@@ -245,6 +245,7 @@ export async function scatterProps(
     yaw: number,
     extra?: { tiltX?: number; tiltZ?: number; y?: number; dx?: number; dz?: number; vary?: boolean; id?: string },
   ): THREE.Object3D | null => {
+    if (kind === "bridge") return null;
     if (!inBounds(x, z)) return null;
     const srcKey: PlaceKind = kind === "fishCooked" ? "fish" : kind;
     const src = templates[srcKey];
@@ -289,7 +290,6 @@ export async function scatterProps(
     add("bottle", wreck.x + 2, wreck.z, rng() * 6);
     add("bottle", wreck.x - 1, wreck.z - 2, rng() * 6);
     add("flag", wreck.x - 2, wreck.z + 1, 0.2);
-    add("fishingPole", wreck.x + 2, wreck.z - 1, rng() * 2);
     lootSites.wreck.push(...collectAround(biomes, blocked, wreck.x, wreck.z, 1, 1, 2));
     audioAnchors.push({ id: "wreck", position: worldPos(wreck.x, wreck.z) });
   }
@@ -336,15 +336,9 @@ export async function scatterProps(
     audioAnchors.push({ id: "hut", position: worldPos(hut.x, hut.z) });
   }
 
-  const bridge = nearestCell(
-    biomes,
-    POND_X - 8,
-    POND_Z,
-    (b, x, z) => b === Biome.Water && cellCenterDist(x, z) < ISLAND_RADIUS,
-  );
-  if (bridge) {
-    add("bridge", bridge.x, bridge.z, Math.PI / 2, { y: WATER_Y + 0.35 });
-  }
+  // The bridge used to take the next item id. Hold that slot so a saved room does not slide every later prop.
+  rng();
+  reserveItemId();
 
   audioAnchors.push({ id: "pond", position: worldPos(POND_X, POND_Z) });
 

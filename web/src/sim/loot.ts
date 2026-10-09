@@ -1,5 +1,8 @@
 import * as THREE from "three";
+import { builtinGroundCap, GROUND_CAP_MAX } from "@/web/src/admin/ground";
 import {
+  CELL,
+  GRID,
   LOOT_FRESH_SECONDS,
   LOOT_RESPAWN_SECONDS,
   LOOT_ROTTEN_SECONDS,
@@ -11,7 +14,8 @@ import { isFoodKind, type FoodKind } from "@/web/src/food";
 import type { ModelKind } from "@/web/src/models";
 import { mulberry32 } from "@/web/src/rng";
 import { Item, type SpawnFn } from "@/web/src/world/item";
-import type { ToolKind } from "@/web/src/world/kinds";
+import type { LootTimer } from "@/web/src/net/protocol";
+import { isHeldKind, type ToolKind } from "@/web/src/world/kinds";
 
 export type Cell = { x: number; z: number };
 
@@ -26,7 +30,7 @@ export type LootSites = {
   bush: Cell[];
 };
 
-export type LootKind = FoodKind | ToolKind | "stick" | "stone" | "fiber";
+export type LootKind = FoodKind | ToolKind | "fishingPole" | "stick" | "stone" | "fiber";
 
 type SiteKey = keyof LootSites;
 
@@ -39,7 +43,7 @@ type FoodSpec = {
 };
 
 type ToolSpec = {
-  kind: ToolKind | "stick" | "stone" | "fiber";
+  kind: ToolKind | "fishingPole" | "stick" | "stone" | "fiber";
   count: number;
   sites: SiteKey[];
 };
@@ -58,11 +62,12 @@ const FOOD: FoodSpec[] = [
 ];
 
 const TOOLS: ToolSpec[] = [
-  { kind: "knife", count: 1, sites: ["wreck", "boat", "hut"] },
-  { kind: "hammer", count: 1, sites: ["wreck", "hut", "boat"] },
-  { kind: "shovel", count: 1, sites: ["hut", "forest"] },
-  { kind: "axe", count: 1, sites: ["forest", "hut"] },
-  { kind: "torch", count: 1, sites: ["hut", "boat"] },
+  { kind: "knife", count: 2, sites: ["wreck", "boat", "hut"] },
+  { kind: "hammer", count: 2, sites: ["wreck", "hut", "boat"] },
+  { kind: "shovel", count: 2, sites: ["hut", "forest"] },
+  { kind: "axe", count: 2, sites: ["forest", "hut"] },
+  { kind: "torch", count: 2, sites: ["hut", "boat"] },
+  { kind: "fishingPole", count: 2, sites: ["wreck", "boat"] },
 ];
 
 const RESOURCES: ToolSpec[] = [
@@ -122,19 +127,57 @@ function pool(sites: LootSites, keys: SiteKey[]): Cell[] {
   return out;
 }
 
+export type GroundPiece = { id: string; kind: string; rotten: boolean };
+
+function savedGroundCap(kind: string, roomCaps?: Readonly<Record<string, number>> | null): number | null {
+  if (!roomCaps || !Object.prototype.hasOwnProperty.call(roomCaps, kind)) return null;
+  const saved = roomCaps[kind];
+  if (typeof saved !== "number" || !Number.isInteger(saved) || saved < 0 || saved > GROUND_CAP_MAX) return null;
+  return saved;
+}
+
+/** Room max when one is saved, otherwise the built-in cap. Logs, wreck, camp, and fish have none until saved. */
+export function lootGroundCap(kind: string, roomCaps?: Readonly<Record<string, number>> | null): number | null {
+  const saved = savedGroundCap(kind, roomCaps);
+  if (saved != null) return saved;
+  return builtinGroundCap(kind);
+}
+
+/** Ids to remove so each capped kind stays within its ground limit. Rotten copies go first. */
+export function excessGroundIds(pieces: GroundPiece[], roomCaps?: Readonly<Record<string, number>> | null): string[] {
+  const byKind = new Map<string, GroundPiece[]>();
+  for (const piece of pieces) {
+    if (lootGroundCap(piece.kind, roomCaps) == null) continue;
+    const list = byKind.get(piece.kind) ?? [];
+    list.push(piece);
+    byKind.set(piece.kind, list);
+  }
+  const drop: string[] = [];
+  for (const [kind, list] of byKind) {
+    const cap = lootGroundCap(kind, roomCaps);
+    if (cap == null || list.length <= cap) continue;
+    const ranked = [...list].sort((a, b) => Number(a.rotten) - Number(b.rotten));
+    for (const extra of ranked.slice(cap)) drop.push(extra.id);
+  }
+  return drop;
+}
+
 export class Loot {
   private readonly rng = mulberry32(`${SEED}-loot`);
   private readonly lives: Live[] = [];
   private playerAt: Cell | null = null;
+  private roomCaps: Record<string, number> | null = null;
 
   constructor(
     private sites: LootSites,
     private items: Item[],
     private spawn: SpawnFn,
     private keepOff: Cell | null = null,
+    private canStand: (x: number, z: number) => boolean = () => true,
   ) {
     for (const spec of FOOD) {
-      for (let i = 0; i < spec.cap; i++) {
+      const count = builtinGroundCap(spec.kind) ?? spec.cap;
+      for (let i = 0; i < count; i++) {
         const live: Live = {
           kind: spec.kind,
           sites: spec.sites,
@@ -152,7 +195,24 @@ export class Loot {
         });
       }
     }
-    for (const spec of [...TOOLS, ...RESOURCES]) {
+    for (const spec of TOOLS) {
+      const count = builtinGroundCap(spec.kind) ?? spec.count;
+      for (let i = 0; i < count; i++) {
+        const live: Live = {
+          kind: spec.kind,
+          sites: spec.sites,
+          rots: false,
+          respawn: true,
+          cell: null,
+          state: "waiting",
+          age: TOOL_RESPAWN_SECONDS,
+          item: null,
+        };
+        this.lives.push(live);
+        this.trySpawn(live);
+      }
+    }
+    for (const spec of RESOURCES) {
       for (let i = 0; i < spec.count; i++) {
         const live: Live = {
           kind: spec.kind,
@@ -161,7 +221,7 @@ export class Loot {
           respawn: true,
           cell: null,
           state: "waiting",
-          age: TOOLS.some((it) => it.kind === spec.kind) ? TOOL_RESPAWN_SECONDS : 0,
+          age: 0,
           item: null,
         };
         this.lives.push(live);
@@ -182,6 +242,103 @@ export class Loot {
       placed: this.lives.filter((it) => it.state !== "waiting").length,
       kinds: this.lives.map((it) => `${it.kind}:${it.state}:${it.cell ? `${it.cell.x},${it.cell.z}` : "-"}`),
     });
+  }
+
+  exportTimers(): LootTimer[] {
+    return this.lives.map((live) => ({
+      kind: live.kind,
+      state: live.state,
+      age: live.age,
+      respawn: live.respawn,
+      cellX: live.cell?.x ?? null,
+      cellZ: live.cell?.z ?? null,
+    }));
+  }
+
+  /** Waiting ground loot is due now. Held and pocket items are not lives. */
+  forceGroundRespawn(): void {
+    for (const live of this.lives) {
+      if (live.state !== "waiting" || !live.respawn) continue;
+      const tool = TOOLS.some((spec) => spec.kind === live.kind);
+      live.age = tool ? TOOL_RESPAWN_SECONDS : LOOT_RESPAWN_SECONDS;
+    }
+  }
+
+  /** Continue saved countdowns after the host reloads. */
+  adoptTimers(rows: LootTimer[]): void {
+    const pending = [...rows];
+    for (const live of this.lives) {
+      const index = pending.findIndex((row) => row.kind === live.kind);
+      if (index < 0) continue;
+      const row = pending.splice(index, 1)[0];
+      if (!row) continue;
+      live.respawn = row.respawn;
+      if (row.state === "waiting") {
+        if (live.item) this.despawn(live);
+        live.state = "waiting";
+        live.age = row.age;
+        continue;
+      }
+      if (live.state === "waiting") this.trySpawn(live);
+      if (row.state === "rotten" && live.item && live.state === "fresh") this.rotItem(live);
+      live.age = row.age;
+    }
+  }
+
+  /** Remember the room max, then add waiting food and tool lives when that max is higher than the built-in count. */
+  useGroundCaps(caps: Record<string, number>): void {
+    this.roomCaps = caps;
+    for (const spec of FOOD) this.addWaitingLives(spec.kind, spec.sites, spec.rots);
+    for (const spec of TOOLS) this.addWaitingLives(spec.kind, spec.sites, false);
+  }
+
+  /**
+   * Move food, fish, tools, stone, sticks, fiber, and tinder off a cell the player cannot enter.
+   * Trees, bushes, rocks, and hut, wreck, and camp pieces stay where they are.
+   * When every other cell is blocked or already taken, the pickup stays put.
+   */
+  relocateBlockedPickups(): void {
+    const taken = new Map<string, number>();
+    for (const item of this.items) {
+      const key = keyOf({ x: item.cellX, z: item.cellZ });
+      taken.set(key, (taken.get(key) ?? 0) + 1);
+    }
+    for (const item of this.items) {
+      if (!isHeldKind(item.kind)) continue;
+      if (this.canStand(item.cellX, item.cellZ)) continue;
+      const next = this.nearestOpen(item.cellX, item.cellZ, taken);
+      if (!next) continue;
+      const from = keyOf({ x: item.cellX, z: item.cellZ });
+      taken.set(from, (taken.get(from) ?? 1) - 1);
+      taken.set(keyOf(next), (taken.get(keyOf(next)) ?? 0) + 1);
+      this.movePickup(item, next);
+    }
+  }
+
+  /** Drop ground copies past the saved or built-in cap. Rotten copies go first. Pockets are not in the list. */
+  enforceCaps(): void {
+    const drop = new Set(
+      excessGroundIds(
+        this.items.map((item) => ({
+          id: item.id,
+          kind: item.kind,
+          rotten: item.freshness === "rotten",
+        })),
+        this.roomCaps,
+      ),
+    );
+    if (!drop.size) return;
+    for (const item of [...this.items]) {
+      if (!drop.has(item.id)) continue;
+      const live = this.lives.find((row) => row.item === item);
+      if (live) {
+        this.despawn(live);
+        continue;
+      }
+      item.mesh.removeFromParent();
+      const index = this.items.indexOf(item);
+      if (index >= 0) this.items.splice(index, 1);
+    }
   }
 
   update(dt: number, playerX?: number, playerZ?: number): void {
@@ -232,8 +389,28 @@ export class Loot {
     return occupied;
   }
 
-  private freshCount(kind: LootKind): number {
-    return this.lives.filter((live) => live.kind === kind && live.state === "fresh" && live.item).length;
+  private groundCount(kind: LootKind): number {
+    return this.items.filter((item) => item.kind === kind).length;
+  }
+
+  /** Food and tools can wait for the next respawn. Stone, sticks, fish, logs, wreck, and camp are only trimmed. */
+  private addWaitingLives(kind: LootKind, sites: SiteKey[], rots: boolean): void {
+    const cap = lootGroundCap(kind, this.roomCaps);
+    if (cap == null) return;
+    let have = this.lives.filter((live) => live.kind === kind).length;
+    while (have < cap) {
+      this.lives.push({
+        kind,
+        sites,
+        rots,
+        respawn: true,
+        cell: null,
+        state: "waiting",
+        age: 0,
+        item: null,
+      });
+      have += 1;
+    }
   }
 
   private pickCell(live: Live, nearWreck: boolean, awayFromPlayer: boolean): Cell | null {
@@ -256,6 +433,7 @@ export class Loot {
       return Math.hypot(cell.x - origin.x, cell.z - origin.z) >= LOOT_SPAWN_AWAY;
     };
     const ok = (cell: Cell, strict: boolean): boolean => {
+      if (!this.canStand(cell.x, cell.z)) return false;
       if (avoid && cell.x === avoid.x && cell.z === avoid.z) return false;
       if (strict && occupied.has(keyOf(cell))) return false;
       if (!far(cell)) return false;
@@ -281,6 +459,31 @@ export class Loot {
     return tryPick(true) ?? tryPick(false);
   }
 
+  private nearestOpen(fromX: number, fromZ: number, taken: Map<string, number>): Cell | null {
+    for (let radius = 1; radius < GRID; radius++) {
+      for (let dz = -radius; dz <= radius; dz++) {
+        for (let dx = -radius; dx <= radius; dx++) {
+          if (Math.max(Math.abs(dx), Math.abs(dz)) !== radius) continue;
+          const x = fromX + dx;
+          const z = fromZ + dz;
+          if (!this.canStand(x, z)) continue;
+          if ((taken.get(keyOf({ x, z })) ?? 0) > 0) continue;
+          return { x, z };
+        }
+      }
+    }
+    return null;
+  }
+
+  private movePickup(item: Item, cell: Cell): void {
+    item.cellX = cell.x;
+    item.cellZ = cell.z;
+    item.mesh.position.x = cell.x * CELL + CELL / 2;
+    item.mesh.position.z = cell.z * CELL + CELL / 2;
+    const live = this.lives.find((row) => row.item === item);
+    if (live) live.cell = cell;
+  }
+
   private place(live: Live, cell: Cell, stagger: boolean): boolean {
     const item = this.spawn(live.kind as ModelKind, cell.x, cell.z, { yaw: this.rng() * Math.PI * 2 });
     if (!item) return false;
@@ -297,8 +500,8 @@ export class Loot {
     live: Live,
     opts?: { stagger?: boolean; nearWreck?: boolean; ignoreCap?: boolean; awayFromPlayer?: boolean },
   ): boolean {
-    const food = FOOD.find((spec) => spec.kind === live.kind);
-    if (food && !opts?.ignoreCap && this.freshCount(live.kind) >= food.cap) return false;
+    const cap = lootGroundCap(live.kind, this.roomCaps);
+    if (cap != null && !opts?.ignoreCap && this.groundCount(live.kind) >= cap) return false;
     const cell = this.pickCell(live, Boolean(opts?.nearWreck), Boolean(opts?.awayFromPlayer));
     if (!cell) return false;
     return this.place(live, cell, Boolean(opts?.stagger));
@@ -326,7 +529,6 @@ export class Loot {
   private spawnReplacement(kind: LootKind): void {
     const spec = FOOD.find((it) => it.kind === kind);
     if (!spec) return;
-    if (this.freshCount(kind) >= spec.cap) return;
     const live: Live = {
       kind,
       sites: spec.sites,
@@ -338,6 +540,8 @@ export class Loot {
       item: null,
     };
     this.lives.push(live);
+    const cap = lootGroundCap(kind, this.roomCaps);
+    if (cap != null && this.groundCount(kind) >= cap) return;
     this.trySpawn(live, { stagger: false, awayFromPlayer: true });
   }
 }

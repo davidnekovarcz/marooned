@@ -4,11 +4,18 @@ import type { DayClock } from "@/web/src/dayNight";
 import type { Weather } from "@/web/src/sim/weather";
 import { Item, type ItemSnapshot, type SpawnFn } from "@/web/src/world/item";
 import type { HeldKind } from "@/web/src/world/kinds";
-import type { NetWorld } from "@/web/src/net/protocol";
+import type { LootTimer, NetWorld } from "@/web/src/net/protocol";
 
 function moveMesh(item: Item): void {
   item.mesh.position.x = item.cellX * CELL + CELL / 2;
   item.mesh.position.z = item.cellZ * CELL + CELL / 2;
+}
+
+/** Shelter pieces stay on the cells scatter built. A saved room must not slide them. */
+const HUT_FIXTURE = new Set(["floorOld", "structure", "tentHalf", "campfire", "log", "bedroll", "bucket"]);
+
+function isHutFixture(kind: string): boolean {
+  return HUT_FIXTURE.has(kind);
 }
 
 export type ClaimedPickup = {
@@ -74,7 +81,7 @@ export function applyNetWorld(
   if (world.items != null) {
     const incoming = new Map(snaps.map((snap) => [snap.id, snap]));
     for (const item of [...items]) {
-      if (incoming.has(item.id)) continue;
+      if (incoming.has(item.id) || isHutFixture(item.kind)) continue;
       item.mesh.removeFromParent();
       const i = items.indexOf(item);
       if (i >= 0) items.splice(i, 1);
@@ -83,9 +90,11 @@ export function applyNetWorld(
 
     const local = new Map(items.map((item) => [item.id, item]));
     for (const snap of snaps) {
+      if (snap.kind === "bridge" || isHutFixture(snap.kind)) continue;
       if (claimed.some((claim) => matchesClaim(snap, claim))) continue;
       const cur = local.get(snap.id);
       if (cur) {
+        if (isHutFixture(cur.kind)) continue;
         cur.cellX = snap.cellX;
         cur.cellZ = snap.cellZ;
         if (snap.prep || snap.freshness) cur.applyFoodState(snap.prep, snap.freshness);
@@ -134,7 +143,13 @@ export function applyNetWorld(
   camp.replaceShelters(asArray(world.shelters));
 }
 
-export function snapshotWorld(items: Item[], camp: Camp, day: DayClock, weather: Weather): NetWorld {
+export function snapshotWorld(
+  items: Item[],
+  camp: Camp,
+  day: DayClock,
+  weather: Weather,
+  loot?: LootTimer[],
+): NetWorld {
   return {
     elapsed: Number.isFinite(day.elapsed) ? day.elapsed : 0,
     dayT: Number.isFinite(day.t) ? day.t : 0,
@@ -147,6 +162,7 @@ export function snapshotWorld(items: Item[], camp: Camp, day: DayClock, weather:
     items: items.filter(Boolean).map((item) => item.snapshot()),
     hearths: camp.hearths.filter((h) => h?.item?.id).map((h) => ({ id: h.item.id, lit: Boolean(h.lit) })),
     shelters: camp.shelters.filter(Boolean).map((s) => ({ x: s.x, z: s.z })),
+    ...(loot ? { loot } : {}),
   };
 }
 
