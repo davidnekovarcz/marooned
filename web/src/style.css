@@ -1137,7 +1137,7 @@ body.admin #character {
 
 .workspace {
   display: grid;
-  grid-template-columns: 16rem 1fr;
+  grid-template-columns: 25rem 1fr;
   gap: 1.25rem;
 }
 
@@ -1198,11 +1198,24 @@ body.admin #character {
   color: #8d3b32;
 }
 
+.room-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.35rem;
+}
+
+.room-row > button.danger {
+  flex: none;
+  margin-top: 0.35rem;
+  white-space: nowrap;
+}
+
 .screen button.room {
   display: flex;
+  flex: 1 1 auto;
   flex-direction: column;
   align-items: flex-start;
-  width: 100%;
+  min-width: 0;
   text-align: left;
   padding: 0.45rem 0.35rem;
 }

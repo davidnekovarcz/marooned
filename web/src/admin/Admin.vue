@@ -227,16 +227,17 @@ async function removePlayer(player: PlayerRow): Promise<void> {
   }
 }
 
-async function removeRoom(): Promise<void> {
+async function removeRoom(roomId: string): Promise<void> {
   note.value = "";
-  const roomId = selected.value?.id;
   if (!database || !roomId) return;
   if (!window.confirm(`Remove room ${roomId}?`)) return;
   try {
     const snap = await get(dbRef(database, `rooms/${roomId}`));
     await clearRoomPaths(roomId, roomWipePaths(snap.val()));
-    keepEmpty = true;
-    selectedId.value = "";
+    if (selectedId.value === roomId) {
+      keepEmpty = true;
+      selectedId.value = "";
+    }
     roomRemoved.value = `Removed room ${roomId}.`;
   } catch (err) {
     note.value = err instanceof Error ? err.message : "Could not remove the room.";
@@ -330,17 +331,18 @@ onUnmounted(() => {
         <aside>
           <h2>Rooms</h2>
           <label>Filter <input v-model="roomQuery" type="search" /></label>
-          <button
-            v-for="room in visibleRooms"
-            :key="room.id"
-            type="button"
-            class="room"
-            :class="{ selected: room.id === selectedId }"
-            @click="choose(room.id)"
-          >
-            <strong>{{ room.id }}</strong>
-            <span>{{ room.online }} online · {{ room.stats.players }} players (total) · {{ room.maxPlayers }} max</span>
-          </button>
+          <div v-for="room in visibleRooms" :key="room.id" class="room-row">
+            <button
+              type="button"
+              class="room"
+              :class="{ selected: room.id === selectedId }"
+              @click="choose(room.id)"
+            >
+              <strong>{{ room.id }}</strong>
+              <span>{{ room.online }} online · {{ room.stats.players }} players (total) · {{ room.maxPlayers }} max</span>
+            </button>
+            <button type="button" class="danger" @click.stop="removeRoom(room.id)">Remove room</button>
+          </div>
           <h3>New room</h3>
           <label>Slug <input v-model="newSlug" type="text" maxlength="32" /></label>
           <label>Players <input v-model.number="newCap" type="number" min="1" max="10" /></label>
@@ -370,7 +372,6 @@ onUnmounted(() => {
                 <label>Max <input v-model.number="capDraft" type="number" min="1" max="10" /></label>
                 <button type="button" @click="saveCap">Save max</button>
                 <button type="button" @click="forceRespawn">Respawn ground items</button>
-                <button type="button" class="danger" @click="removeRoom">Remove room</button>
               </div>
             </header>
             <dl>
