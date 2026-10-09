@@ -12,6 +12,21 @@ describe("online count", () => {
   });
 });
 
+describe("admin room list", () => {
+  it("omits a kaloko- id and a kaloko_ id and keeps demo", () => {
+    const ids = parseRooms(
+      {
+        demo: {},
+        kaloko: {},
+        "kaloko-smoke": {},
+        "kaloko_fire": {},
+      },
+      "2026-10-09",
+    ).map((room) => room.id);
+    expect(ids).toEqual(["demo", "kaloko"]);
+  });
+});
+
 describe("rooms", () => {
   it("keeps ten players on four beaches and only removes Kaloko islands", () => {
     expect(MAX_PLAYERS_LIMIT).toBe(10);
