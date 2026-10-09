@@ -1189,6 +1189,15 @@ body.admin #character {
   color: #241c16;
 }
 
+.screen button.danger {
+  background: #8d3b32;
+}
+
+.screen button.quiet.danger {
+  background: transparent;
+  color: #8d3b32;
+}
+
 .screen button.room {
   display: flex;
   flex-direction: column;

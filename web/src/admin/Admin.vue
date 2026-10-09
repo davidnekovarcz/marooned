@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from "vue";
 import { GoogleAuthProvider, onAuthStateChanged, signInWithPopup, signOut, type User } from "firebase/auth";
-import { get, onValue, ref as dbRef, set, type Database, type Unsubscribe } from "firebase/database";
+import { get, onValue, ref as dbRef, set, update, type Database, type Unsubscribe } from "firebase/database";
 import { ADMIN_EMAIL } from "@/web/src/admin/access";
 import {
   GROUND_CAP_MAX,
@@ -14,6 +14,7 @@ import { formatIslandSurvival, sumStats } from "@/web/src/admin/metrics";
 import { parseRooms, type PlayerRow, type RoomRecord } from "@/web/src/admin/records";
 import { connectAdminFirebase } from "@/web/src/admin/session";
 import { clampMaxPlayers, cleanRoomSlug, DEFAULT_MAX_PLAYERS } from "@/web/src/net/protocol";
+import { playerRemovePaths, roomWipePaths } from "@/web/src/net/roomClear";
 import { pragueDayKey } from "@/web/src/net/visits";
 
 const ready = ref(false);
@@ -33,6 +34,7 @@ const groundDrafts = ref<Record<string, string>>({});
 let database: Database | null = null;
 let stopAuth: Unsubscribe | null = null;
 let stopRooms: Unsubscribe | null = null;
+let keepEmpty = false;
 
 const visibleRooms = computed(() => {
   const q = roomQuery.value.trim().toLowerCase();
@@ -69,6 +71,7 @@ const visiblePlayers = computed(() => {
 });
 
 function choose(id: string): void {
+  keepEmpty = false;
   selectedId.value = id;
   const room = rooms.value.find((row) => row.id === id);
   capDraft.value = room?.maxPlayers ?? DEFAULT_MAX_PLAYERS;
@@ -102,7 +105,7 @@ function listen(db: Database): void {
   stopRooms?.();
   stopRooms = onValue(dbRef(db, "rooms"), (snap) => {
     rooms.value = parseRooms(snap.val(), pragueDayKey(Date.now()));
-    if (!selectedId.value && rooms.value[0]) choose(rooms.value[0].id);
+    if (!selectedId.value && !keepEmpty && rooms.value[0]) choose(rooms.value[0].id);
     const current = rooms.value.find((room) => room.id === selectedId.value);
     if (current) capDraft.value = current.maxPlayers;
   });
@@ -188,6 +191,49 @@ async function saveGroundCap(kind: string): Promise<void> {
   delete drafts[`${roomId}:${kind}`];
   groundDrafts.value = drafts;
   note.value = `${roomId} keeps at most ${cap} ${kind}. The host applies it the next time they are in the room.`;
+}
+
+async function clearRoomPaths(roomId: string, paths: string[]): Promise<void> {
+  if (!database || !paths.length) return;
+  const values: Record<string, null> = {};
+  for (const path of paths) values[path] = null;
+  await update(dbRef(database, `rooms/${roomId}`), values);
+}
+
+async function removePlayer(player: PlayerRow): Promise<void> {
+  note.value = "";
+  const roomId = selected.value?.id;
+  if (!database || !roomId) return;
+  const name = player.name || player.uid;
+  if (!window.confirm(`Remove ${name} from ${roomId}?`)) return;
+  try {
+    const snap = await get(dbRef(database, `rooms/${roomId}`));
+    const paths = playerRemovePaths(snap.val(), player.uid);
+    if (!paths.length) {
+      note.value = "Could not remove the player.";
+      return;
+    }
+    await clearRoomPaths(roomId, paths);
+    note.value = `Removed ${name}.`;
+  } catch (err) {
+    note.value = err instanceof Error ? err.message : "Could not remove the player.";
+  }
+}
+
+async function removeRoom(): Promise<void> {
+  note.value = "";
+  const roomId = selected.value?.id;
+  if (!database || !roomId) return;
+  if (!window.confirm(`Remove room ${roomId}?`)) return;
+  try {
+    const snap = await get(dbRef(database, `rooms/${roomId}`));
+    await clearRoomPaths(roomId, roomWipePaths(snap.val()));
+    keepEmpty = true;
+    selectedId.value = "";
+    note.value = `Removed room ${roomId}.`;
+  } catch (err) {
+    note.value = err instanceof Error ? err.message : "Could not remove the room.";
+  }
 }
 
 async function forceRespawn(): Promise<void> {
@@ -315,6 +361,7 @@ onUnmounted(() => {
                 <label>Max <input v-model.number="capDraft" type="number" min="1" max="10" /></label>
                 <button type="button" @click="saveCap">Save max</button>
                 <button type="button" @click="forceRespawn">Respawn ground items</button>
+                <button type="button" class="danger" @click="removeRoom">Remove room</button>
               </div>
             </header>
             <dl>
@@ -339,13 +386,14 @@ onUnmounted(() => {
             </div>
             <table>
               <thead>
-                <tr><th>Name</th><th>State</th><th>Survival</th></tr>
+                <tr><th>Name</th><th>State</th><th>Survival</th><th></th></tr>
               </thead>
               <tbody>
                 <tr v-for="player in visiblePlayers" :key="player.uid">
                   <td>{{ player.name }}</td>
                   <td>{{ aliveLabel(player) }}</td>
                   <td>{{ formatIslandSurvival(player.livedSeconds) }}</td>
+                  <td><button type="button" class="quiet danger" @click="removePlayer(player)">Remove</button></td>
                 </tr>
               </tbody>
             </table>

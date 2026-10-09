@@ -12,7 +12,6 @@ import { parseGroundCaps } from "@/web/src/admin/ground";
 import { connectFirebase, firebaseConfigured } from "@/web/src/net/firebase";
 import {
   clampMaxPlayers,
-  isKalokoRoomId,
   MAX_PLAYERS_LIMIT,
   roomIdFromUrl,
   type NetGrant,
@@ -20,6 +19,7 @@ import {
   type NetPlayer,
   type NetWorld,
 } from "@/web/src/net/protocol";
+import { roomWipePaths, shouldDeleteKalokoRoom } from "@/web/src/net/roomClear";
 import { parseSurvivor, type NetSurvivor } from "@/web/src/net/survivor";
 import { nextVisit, parseVisit } from "@/web/src/net/visits";
 
@@ -139,44 +139,12 @@ export class Room {
 
   /** Remove a Kaloko island after a walk. `demo` and admin rooms stay. */
   async deleteKalokoRoom(): Promise<void> {
-    if (!isKalokoRoomId(this.roomId) || (!this.isHost && this.slot !== 0)) return;
+    if (!shouldDeleteKalokoRoom(this.roomId, this.isHost, this.slot)) return;
     const base = `rooms/${this.roomId}`;
     try {
       const snap = await get(ref(this.db, base));
-      const room = snap.val();
-      if (!room || typeof room !== "object") return;
-      const row = room as Record<string, unknown>;
-      const jobs: Promise<unknown>[] = [];
-      const clearChildren = (node: string) => {
-        const children = row[node];
-        if (!children || typeof children !== "object") return;
-        for (const key of Object.keys(children as Record<string, unknown>)) {
-          jobs.push(set(ref(this.db, `${base}/${node}/${key}`), null));
-        }
-      };
-      clearChildren("slots");
-      clearChildren("players");
-      clearChildren("intents");
-      clearChildren("grants");
-      clearChildren("survivors");
-      clearChildren("visits");
-      if ("host" in row) jobs.push(set(ref(this.db, `${base}/host`), null));
-      if ("world" in row) jobs.push(set(ref(this.db, `${base}/world`), null));
-      if (row.stats && typeof row.stats === "object") jobs.push(set(ref(this.db, `${base}/stats/peakPlayers`), null));
-      if (row.config && typeof row.config === "object") {
-        jobs.push(set(ref(this.db, `${base}/config/maxPlayers`), null));
-        jobs.push(set(ref(this.db, `${base}/config/createdAt`), null));
-        const caps = (row.config as { groundCaps?: unknown }).groundCaps;
-        if (caps && typeof caps === "object") {
-          for (const key of Object.keys(caps as Record<string, unknown>)) {
-            jobs.push(set(ref(this.db, `${base}/config/groundCaps/${key}`), null));
-          }
-        }
-      }
-      if (row.commands && typeof row.commands === "object") {
-        jobs.push(set(ref(this.db, `${base}/commands/respawnItems`), null));
-      }
-      await Promise.all(jobs);
+      const paths = roomWipePaths(snap.val());
+      await Promise.all(paths.map((path) => set(ref(this.db, `${base}/${path}`), null)));
     } catch (err) {
       console.warn("deleteKalokoRoom failed", err);
     }
