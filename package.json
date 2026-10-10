@@ -22,6 +22,6 @@
     "serve": "^14.2.4"
   },
   "devDependencies": {
-    "kaloko": "^0.16.1"
+    "kaloko": "^0.18.0"
   }
 }
