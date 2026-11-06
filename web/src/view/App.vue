@@ -8,6 +8,7 @@ import IslandFull from "@/web/src/view/IslandFull.vue";
 import MobileControls from "@/web/src/view/MobileControls.vue";
 import MobileToolbar from "@/web/src/view/MobileToolbar.vue";
 import SayCompose from "@/web/src/view/SayCompose.vue";
+import PwaInstallPrompt from "@/web/src/view/PwaInstallPrompt.vue";
 </script>
 
 <template>
@@ -20,4 +21,5 @@ import SayCompose from "@/web/src/view/SayCompose.vue";
   <MobileControls />
   <SayCompose />
   <Death />
+  <PwaInstallPrompt />
 </template>
