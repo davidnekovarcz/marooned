@@ -88,31 +88,8 @@
     </div>
     <script>
       (function () {
-        var TZ =
-          /^(Europe\/|Atlantic\/(Azores|Canary|Faroe|Madeira|Reykjavik)|Arctic\/Longyearbyen|Africa\/(Ceuta|Melilla))/;
-        var localeEu = /^(AT|BE|BG|HR|CY|CZ|DK|EE|FI|FR|DE|GR|HU|IE|IT|LV|LT|LU|MT|NL|PL|PT|RO|SK|SI|ES|SE|IS|LI|NO|GB|UK|CH)$/i;
-
-        function inEu() {
-          try {
-            var tz = Intl.DateTimeFormat().resolvedOptions().timeZone || "";
-            if (TZ.test(tz)) return true;
-          } catch (e) {}
-          var langs = [].concat(navigator.languages || [], navigator.language || "");
-          for (var i = 0; i < langs.length; i++) {
-            var part = String(langs[i]).split(/[-_]/)[1];
-            if (part && localeEu.test(part)) return true;
-          }
-          return false;
-        }
-
-        var saved = null;
-        try {
-          saved = localStorage.getItem(CONSENT_KEY);
-        } catch (e) {}
-        if (saved === "granted" || saved === "denied" || !inEu()) return;
-
         var banner = document.getElementById("cookie-banner");
-        banner.hidden = false;
+        
         function choose(choice) {
           try {
             localStorage.setItem(CONSENT_KEY, choice);
@@ -122,11 +99,16 @@
           }, adsDenied));
           banner.hidden = true;
         }
+        
         document.getElementById("cookie-accept").onclick = function () {
           choose("granted");
         };
         document.getElementById("cookie-decline").onclick = function () {
           choose("denied");
+        };
+        
+        window.showCookieBanner = function () {
+          banner.hidden = false;
         };
       })();
     </script>
